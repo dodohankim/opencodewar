@@ -1,0 +1,356 @@
+<title>Open Code War — 리더보드</title>
+<style>
+  :root {
+    --backdrop: #E9E9E6;
+    --bg:    #F6F6F4;
+    --fg:    #1B1B1A;
+    --dim:   #6C6C68;
+    --faint: #9C9C97;
+    --line:  #D6D6D2;
+    --rev-bg:#1B1B1A;
+    --rev-fg:#F6F6F4;
+    --hover: rgba(27,27,26,0.05);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --backdrop: #050504;
+      --bg:    #0E0E0D;
+      --fg:    #E7E7E3;
+      --dim:   #8C8C87;
+      --faint: #5A5A56;
+      --line:  #2A2A26;
+      --rev-bg:#E7E7E3;
+      --rev-fg:#0E0E0D;
+      --hover: rgba(231,231,227,0.06);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="light"] {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05); color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06); color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .page {
+    background: var(--backdrop); min-height: 100vh; padding: clamp(10px, 3vw, 30px);
+    font-family: var(--mono); color: var(--fg); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+
+  /* terminal shell */
+  .term {
+    max-width: 900px; margin: 0 auto; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  .titlebar {
+    display: flex; align-items: center; gap: 12px; padding: 9px 14px;
+    border-bottom: 1px solid var(--line); font-size: 12px; color: var(--dim);
+  }
+  .lights { display: flex; gap: 7px; }
+  .lights i { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--faint); display: block; }
+  .titlebar .name { flex: 1; text-align: center; letter-spacing: 0.02em; }
+  .titlebar .dims { color: var(--faint); }
+
+  .screen { padding: clamp(14px, 2.5vw, 24px); }
+
+  .echo { color: var(--dim); margin-bottom: 18px; word-break: break-all; }
+  .echo .sig { color: var(--fg); }
+
+  .cursor { display: inline-block; width: 8px; height: 1.05em; background: var(--fg);
+    vertical-align: text-bottom; animation: blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* box with legend */
+  .box { position: relative; border: 1px solid var(--line); border-radius: 6px; padding: 18px 16px 16px; margin-top: 26px; }
+  .box > .legend { position: absolute; top: -0.7em; left: 12px; background: var(--bg); padding: 0 8px;
+    font-size: 11px; color: var(--dim); letter-spacing: 0.04em; text-transform: lowercase; }
+
+  .banner .big { font-size: clamp(22px, 4.4vw, 34px); font-weight: 700; letter-spacing: 0.04em; margin: 0; }
+  .banner .rule { color: var(--faint); overflow: hidden; white-space: nowrap; margin: 4px 0 10px; }
+  .banner p { margin: 0; color: var(--dim); font-size: 13px; }
+  .banner .status { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--dim); }
+  .banner .status b { color: var(--fg); font-weight: 600; }
+  .dotlive { display:inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--fg); margin-right: 6px; animation: blink 1.6s steps(1) infinite; }
+
+  .theme-toggle { border: 1px solid var(--line); background: var(--bg); color: var(--dim);
+    font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 5px; cursor: pointer; }
+  .theme-toggle:hover { color: var(--fg); }
+
+  /* controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 22px; }
+  .tabs, .sorts { display: inline-flex; gap: 6px; }
+  .tab, .sort {
+    font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--bg);
+    color: var(--dim); padding: 6px 12px; border-radius: 5px; cursor: pointer; white-space: nowrap;
+  }
+  .tab .k { color: var(--faint); font-size: 11px; }
+  .tab:hover, .sort:hover { color: var(--fg); }
+  .tab[aria-selected="true"], .sort[aria-pressed="true"] {
+    background: var(--rev-bg); color: var(--rev-fg); border-color: var(--rev-bg);
+  }
+  .tab[aria-selected="true"] .k { color: var(--rev-fg); opacity: 0.7; }
+  .sorts { align-items: center; }
+  .sorts .lbl { color: var(--faint); font-size: 12px; align-self: center; }
+
+  /* table */
+  .board-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  thead th { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--faint); text-align: left; padding: 6px 12px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody td { padding: 7px 12px; font-size: 13.5px; vertical-align: middle; }
+  tbody tr { border-bottom: 1px dotted var(--line); }
+  tbody tr:last-child { border-bottom: 0; }
+  tbody tr:hover { background: var(--hover); }
+  tbody tr.me td { background: var(--hover); }
+  tbody tr.me td:first-child { box-shadow: inset 3px 0 0 var(--fg); }
+  .rank { color: var(--dim); font-variant-numeric: tabular-nums; }
+  .rank.b { color: var(--fg); font-weight: 700; }
+  .rank.one { background: var(--rev-bg); color: var(--rev-fg); padding: 1px 6px; border-radius: 3px; font-weight: 700; }
+  .nm { color: var(--fg); }
+  .me .nm { font-weight: 700; }
+  .you { color: var(--faint); font-size: 11px; }
+  .cc { color: var(--faint); font-size: 12px; }
+  .pnum { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .snum { color: var(--dim); font-variant-numeric: tabular-nums; }
+  .bar { letter-spacing: -1px; white-space: nowrap; }
+  .bar .on { color: var(--fg); }
+  .bar .off { color: var(--faint); }
+  .mv { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mv.up { color: var(--fg); font-weight: 600; }
+  .mv.down { color: var(--faint); }
+  .mv.same { color: var(--faint); }
+
+  /* lower */
+  .lower { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .lower .box { margin-top: 26px; }
+  ul.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+  ul.list li { display: flex; gap: 10px; font-size: 13px; color: var(--dim); }
+  ul.list .k { color: var(--faint); flex: none; }
+  ul.list b { color: var(--fg); font-weight: 600; }
+
+  /* bottom prompt + status bar */
+  .bottom-prompt { margin-top: 22px; color: var(--dim); }
+  .bottom-prompt .sig { color: var(--fg); }
+  .statusbar { margin-top: 14px; background: var(--rev-bg); color: var(--rev-fg);
+    display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between;
+    padding: 6px 14px; font-size: 12px; }
+  .statusbar .seg { display: flex; gap: 16px; }
+
+  @media (max-width: 660px) {
+    .lower { grid-template-columns: 1fr; }
+    .titlebar .name { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .cursor, .dotlive { animation: none; } }
+</style>
+
+<div class="page">
+  <div class="term">
+    <div class="titlebar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="name">ocw — open-code-war</span>
+      <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
+    </div>
+
+    <div class="screen">
+      <div class="echo"><span class="sig">dohan@claude-code</span>:~$ <span id="cmdEcho">ocw --board daily --region kr --sort prompts</span></div>
+
+      <section class="box banner">
+        <span class="legend">ocw · v0.1</span>
+        <h1 class="big">OPEN CODE WAR</h1>
+        <div class="rule" aria-hidden="true">════════════════════════════════════════════════════════════════</div>
+        <p>클로드 코드에 가장 많이 입력한 코더를 가리는 리더보드 — who types the most.</p>
+        <div class="status">
+          <span><span class="dotlive" aria-hidden="true"></span>집계 중</span>
+          <span>참가 <b>1,284</b></span>
+          <span>region <b>KR</b></span>
+          <span>오늘 1위 <b id="champChip">—</b></span>
+          <span id="clockChip">KST 00:00:00</span>
+        </div>
+      </section>
+
+      <div class="controls">
+        <div class="tabs" role="tablist" aria-label="기간">
+          <button class="tab" role="tab" aria-selected="true"  data-board="daily">daily <span class="k">일간</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-board="weekly">weekly <span class="k">주간</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-board="weekend">weekend <span class="k">금·토·일</span></button>
+        </div>
+        <div class="sorts">
+          <span class="lbl">sort:</span>
+          <button class="sort" data-metric="prompts" aria-pressed="true">prompts</button>
+          <button class="sort" data-metric="chars" aria-pressed="false">chars</button>
+        </div>
+      </div>
+
+      <section class="box">
+        <span class="legend" id="boardLegend">leaderboard · daily · prompts</span>
+        <div class="board-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>coder</th>
+                <th>cc</th>
+                <th class="num" id="thPrimary">prompts</th>
+                <th class="num" id="thSecond">chars</th>
+                <th>activity</th>
+                <th class="num">Δ</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="lower">
+        <section class="box">
+          <span class="legend">rules</span>
+          <ul class="list">
+            <li><span class="k">01</span><span><b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.</span></li>
+            <li><span class="k">02</span><span><b>내용 미수집.</b> 글자 수(숫자)만 전송 — 무엇을 썼는지는 안 봄.</span></li>
+            <li><span class="k">03</span><span><b>세 개의 판.</b> 일간·주간, 주말은 <b>금·토·일</b>만 합산.</span></li>
+            <li><span class="k">04</span><span><b>닉네임은 선택.</b> 없으면 anon 으로 출전.</span></li>
+          </ul>
+        </section>
+        <section class="box">
+          <span class="legend">roadmap</span>
+          <ul class="list">
+            <li><span class="k">[~]</span><span>coder profile · 자기소개 — 순위가 곧 활동 증명</span></li>
+            <li><span class="k">[~]</span><span>jobs: 구직 — 원하는 조건을 프로필에 노출</span></li>
+            <li><span class="k">[~]</span><span>hire: 구인 — 팀이 상위 코더에게 제안</span></li>
+            <li><span class="k">[ ]</span><span>world map — 전 세계 국가별 랭킹</span></li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="bottom-prompt"><span class="sig">ocw</span>&gt; <span class="cursor" aria-hidden="true"></span></div>
+    </div>
+
+    <div class="statusbar">
+      <div class="seg"><span>[privacy] 프롬프트 내용 미수집 · 글자 수만</span></div>
+      <div class="seg"><span>mock data</span><span>q:quit</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const boards = {
+    daily: [
+      { nick:"코드깎는노인", prompts:247, chars:19840, prev:2 },
+      { nick:"vim_귀신",     prompts:233, chars:15120, prev:1 },
+      { nick:"새벽5시개발자", prompts:201, chars:22310, prev:4 },
+      { nick:"반포자이코더", prompts:188, chars:12040, prev:3 },
+      { nick:"프롬프트장인", prompts:174, chars:20880, prev:5 },
+      { nick:"리팩터_고양이", prompts:159, chars:9910, prev:9 },
+      { nick:"세미콜론수집가", prompts:151, chars:14200, prev:6 },
+      { nick:"나", prompts:142, chars:11760, prev:12, me:true },
+      { nick:"버그사냥꾼",   prompts:138, chars:8420, prev:7 },
+      { nick:"토큰_수도꼭지", prompts:129, chars:16650, prev:8 },
+      { nick:"deploy_각",   prompts:118, chars:7330, prev:10 },
+      { nick:"anon",        prompts:112, chars:9040, prev:11 },
+    ],
+    weekly: [
+      { nick:"새벽5시개발자", prompts:1412, chars:151200, prev:1 },
+      { nick:"코드깎는노인", prompts:1388, chars:118900, prev:3 },
+      { nick:"프롬프트장인", prompts:1201, chars:141050, prev:2 },
+      { nick:"vim_귀신",     prompts:1176, chars:98600, prev:4 },
+      { nick:"토큰_수도꼭지", prompts:1044, chars:129800, prev:6 },
+      { nick:"세미콜론수집가", prompts:988, chars:92100, prev:5 },
+      { nick:"반포자이코더", prompts:912, chars:74300, prev:7 },
+      { nick:"버그사냥꾼",   prompts:867, chars:61200, prev:10 },
+      { nick:"나", prompts:848, chars:70950, prev:8, me:true },
+      { nick:"리팩터_고양이", prompts:790, chars:58400, prev:9 },
+      { nick:"deploy_각",   prompts:702, chars:49900, prev:12 },
+      { nick:"오타장인",    prompts:661, chars:80100, prev:11 },
+    ],
+    weekend: [
+      { nick:"주말이없는남자", prompts:612, chars:71200, prev:1 },
+      { nick:"토큰_수도꼭지", prompts:588, chars:82400, prev:3 },
+      { nick:"새벽5시개발자", prompts:571, chars:63800, prev:2 },
+      { nick:"프롬프트장인", prompts:502, chars:69950, prev:5 },
+      { nick:"코드깎는노인", prompts:488, chars:44100, prev:4 },
+      { nick:"나", prompts:451, chars:52300, prev:11, me:true },
+      { nick:"vim_귀신",     prompts:433, chars:37600, prev:6 },
+      { nick:"불금코더",    prompts:401, chars:41200, prev:7 },
+      { nick:"세미콜론수집가", prompts:377, chars:35800, prev:8 },
+      { nick:"반포자이코더", prompts:344, chars:29900, prev:9 },
+      { nick:"리팩터_고양이", prompts:318, chars:27400, prev:10 },
+      { nick:"anon",        prompts:290, chars:33100, prev:12 },
+    ],
+  };
+
+  let curBoard = "daily";
+  let curMetric = "prompts";
+  const BARW = 12;
+
+  const fmt = n => n.toLocaleString("ko-KR");
+  const sorted = () => [...boards[curBoard]].sort((a,b) => b[curMetric] - a[curMetric]);
+
+  function bar(pct) {
+    const on = Math.max(0, Math.min(BARW, Math.round(pct/100*BARW)));
+    return `<span class="on">${"█".repeat(on)}</span><span class="off">${"░".repeat(BARW-on)}</span>`;
+  }
+  function move(rank, prev) {
+    const d = prev - rank;
+    if (d > 0)  return `<span class="mv up">▲${d}</span>`;
+    if (d < 0)  return `<span class="mv down">▼${-d}</span>`;
+    return `<span class="mv same">·</span>`;
+  }
+
+  function render() {
+    const rows = sorted();
+    const max = Math.max(...rows.map(r => r[curMetric]));
+    document.getElementById("thPrimary").textContent = curMetric;
+    document.getElementById("thSecond").textContent  = curMetric === "prompts" ? "chars" : "prompts";
+    document.getElementById("champChip").textContent = rows[0].nick;
+    document.getElementById("boardLegend").textContent = `leaderboard · ${curBoard} · ${curMetric}`;
+    document.getElementById("cmdEcho").textContent = `ocw --board ${curBoard} --region kr --sort ${curMetric}`;
+
+    document.getElementById("tbody").innerHTML = rows.map((r,i) => {
+      const rank = i + 1;
+      const primary = r[curMetric];
+      const second  = curMetric === "prompts" ? r.chars : r.prompts;
+      const pct = (r[curMetric] / max) * 100;
+      const rankCls = rank === 1 ? "rank one" : (rank <= 3 ? "rank b" : "rank");
+      return `<tr class="${r.me?'me':''}">
+        <td><span class="${rankCls}">${rank}</span></td>
+        <td><span class="nm">${r.nick}</span>${r.me?' <span class="you">[you]</span>':''}</td>
+        <td><span class="cc">KR</span></td>
+        <td class="num"><span class="pnum">${fmt(primary)}</span></td>
+        <td class="num"><span class="snum">${fmt(second)}</span></td>
+        <td><span class="bar">${bar(pct)}</span></td>
+        <td class="num">${move(rank, r.prev)}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b === btn));
+    curBoard = btn.dataset.board; render();
+  }));
+  document.querySelectorAll(".sort").forEach(btn => btn.addEventListener("click", () => {
+    document.querySelectorAll(".sort").forEach(b => b.setAttribute("aria-pressed", b === btn));
+    curMetric = btn.dataset.metric; render();
+  }));
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : (cur === "light" ? "dark" : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark"));
+    document.documentElement.setAttribute("data-theme", next);
+  });
+  function tick() {
+    const now = new Date();
+    const kst = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 9 * 3600000);
+    const p = n => String(n).padStart(2,"0");
+    document.getElementById("clockChip").textContent = `KST ${p(kst.getHours())}:${p(kst.getMinutes())}:${p(kst.getSeconds())}`;
+  }
+  tick(); setInterval(tick, 1000);
+  render();
+</script>
