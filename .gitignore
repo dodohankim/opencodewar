@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.output/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+wrangler.toml.bak
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Local database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
