@@ -1,4 +1,4 @@
-import type { BoardType, Env, LeaderboardRow, Metric } from './types';
+import type { Env } from './types';
 import { json, readJson } from './http';
 import { kstToday, weekDays, weekendDays } from './time';
 import {
@@ -9,15 +9,7 @@ import {
   parseMetric,
   parseType,
 } from './validate';
-
-// metric 이름을 실제 컬럼명으로 화이트리스트 매핑 (SQL 인젝션 방지).
-const METRIC_COL: Record<Metric, string> = { prompts: 'prompts', chars: 'chars' };
-
-function periodOf(type: BoardType, now: number) {
-  if (type === 'daily') return { day: kstToday(now) };
-  const days = type === 'weekly' ? weekDays(now) : weekendDays(now);
-  return { from: days[0], to: days[days.length - 1], days };
-}
+import { METRIC_COL, getSnapshot, periodOf } from './snapshot';
 
 /** POST /track — 입력 이벤트 1건 수집. body: { userId, chars } */
 export async function handleTrack(request: Request, env: Env): Promise<Response> {
@@ -31,7 +23,8 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
   const day = kstToday(now);
   const country = request.cf?.country ?? null;
 
-  // events insert + users upsert + daily_stats upsert 를 단일 트랜잭션(batch)으로.
+  // events insert + users insert(신규만) + daily_stats upsert 를 단일 트랜잭션(batch)으로.
+  // 쓰기 절감: 기존 유저는 users를 다시 쓰지 않는다(DO NOTHING). last_seen 매번 갱신 X.
   await env.DB.batch([
     env.DB.prepare('INSERT INTO events (user_id, chars, country, created_at) VALUES (?, ?, ?, ?)').bind(
       userId,
@@ -42,9 +35,7 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
     env.DB.prepare(
       `INSERT INTO users (user_id, country, created_at, last_seen_at)
        VALUES (?, ?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET
-         last_seen_at = excluded.last_seen_at,
-         country = COALESCE(excluded.country, users.country)`,
+       ON CONFLICT(user_id) DO NOTHING`,
     ).bind(userId, country, now, now),
     env.DB.prepare(
       `INSERT INTO daily_stats (user_id, day, prompts, chars, country)
@@ -52,15 +43,11 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
        ON CONFLICT(user_id, day) DO UPDATE SET
          prompts = daily_stats.prompts + 1,
          chars = daily_stats.chars + excluded.chars,
-         country = COALESCE(excluded.country, daily_stats.country)`,
+         country = COALESCE(daily_stats.country, excluded.country)`,
     ).bind(userId, day, chars, country),
   ]);
 
-  const today = await env.DB.prepare('SELECT prompts, chars FROM daily_stats WHERE user_id = ? AND day = ?')
-    .bind(userId, day)
-    .first<{ prompts: number; chars: number }>();
-
-  return json({ ok: true, day, today: today ?? { prompts: 0, chars: 0 } });
+  return json({ ok: true, day });
 }
 
 /** POST /register — 닉네임 등록/변경. body: { userId, nickname } */
@@ -76,7 +63,6 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   const nickname = (body.nickname as string).trim();
   const now = Date.now();
 
-  // 유저가 없으면 생성 (닉네임만 먼저 등록하는 경우).
   await env.DB.prepare(
     `INSERT INTO users (user_id, created_at, last_seen_at) VALUES (?, ?, ?)
      ON CONFLICT(user_id) DO NOTHING`,
@@ -84,7 +70,6 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
     .bind(userId, now, now)
     .run();
 
-  // 닉네임 중복(다른 유저가 선점) 검사.
   const taken = await env.DB.prepare('SELECT user_id FROM users WHERE nickname = ?')
     .bind(nickname)
     .first<{ user_id: string }>();
@@ -97,62 +82,31 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   return json({ ok: true, userId, nickname });
 }
 
-/** GET /leaderboard?type=daily|weekly|weekend&metric=prompts|chars&limit=100 */
-export async function handleLeaderboard(url: URL, env: Env): Promise<Response> {
+/**
+ * GET /leaderboard?type=daily|weekly|weekend&metric=prompts|chars&limit=100
+ * KV 스냅샷에서 서빙(D1 미접근). 스냅샷 신선도는 SNAPSHOT_TTL_MS.
+ */
+export async function handleLeaderboard(url: URL, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const type = parseType(url.searchParams.get('type'));
   const metric = parseMetric(url.searchParams.get('metric'));
   const limit = clampLimit(url.searchParams.get('limit'));
-  const orderCol = METRIC_COL[metric];
-  const now = Date.now();
 
-  let result;
-  if (type === 'daily') {
-    const day = kstToday(now);
-    result = await env.DB.prepare(
-      `SELECT s.user_id, u.nickname, s.country, s.prompts, s.chars
-       FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
-       WHERE s.day = ?
-       ORDER BY s.${orderCol} DESC, s.user_id ASC
-       LIMIT ?`,
-    )
-      .bind(day, limit)
-      .all<LeaderboardRow>();
-  } else {
-    const days = type === 'weekly' ? weekDays(now) : weekendDays(now);
-    const placeholders = days.map(() => '?').join(',');
-    result = await env.DB.prepare(
-      `SELECT s.user_id, u.nickname, MAX(s.country) AS country,
-              SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
-       FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
-       WHERE s.day IN (${placeholders})
-       GROUP BY s.user_id, u.nickname
-       ORDER BY ${orderCol} DESC, s.user_id ASC
-       LIMIT ?`,
-    )
-      .bind(...days, limit)
-      .all<LeaderboardRow>();
-  }
-
-  // user_id는 인증 비밀키이므로 공개 응답에서 제외한다.
-  const ranking = result.results.map((r, i) => ({
-    rank: i + 1,
-    nickname: r.nickname ?? null,
-    country: r.country ?? null,
-    prompts: Number(r.prompts) || 0,
-    chars: Number(r.chars) || 0,
-  }));
+  const snap = await getSnapshot(env, ctx);
+  const board = snap.boards[type];
+  const full = board ? board[metric] : [];
+  const ranking = full.slice(0, limit);
 
   return json({
     type,
     metric,
-    period: periodOf(type, now),
-    updatedAt: now,
+    period: board ? board.period : periodOf(type, Date.now()),
+    builtAt: snap.builtAt,
     count: ranking.length,
     ranking,
   });
 }
 
-/** GET /me?userId=...&type=...&metric=... — 내 집계와 순위. */
+/** GET /me?userId=...&type=...&metric=... — 내 집계와 순위(실시간 D1, 저빈도). */
 export async function handleMe(url: URL, env: Env): Promise<Response> {
   const userId = url.searchParams.get('userId');
   if (!isValidUserId(userId)) {

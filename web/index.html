@@ -118,7 +118,7 @@
         <span class="legend">ocw · live</span>
         <h1 class="big">OPEN CODE WAR</h1>
         <div class="rule" aria-hidden="true">════════════════════════════════════════════════════════════════</div>
-        <p>클로드 코드에 가장 많이 입력한 코더를 가리는 리더보드 — 실시간 집계.</p>
+        <p>클로드 코드에 가장 많이 입력한 코더를 가리는 리더보드 — 일정 간격으로 갱신.</p>
         <div class="status">
           <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">연결 중…</span></span>
           <span>참가 <b id="countChip">–</b></span>
@@ -144,7 +144,7 @@
       <div class="toolbar">
         <input type="text" id="meInput" placeholder="내 닉네임 (하이라이트)" />
         <button id="refreshBtn" type="button">↻ 새로고침</button>
-        <label><input type="checkbox" id="autoChk" checked /> 자동 새로고침 8s</label>
+        <label><input type="checkbox" id="autoChk" checked /> 자동 새로고침 30s</label>
       </div>
 
       <section class="box">
@@ -222,6 +222,13 @@
     const p = (n) => String(n).padStart(2, '0');
     return `KST ${p(k.getHours())}:${p(k.getMinutes())}:${p(k.getSeconds())}`;
   }
+  function ago(ms) {
+    const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+    if (s < 60) return `${s}초 전`;
+    const m = Math.round(s / 60);
+    if (m < 60) return `${m}분 전`;
+    return `${Math.round(m / 60)}시간 전`;
+  }
 
   async function load() {
     const key = `${curBoard}:${curMetric}`;
@@ -247,7 +254,7 @@
     const rows = data.ranking || [];
     $('countChip').textContent = fmt(data.count);
     $('champChip').textContent = rows[0] ? (rows[0].nickname || '(익명)') : '–';
-    $('updChip').textContent = data.updatedAt ? kstClock(data.updatedAt) : '';
+    $('updChip').textContent = data.builtAt ? `집계 ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
 
     if (!rows.length) {
       $('tbody').innerHTML = '<tr><td colspan="7"><div class="msg">아직 이 기간의 기록이 없습니다.</div></td></tr>';
@@ -288,7 +295,7 @@
 
   function setupAuto() {
     if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
-    if ($('autoChk').checked) autoTimer = setInterval(load, 8000);
+    if ($('autoChk').checked) autoTimer = setInterval(load, 30000);
   }
 
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {

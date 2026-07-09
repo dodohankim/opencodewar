@@ -7,6 +7,21 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
+  // 리더보드 스냅샷 신선도(ms). 운영 30분. 로컬 테스트는 .dev.vars로 낮춘다(예: 60000=1분).
+  "vars": {
+    "SNAPSHOT_TTL_MS": "1800000"
+  },
+  // 운영: 30분마다 스냅샷 재빌드. (로컬 dev는 자동 실행 안 됨 → 읽기 시 TTL 재빌드 또는 --test-scheduled)
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      // 로컬 dev는 이 id를 무시(로컬 KV 사용). 원격 배포 전 `wrangler kv namespace create ocw-kv`로 발급받아 교체.
+      "id": "00000000000000000000000000000000"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

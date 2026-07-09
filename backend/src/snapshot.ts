@@ -1,0 +1,100 @@
+// 리더보드 스냅샷: D1 집계를 사전 계산해 KV에 저장하고, 읽기는 KV에서 서빙한다.
+// - 쓰기: 간격당 1회(단일 키) → KV 쓰기 한도(무료 1천/일) 안에서 안전
+// - 읽기: /leaderboard = KV get 1회 → D1 미접근
+// - 신선도: SNAPSHOT_TTL_MS 초과 시 읽기 시점에 자동 재빌드(cron이 없거나 트래픽만 있어도 동작)
+
+import type { BoardSnapshot, BoardType, Env, LeaderboardRow, Metric, Period, RankEntry, Snapshot } from './types';
+import { kstToday, weekDays, weekendDays } from './time';
+
+export const SNAPSHOT_KEY = 'lb:snapshot:v1';
+const SNAPSHOT_LIMIT = 100;
+const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30분
+const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend'];
+
+// metric 이름 → 실제 컬럼(화이트리스트, SQL 인젝션 방지)
+export const METRIC_COL: Record<Metric, string> = { prompts: 'prompts', chars: 'chars' };
+
+export function periodOf(type: BoardType, now: number): Period {
+  if (type === 'daily') return { day: kstToday(now) };
+  const days = type === 'weekly' ? weekDays(now) : weekendDays(now);
+  return { from: days[0], to: days[days.length - 1], days };
+}
+
+/** 특정 보드×지표의 top-N 랭킹을 D1에서 계산 */
+export async function computeRanking(
+  env: Env,
+  type: BoardType,
+  metric: Metric,
+  limit: number,
+): Promise<RankEntry[]> {
+  const orderCol = METRIC_COL[metric];
+  const now = Date.now();
+
+  let result;
+  if (type === 'daily') {
+    const day = kstToday(now);
+    result = await env.DB.prepare(
+      `SELECT s.user_id, u.nickname, s.country, s.prompts, s.chars
+       FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
+       WHERE s.day = ?
+       ORDER BY s.${orderCol} DESC, s.user_id ASC
+       LIMIT ?`,
+    )
+      .bind(day, limit)
+      .all<LeaderboardRow>();
+  } else {
+    const days = type === 'weekly' ? weekDays(now) : weekendDays(now);
+    const placeholders = days.map(() => '?').join(',');
+    result = await env.DB.prepare(
+      `SELECT s.user_id, u.nickname, MAX(s.country) AS country,
+              SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
+       FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
+       WHERE s.day IN (${placeholders})
+       GROUP BY s.user_id, u.nickname
+       ORDER BY ${orderCol} DESC, s.user_id ASC
+       LIMIT ?`,
+    )
+      .bind(...days, limit)
+      .all<LeaderboardRow>();
+  }
+
+  return result.results.map((r, i) => ({
+    rank: i + 1,
+    nickname: r.nickname ?? null,
+    country: r.country ?? null,
+    prompts: Number(r.prompts) || 0,
+    chars: Number(r.chars) || 0,
+  }));
+}
+
+/** 전 보드/지표를 계산해 스냅샷 객체 생성 */
+export async function buildSnapshot(env: Env): Promise<Snapshot> {
+  const now = Date.now();
+  const boards = {} as Record<BoardType, BoardSnapshot>;
+  for (const type of BOARDS) {
+    const [prompts, chars] = await Promise.all([
+      computeRanking(env, type, 'prompts', SNAPSHOT_LIMIT),
+      computeRanking(env, type, 'chars', SNAPSHOT_LIMIT),
+    ]);
+    boards[type] = { period: periodOf(type, now), prompts, chars };
+  }
+  return { builtAt: now, boards };
+}
+
+export async function putSnapshot(env: Env, snap: Snapshot): Promise<void> {
+  await env.KV.put(SNAPSHOT_KEY, JSON.stringify(snap));
+}
+
+/** KV 스냅샷 반환. 없거나 TTL 초과면 재빌드(쓰기는 ctx.waitUntil로 비동기). */
+export async function getSnapshot(env: Env, ctx?: ExecutionContext): Promise<Snapshot> {
+  const ttl = Number(env.SNAPSHOT_TTL_MS) || DEFAULT_TTL_MS;
+  const cached = await env.KV.get<Snapshot>(SNAPSHOT_KEY, 'json');
+  const now = Date.now();
+  if (cached && now - cached.builtAt <= ttl) return cached;
+
+  const built = await buildSnapshot(env);
+  const write = putSnapshot(env, built);
+  if (ctx) ctx.waitUntil(write);
+  else await write;
+  return built;
+}

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Open Code War backend — Cloudflare Worker + D1 (M1 skeleton)",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --test-scheduled",
     "deploy": "wrangler deploy",
     "types": "wrangler types",
     "typecheck": "tsc --noEmit",

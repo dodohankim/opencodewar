@@ -1,9 +1,10 @@
 import type { Env } from './types';
 import { CORS_HEADERS, json } from './http';
 import { handleLeaderboard, handleMe, handleRegister, handleTrack } from './handlers';
+import { buildSnapshot, putSnapshot } from './snapshot';
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const { pathname } = url;
 
@@ -22,7 +23,7 @@ export default {
         return await handleRegister(request, env);
       }
       if (pathname === '/leaderboard' && request.method === 'GET') {
-        return await handleLeaderboard(url, env);
+        return await handleLeaderboard(url, env, ctx);
       }
       if (pathname === '/me' && request.method === 'GET') {
         return await handleMe(url, env);
@@ -34,5 +35,19 @@ export default {
       );
       return json({ error: 'internal_error' }, 500);
     }
+  },
+
+  // Cron Trigger: 리더보드 스냅샷을 주기적으로 재빌드 (wrangler.jsonc triggers.crons)
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const snap = await buildSnapshot(env);
+          await putSnapshot(env, snap);
+        } catch (err) {
+          console.error(JSON.stringify({ level: 'error', msg: 'snapshot_cron_failed', err: String(err) }));
+        }
+      })(),
+    );
   },
 } satisfies ExportedHandler<Env>;
