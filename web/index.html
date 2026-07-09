@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open Code War — 리더보드 (live)</title>
+<style>
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px; line-height:1.5;
+    padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased; }
+  .term { max-width:920px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; margin-top:22px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .banner .big { font-size:clamp(22px,4.4vw,34px); font-weight:700; letter-spacing:0.04em; margin:0; }
+  .banner .rule { color:var(--faint); overflow:hidden; white-space:nowrap; margin:4px 0 10px; }
+  .banner p { margin:0; color:var(--dim); font-size:13px; }
+  .status { margin-top:14px; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
+  .status b { color:var(--fg); font-weight:600; }
+  .dotlive { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
+  .dotlive.off { background:var(--err); }
+
+  .theme-toggle { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
+  .theme-toggle:hover { color:var(--fg); }
+
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-top:22px; }
+  .tabs, .sorts { display:inline-flex; gap:6px; }
+  .tab, .sort { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:6px 12px; border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .tab .k { color:var(--faint); font-size:11px; }
+  .tab:hover, .sort:hover { color:var(--fg); }
+  .tab[aria-selected="true"], .sort[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .tab[aria-selected="true"] .k { color:var(--rev-fg); opacity:0.7; }
+  .sorts .lbl { color:var(--faint); font-size:12px; align-self:center; }
+
+  .toolbar { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; margin-top:14px; font-size:12px; color:var(--dim); }
+  .toolbar input[type=text] { font:inherit; font-size:12px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 9px; width:150px; }
+  .toolbar input[type=text]::placeholder { color:var(--faint); }
+  .toolbar button { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); border-radius:5px; padding:5px 10px; cursor:pointer; }
+  .toolbar button:hover { color:var(--fg); }
+  .toolbar label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+
+  .board-scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:640px; }
+  thead th { font-size:10.5px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); text-align:left; padding:6px 15px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th.num, td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tbody td { padding:7px 15px; font-size:13.5px; vertical-align:middle; }
+  tbody tr { border-bottom:1px dotted var(--line); }
+  tbody tr:last-child { border-bottom:0; }
+  tbody tr:hover { background:var(--hover); }
+  tbody tr.me td { background:var(--hover); }
+  tbody tr.me td:first-child { box-shadow:inset 2px 0 0 var(--fg); }
+  .rank { color:var(--dim); font-variant-numeric:tabular-nums; }
+  .rank.b { color:var(--fg); font-weight:700; }
+  .rank.one { background:var(--rev-bg); color:var(--rev-fg); padding:1px 6px; border-radius:3px; font-weight:700; }
+  .nm { color:var(--fg); }
+  .me .nm { font-weight:700; }
+  .you { color:var(--faint); font-size:11px; }
+  .cc { color:var(--faint); font-size:12px; }
+  .pnum { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
+  .snum { color:var(--dim); font-variant-numeric:tabular-nums; }
+  .bar { letter-spacing:-1px; white-space:nowrap; }
+  .bar .on { color:var(--fg); }
+  .bar .off { color:var(--faint); }
+  .mv { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .mv.up { color:var(--fg); font-weight:600; }
+  .mv.down { color:var(--faint); }
+  .mv.same { color:var(--faint); }
+  .msg { padding:24px 15px; text-align:center; color:var(--dim); font-size:13px; }
+  .msg.err { color:var(--err); }
+
+  .lower { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  ul.list { margin:0; padding:0; list-style:none; display:grid; gap:9px; }
+  ul.list li { display:flex; gap:10px; font-size:13px; color:var(--dim); }
+  ul.list .k { color:var(--faint); flex:none; }
+  ul.list b { color:var(--fg); font-weight:600; }
+
+  .statusbar { margin-top:14px; background:var(--rev-bg); color:var(--rev-fg); display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; padding:6px 14px; font-size:12px; }
+  .statusbar .seg { display:flex; gap:16px; }
+
+  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} }
+  @media (prefers-reduced-motion:reduce){ .cursor{animation:none;} }
+</style>
+</head>
+<body>
+  <div class="term">
+    <div class="titlebar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="name">ocw — open-code-war (live)</span>
+      <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
+    </div>
+    <div class="screen">
+      <div class="echo"><span class="sig">dohan@claude-code</span>:~$ <span id="cmdEcho">GET /leaderboard?type=daily&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
+
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h1 class="big">OPEN CODE WAR</h1>
+        <div class="rule" aria-hidden="true">════════════════════════════════════════════════════════════════</div>
+        <p>클로드 코드에 가장 많이 입력한 코더를 가리는 리더보드 — 실시간 집계.</p>
+        <div class="status">
+          <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">연결 중…</span></span>
+          <span>참가 <b id="countChip">–</b></span>
+          <span>region <b>KR</b></span>
+          <span>1위 <b id="champChip">–</b></span>
+          <span id="updChip"></span>
+        </div>
+      </section>
+
+      <div class="controls">
+        <div class="tabs" role="tablist" aria-label="기간">
+          <button class="tab" role="tab" aria-selected="true"  data-board="daily">daily <span class="k">일간</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-board="weekly">weekly <span class="k">주간</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-board="weekend">weekend <span class="k">금·토·일</span></button>
+        </div>
+        <div class="sorts">
+          <span class="lbl">sort:</span>
+          <button class="sort" data-metric="prompts" aria-pressed="true">prompts</button>
+          <button class="sort" data-metric="chars" aria-pressed="false">chars</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input type="text" id="meInput" placeholder="내 닉네임 (하이라이트)" />
+        <button id="refreshBtn" type="button">↻ 새로고침</button>
+        <label><input type="checkbox" id="autoChk" checked /> 자동 새로고침 8s</label>
+      </div>
+
+      <section class="box">
+        <span class="legend" id="boardLegend">leaderboard · daily · prompts</span>
+        <div class="board-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>coder</th><th>cc</th>
+                <th class="num" id="thPrimary">prompts</th>
+                <th class="num" id="thSecond">chars</th>
+                <th>activity</th><th class="num">Δ</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"><tr><td colspan="7"><div class="msg" id="msg">불러오는 중…</div></td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="lower">
+        <section class="box">
+          <span class="legend">rules</span>
+          <ul class="list">
+            <li><span class="k">01</span><span><b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.</span></li>
+            <li><span class="k">02</span><span><b>내용 미수집.</b> 글자 수(숫자)만 전송.</span></li>
+            <li><span class="k">03</span><span><b>세 개의 판.</b> 일간·주간, 주말은 <b>금·토·일</b>.</span></li>
+          </ul>
+        </section>
+        <section class="box">
+          <span class="legend">roadmap</span>
+          <ul class="list">
+            <li><span class="k">[x]</span><span>backend + plugin + web 연결 (지금 여기)</span></li>
+            <li><span class="k">[~]</span><span>coder profile · 구직/구인</span></li>
+            <li><span class="k">[ ]</span><span>world map — 국가별 랭킹</span></li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="statusbar">
+        <div class="seg"><span>[privacy] 프롬프트 내용 미수집 · 글자 수만</span></div>
+        <div class="seg"><span id="apiChip"></span></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const API = (params.get('api') || 'http://localhost:8787').replace(/\/+$/, '');
+  const BARW = 12;
+
+  let curBoard = 'daily';
+  let curMetric = 'prompts';
+  let autoTimer = null;
+  const prevRanks = {}; // key `${board}:${metric}` -> { nickname: rank }
+  let myNick = localStorage.getItem('ocw_me') || '';
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => Number(n || 0).toLocaleString('ko-KR');
+  $('apiChip').textContent = 'api: ' + API;
+  $('meInput').value = myNick;
+
+  function bar(pct) {
+    const on = Math.max(0, Math.min(BARW, Math.round((pct / 100) * BARW)));
+    return `<span class="on">${'█'.repeat(on)}</span><span class="off">${'░'.repeat(BARW - on)}</span>`;
+  }
+  function move(rank, prev) {
+    if (prev == null) return '<span class="mv same">·</span>';
+    const d = prev - rank;
+    if (d > 0) return `<span class="mv up">▲${d}</span>`;
+    if (d < 0) return `<span class="mv down">▼${-d}</span>`;
+    return '<span class="mv same">·</span>';
+  }
+  function kstClock(ms) {
+    const k = new Date(ms + new Date(ms).getTimezoneOffset() * 60000 + 9 * 3600000);
+    const p = (n) => String(n).padStart(2, '0');
+    return `KST ${p(k.getHours())}:${p(k.getMinutes())}:${p(k.getSeconds())}`;
+  }
+
+  async function load() {
+    const key = `${curBoard}:${curMetric}`;
+    $('cmdEcho').textContent = `GET /leaderboard?type=${curBoard}&metric=${curMetric}`;
+    $('boardLegend').textContent = `leaderboard · ${curBoard} · ${curMetric}`;
+    $('thPrimary').textContent = curMetric;
+    $('thSecond').textContent = curMetric === 'prompts' ? 'chars' : 'prompts';
+    try {
+      const res = await fetch(`${API}/leaderboard?type=${curBoard}&metric=${curMetric}&limit=50`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      render(data, key);
+      $('liveDot').classList.remove('off');
+      $('liveText').textContent = '집계 중';
+    } catch (e) {
+      $('liveDot').classList.add('off');
+      $('liveText').textContent = '서버 연결 실패';
+      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg err">API에 연결할 수 없습니다: ${API}<br>백엔드가 켜져 있는지 확인하세요 (cd backend &amp;&amp; npm run dev).</div></td></tr>`;
+    }
+  }
+
+  function render(data, key) {
+    const rows = data.ranking || [];
+    $('countChip').textContent = fmt(data.count);
+    $('champChip').textContent = rows[0] ? (rows[0].nickname || '(익명)') : '–';
+    $('updChip').textContent = data.updatedAt ? kstClock(data.updatedAt) : '';
+
+    if (!rows.length) {
+      $('tbody').innerHTML = '<tr><td colspan="7"><div class="msg">아직 이 기간의 기록이 없습니다.</div></td></tr>';
+      prevRanks[key] = {};
+      return;
+    }
+    const max = Math.max(...rows.map((r) => r[curMetric] || 0), 1);
+    const prev = prevRanks[key] || {};
+    const meLc = myNick.trim().toLowerCase();
+
+    $('tbody').innerHTML = rows.map((r) => {
+      const primary = r[curMetric] || 0;
+      const second = curMetric === 'prompts' ? r.chars : r.prompts;
+      const pct = (primary / max) * 100;
+      const rankCls = r.rank === 1 ? 'rank one' : (r.rank <= 3 ? 'rank b' : 'rank');
+      const isMe = r.nickname && r.nickname.toLowerCase() === meLc && meLc !== '';
+      const pRank = r.nickname != null ? prev[r.nickname] : null;
+      return `<tr class="${isMe ? 'me' : ''}">
+        <td><span class="${rankCls}">${r.rank}</span></td>
+        <td><span class="nm">${escapeHtml(r.nickname || '(익명)')}</span>${isMe ? ' <span class="you">[you]</span>' : ''}</td>
+        <td><span class="cc">${escapeHtml(r.country || '–')}</span></td>
+        <td class="num"><span class="pnum">${fmt(primary)}</span></td>
+        <td class="num"><span class="snum">${fmt(second)}</span></td>
+        <td><span class="bar">${bar(pct)}</span></td>
+        <td class="num">${move(r.rank, pRank)}</td>
+      </tr>`;
+    }).join('');
+
+    // 다음 새로고침용 순위 저장 (닉네임 기준)
+    const snap = {};
+    rows.forEach((r) => { if (r.nickname != null) snap[r.nickname] = r.rank; });
+    prevRanks[key] = snap;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function setupAuto() {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    if ($('autoChk').checked) autoTimer = setInterval(load, 8000);
+  }
+
+  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((x) => x.setAttribute('aria-selected', x === b));
+    curBoard = b.dataset.board; load();
+  }));
+  document.querySelectorAll('.sort').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.sort').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    curMetric = b.dataset.metric; load();
+  }));
+  $('refreshBtn').addEventListener('click', load);
+  $('autoChk').addEventListener('change', setupAuto);
+  $('meInput').addEventListener('input', (e) => {
+    myNick = e.target.value; localStorage.setItem('ocw_me', myNick); load();
+  });
+  $('themeBtn').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light' : (cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark'));
+    document.documentElement.setAttribute('data-theme', next);
+  });
+
+  load();
+  setupAuto();
+</script>
+</body>
+</html>
