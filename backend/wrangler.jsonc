@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "open-code-war-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-09",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ocw-db",
+      // 로컬 개발(`wrangler dev --local`, `--local` 마이그레이션)은 이 id를 무시한다.
+      // 원격 배포 전 `wrangler d1 create ocw-db`로 실제 id를 발급받아 교체할 것.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "open-code-war-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open Code War backend — Cloudflare Worker + D1 (M1 skeleton)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply ocw-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply ocw-db --remote",
+    "db:seed:local": "wrangler d1 execute ocw-db --local --file=./seed/seed.sql",
+    "db:seed:remote": "wrangler d1 execute ocw-db --remote --file=./seed/seed.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240000.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^4.0.0"
+  }
+}
