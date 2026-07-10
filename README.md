@@ -6,6 +6,8 @@
 
 플러그인 훅으로 입력 활동을 익명 집계 → Cloudflare에 저장 → 웹에서 일간·주간·주말 랭킹과 국가별 지도로 표시.
 
+[English](README.en.md) · **한국어**
+
 [![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev)
 [![status](https://img.shields.io/badge/status-early%20development-e08a2e?style=for-the-badge)](#-로드맵)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-6c5ce7?style=for-the-badge)](#-플러그인-설치)

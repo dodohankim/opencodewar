@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Open Code War — 리더보드 (live)</title>
+<title>Open Code War — Leaderboard (live)</title>
 <style>
   :root {
     --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
@@ -56,7 +56,7 @@
   .sorts .lbl { color:var(--faint); font-size:12px; align-self:center; }
 
   .toolbar { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; margin-top:14px; font-size:12px; color:var(--dim); }
-  .toolbar input[type=text] { font:inherit; font-size:12px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 9px; width:150px; }
+  .toolbar input[type=text] { font:inherit; font-size:12px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 9px; width:170px; }
   .toolbar input[type=text]::placeholder { color:var(--faint); }
   .toolbar button { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); border-radius:5px; padding:5px 10px; cursor:pointer; }
   .toolbar button:hover { color:var(--fg); }
@@ -109,6 +109,7 @@
     <div class="titlebar">
       <span class="lights"><i></i><i></i><i></i></span>
       <span class="name">ocw — open-code-war (live)</span>
+      <button class="theme-toggle" id="langBtn" type="button">한국어</button>
       <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
     </div>
     <div class="screen">
@@ -118,21 +119,21 @@
         <span class="legend">ocw · live</span>
         <h1 class="big">OPEN CODE WAR</h1>
         <div class="rule" aria-hidden="true">════════════════════════════════════════════════════════════════</div>
-        <p>클로드 코드에 가장 많이 입력한 코더를 가리는 리더보드 — 일정 간격으로 갱신.</p>
+        <p data-i18n="tagline">The leaderboard for who types the most into Claude Code — updated on a schedule.</p>
         <div class="status">
-          <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">연결 중…</span></span>
-          <span>참가 <b id="countChip">–</b></span>
+          <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">Connecting…</span></span>
+          <span><span data-i18n="joined">joined</span> <b id="countChip">–</b></span>
           <span>region <b>KR</b></span>
-          <span>1위 <b id="champChip">–</b></span>
+          <span><span data-i18n="rank1">#1</span> <b id="champChip">–</b></span>
           <span id="updChip"></span>
         </div>
       </section>
 
       <div class="controls">
-        <div class="tabs" role="tablist" aria-label="기간">
-          <button class="tab" role="tab" aria-selected="true"  data-board="daily">daily <span class="k">일간</span></button>
-          <button class="tab" role="tab" aria-selected="false" data-board="weekly">weekly <span class="k">주간</span></button>
-          <button class="tab" role="tab" aria-selected="false" data-board="weekend">weekend <span class="k">금·토·일</span></button>
+        <div class="tabs" role="tablist" aria-label="period">
+          <button class="tab" role="tab" aria-selected="true"  data-board="daily">daily <span class="k" data-i18n="sub_daily">today</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-board="weekly">weekly <span class="k" data-i18n="sub_weekly">mon–sun</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-board="weekend">weekend <span class="k" data-i18n="sub_weekend">fri·sat·sun</span></button>
         </div>
         <div class="sorts">
           <span class="lbl">sort:</span>
@@ -142,9 +143,9 @@
       </div>
 
       <div class="toolbar">
-        <input type="text" id="meInput" placeholder="내 닉네임 (하이라이트)" />
-        <button id="refreshBtn" type="button">↻ 새로고침</button>
-        <label><input type="checkbox" id="autoChk" checked /> 자동 새로고침 30s</label>
+        <input type="text" id="meInput" data-i18n-ph="me_ph" placeholder="your nickname (highlight)" />
+        <button id="refreshBtn" type="button" data-i18n="refresh">↻ Refresh</button>
+        <label><input type="checkbox" id="autoChk" checked /> <span data-i18n="auto">Auto-refresh 30s</span></label>
       </div>
 
       <section class="box">
@@ -159,7 +160,7 @@
                 <th>activity</th><th class="num">Δ</th>
               </tr>
             </thead>
-            <tbody id="tbody"><tr><td colspan="7"><div class="msg" id="msg">불러오는 중…</div></td></tr></tbody>
+            <tbody id="tbody"><tr><td colspan="7"><div class="msg" id="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
           </table>
         </div>
       </section>
@@ -168,23 +169,23 @@
         <section class="box">
           <span class="legend">rules</span>
           <ul class="list">
-            <li><span class="k">01</span><span><b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.</span></li>
-            <li><span class="k">02</span><span><b>내용 미수집.</b> 글자 수(숫자)만 전송.</span></li>
-            <li><span class="k">03</span><span><b>세 개의 판.</b> 일간·주간, 주말은 <b>금·토·일</b>.</span></li>
+            <li><span class="k">01</span><span data-i18n-html="rules1"><b>Input = a prompt submit.</b> +1 each Enter; characters counted too.</span></li>
+            <li><span class="k">02</span><span data-i18n-html="rules2"><b>No content collected.</b> Only the character count (a number) is sent.</span></li>
+            <li><span class="k">03</span><span data-i18n-html="rules3"><b>Three boards.</b> Daily, weekly, and weekend = <b>Fri·Sat·Sun</b>.</span></li>
           </ul>
         </section>
         <section class="box">
           <span class="legend">roadmap</span>
           <ul class="list">
-            <li><span class="k">[x]</span><span>backend + plugin + web 연결 (지금 여기)</span></li>
-            <li><span class="k">[~]</span><span>coder profile · 구직/구인</span></li>
-            <li><span class="k">[ ]</span><span>world map — 국가별 랭킹</span></li>
+            <li><span class="k">[x]</span><span data-i18n="roadmap1">backend + plugin + web connected (you are here)</span></li>
+            <li><span class="k">[~]</span><span data-i18n="roadmap2">coder profile · jobs (hiring/seeking)</span></li>
+            <li><span class="k">[ ]</span><span data-i18n="roadmap3">world map — per-country ranking</span></li>
           </ul>
         </section>
       </div>
 
       <div class="statusbar">
-        <div class="seg"><span>[privacy] 프롬프트 내용 미수집 · 글자 수만</span></div>
+        <div class="seg"><span data-i18n="privacy">[privacy] no prompt content · character count only</span></div>
         <div class="seg"><span id="apiChip"></span></div>
       </div>
     </div>
@@ -195,16 +196,66 @@
   const API = (params.get('api') || 'http://localhost:8787').replace(/\/+$/, '');
   const BARW = 12;
 
+  let LANG = localStorage.getItem('ocw_lang') || 'en';
+  const T = {
+    en: {
+      langBtn: '한국어',
+      tagline: 'The leaderboard for who types the most into Claude Code — updated on a schedule.',
+      live_on: 'Live', live_off: 'Server unreachable',
+      joined: 'joined', rank1: '#1', updated: 'Updated',
+      sub_daily: 'today', sub_weekly: 'mon–sun', sub_weekend: 'fri·sat·sun',
+      me_ph: 'your nickname (highlight)', refresh: '↻ Refresh', auto: 'Auto-refresh 30s',
+      rules1: '<b>Input = a prompt submit.</b> +1 each Enter; characters counted too.',
+      rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
+      rules3: '<b>Three boards.</b> Daily, weekly, and weekend = <b>Fri·Sat·Sun</b>.',
+      roadmap1: 'backend + plugin + web connected (you are here)',
+      roadmap2: 'coder profile · jobs (hiring/seeking)',
+      roadmap3: 'world map — per-country ranking',
+      privacy: '[privacy] no prompt content · character count only',
+      loading: 'Loading…', empty: 'No records for this period yet.', anon: '(anon)',
+      error: "Can't reach the API", error_hint: 'Make sure the backend is running (cd backend && npm run dev).',
+      ago_s: (n) => `${n}s ago`, ago_m: (n) => `${n}m ago`, ago_h: (n) => `${n}h ago`,
+    },
+    ko: {
+      langBtn: 'EN',
+      tagline: '클로드 코드에 가장 많이 입력한 코더를 가리는 리더보드 — 일정 간격으로 갱신.',
+      live_on: '집계 중', live_off: '서버 연결 실패',
+      joined: '참가', rank1: '1위', updated: '집계',
+      sub_daily: '일간', sub_weekly: '주간', sub_weekend: '금·토·일',
+      me_ph: '내 닉네임 (하이라이트)', refresh: '↻ 새로고침', auto: '자동 새로고침 30s',
+      rules1: '<b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.',
+      rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
+      rules3: '<b>세 개의 판.</b> 일간·주간, 주말은 <b>금·토·일</b>.',
+      roadmap1: 'backend + plugin + web 연결 (지금 여기)',
+      roadmap2: 'coder profile · 구직/구인',
+      roadmap3: 'world map — 국가별 랭킹',
+      privacy: '[privacy] 프롬프트 내용 미수집 · 글자 수만',
+      loading: '불러오는 중…', empty: '아직 이 기간의 기록이 없습니다.', anon: '(익명)',
+      error: 'API에 연결할 수 없습니다', error_hint: '백엔드가 켜져 있는지 확인하세요 (cd backend && npm run dev).',
+      ago_s: (n) => `${n}초 전`, ago_m: (n) => `${n}분 전`, ago_h: (n) => `${n}시간 전`,
+    },
+  };
+  const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
+
   let curBoard = 'daily';
   let curMetric = 'prompts';
   let autoTimer = null;
-  const prevRanks = {}; // key `${board}:${metric}` -> { nickname: rank }
+  const prevRanks = {};
   let myNick = localStorage.getItem('ocw_me') || '';
 
   const $ = (id) => document.getElementById(id);
-  const fmt = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const fmt = (n) => Number(n || 0).toLocaleString('en-US');
   $('apiChip').textContent = 'api: ' + API;
   $('meInput').value = myNick;
+
+  function applyLang() {
+    document.documentElement.lang = LANG;
+    document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+    $('langBtn').textContent = t('langBtn');
+    localStorage.setItem('ocw_lang', LANG);
+  }
 
   function bar(pct) {
     const on = Math.max(0, Math.min(BARW, Math.round((pct / 100) * BARW)));
@@ -224,10 +275,10 @@
   }
   function ago(ms) {
     const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
-    if (s < 60) return `${s}초 전`;
+    if (s < 60) return t('ago_s')(s);
     const m = Math.round(s / 60);
-    if (m < 60) return `${m}분 전`;
-    return `${Math.round(m / 60)}시간 전`;
+    if (m < 60) return t('ago_m')(m);
+    return t('ago_h')(Math.round(m / 60));
   }
 
   async function load() {
@@ -242,22 +293,22 @@
       const data = await res.json();
       render(data, key);
       $('liveDot').classList.remove('off');
-      $('liveText').textContent = '집계 중';
+      $('liveText').textContent = t('live_on');
     } catch (e) {
       $('liveDot').classList.add('off');
-      $('liveText').textContent = '서버 연결 실패';
-      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg err">API에 연결할 수 없습니다: ${API}<br>백엔드가 켜져 있는지 확인하세요 (cd backend &amp;&amp; npm run dev).</div></td></tr>`;
+      $('liveText').textContent = t('live_off');
+      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div></td></tr>`;
     }
   }
 
   function render(data, key) {
     const rows = data.ranking || [];
     $('countChip').textContent = fmt(data.count);
-    $('champChip').textContent = rows[0] ? (rows[0].nickname || '(익명)') : '–';
-    $('updChip').textContent = data.builtAt ? `집계 ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
+    $('champChip').textContent = rows[0] ? (rows[0].nickname || t('anon')) : '–';
+    $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
 
     if (!rows.length) {
-      $('tbody').innerHTML = '<tr><td colspan="7"><div class="msg">아직 이 기간의 기록이 없습니다.</div></td></tr>';
+      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('empty')}</div></td></tr>`;
       prevRanks[key] = {};
       return;
     }
@@ -274,7 +325,7 @@
       const pRank = r.nickname != null ? prev[r.nickname] : null;
       return `<tr class="${isMe ? 'me' : ''}">
         <td><span class="${rankCls}">${r.rank}</span></td>
-        <td><span class="nm">${escapeHtml(r.nickname || '(익명)')}</span>${isMe ? ' <span class="you">[you]</span>' : ''}</td>
+        <td><span class="nm">${escapeHtml(r.nickname || t('anon'))}</span>${isMe ? ' <span class="you">[you]</span>' : ''}</td>
         <td><span class="cc">${escapeHtml(r.country || '–')}</span></td>
         <td class="num"><span class="pnum">${fmt(primary)}</span></td>
         <td class="num"><span class="snum">${fmt(second)}</span></td>
@@ -283,7 +334,6 @@
       </tr>`;
     }).join('');
 
-    // 다음 새로고침용 순위 저장 (닉네임 기준)
     const snap = {};
     rows.forEach((r) => { if (r.nickname != null) snap[r.nickname] = r.rank; });
     prevRanks[key] = snap;
@@ -316,7 +366,13 @@
     const next = cur === 'dark' ? 'light' : (cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark'));
     document.documentElement.setAttribute('data-theme', next);
   });
+  $('langBtn').addEventListener('click', () => {
+    LANG = LANG === 'en' ? 'ko' : 'en';
+    applyLang();
+    load();
+  });
 
+  applyLang();
   load();
   setupAuto();
 </script>
