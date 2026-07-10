@@ -1,15 +1,20 @@
 import type { Env } from './types';
 import { json, readJson } from './http';
-import { kstToday, weekDays, weekendDays } from './time';
+import { kstToday, recentDays, weekDays, weekendDays } from './time';
 import {
   clampChars,
   clampLimit,
+  isValidBio,
   isValidNickname,
   isValidUserId,
   parseMetric,
   parseType,
 } from './validate';
-import { METRIC_COL, getSnapshot, periodOf } from './snapshot';
+import { METRIC_COL, SNAPSHOT_KEY, getSnapshot, periodOf } from './snapshot';
+import { displayNickname } from './nickname';
+
+/** 유저 상세 페이지가 보여주는 최근 사용량 구간(일). */
+const PROFILE_WINDOW_DAYS = 30;
 
 /** POST /track — 입력 이벤트 1건 수집. body: { userId, chars } */
 export async function handleTrack(request: Request, env: Env): Promise<Response> {
@@ -78,6 +83,10 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   }
 
   await env.DB.prepare('UPDATE users SET nickname = ? WHERE user_id = ?').bind(nickname, userId).run();
+
+  // 등록/변경을 리더보드에 즉시 반영: 스냅샷을 무효화해 다음 조회 시 재빌드되게 한다.
+  // (등록은 저빈도이므로 재빌드 비용은 무시할 만하다.)
+  await env.KV.delete(SNAPSHOT_KEY);
 
   return json({ ok: true, userId, nickname });
 }
@@ -151,11 +160,95 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
     metric,
     period: periodOf(type, now),
     me: {
-      nickname: row?.nickname ?? null,
+      nickname: displayNickname(row?.nickname, userId),
       prompts: Number(row?.prompts) || 0,
       chars: Number(row?.chars) || 0,
       rank: row?.rank ?? null,
       total: Number(row?.total) || 0,
     },
+  });
+}
+
+/** POST /profile — 자기소개(bio) 설정/해제. body: { userId, bio }. (닉네임과 동일 신뢰 모델) */
+export async function handleProfile(request: Request, env: Env): Promise<Response> {
+  const body = await readJson(request);
+  if (!body || !isValidUserId(body.userId)) {
+    return json({ error: 'invalid_userId' }, 400);
+  }
+  if (!isValidBio(body.bio)) {
+    return json({ error: 'invalid_bio' }, 400);
+  }
+  const userId = body.userId;
+  const trimmed = (body.bio as string).trim();
+  const bio = trimmed.length ? trimmed : null; // 빈 문자열이면 해제(NULL)
+  const now = Date.now();
+
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO users (user_id, created_at, last_seen_at) VALUES (?, ?, ?)
+       ON CONFLICT(user_id) DO NOTHING`,
+    ).bind(userId, now, now),
+    env.DB.prepare('UPDATE users SET bio = ? WHERE user_id = ?').bind(bio, userId),
+  ]);
+
+  return json({ ok: true, bio });
+}
+
+/**
+ * GET /user?nickname=... — 유저 상세(프로필 + 최근 30일 일별 사용량).
+ * 공개 페이지이므로 등록 닉네임(유니크)으로만 조회한다. user_id(비밀키)는 반환하지 않는다.
+ */
+export async function handleUser(url: URL, env: Env): Promise<Response> {
+  const nicknameParam = url.searchParams.get('nickname');
+  if (!isValidNickname(nicknameParam)) {
+    return json({ error: 'invalid_nickname' }, 400);
+  }
+  const nickname = (nicknameParam as string).trim();
+
+  const user = await env.DB.prepare(
+    'SELECT user_id, nickname, bio, email, country, created_at FROM users WHERE nickname = ?',
+  )
+    .bind(nickname)
+    .first<{
+      user_id: string;
+      nickname: string;
+      bio: string | null;
+      email: string | null;
+      country: string | null;
+      created_at: number;
+    }>();
+
+  if (!user) {
+    return json({ error: 'user_not_found' }, 404);
+  }
+
+  const now = Date.now();
+  const days = recentDays(now, PROFILE_WINDOW_DAYS); // 오래된 날 → 오늘
+  const placeholders = days.map(() => '?').join(',');
+  const rows = await env.DB.prepare(
+    `SELECT day, prompts, chars FROM daily_stats WHERE user_id = ? AND day IN (${placeholders})`,
+  )
+    .bind(user.user_id, ...days)
+    .all<{ day: string; prompts: number; chars: number }>();
+
+  const byDay = new Map(rows.results.map((r) => [r.day, r]));
+  const series = days.map((day) => {
+    const r = byDay.get(day);
+    return { day, prompts: Number(r?.prompts) || 0, chars: Number(r?.chars) || 0 };
+  });
+  const totals = series.reduce(
+    (acc, s) => ({ prompts: acc.prompts + s.prompts, chars: acc.chars + s.chars }),
+    { prompts: 0, chars: 0 },
+  );
+
+  return json({
+    nickname: user.nickname,
+    bio: user.bio ?? null,
+    email: user.email ?? null, // 로그인 도입 전까지 항상 null
+    country: user.country ?? null,
+    joinedAt: Number(user.created_at) || null,
+    range: { from: days[0], to: days[days.length - 1], days: days.length },
+    days: series,
+    totals,
   });
 }

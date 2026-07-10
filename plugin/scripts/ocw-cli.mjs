@@ -15,10 +15,6 @@ function print(s) {
   process.stdout.write(s + '\n');
 }
 
-function maskId(id) {
-  return id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
-}
-
 async function registerNickname(name) {
   const nickname = name.trim();
   if (!nickname) {
@@ -49,14 +45,41 @@ async function registerNickname(name) {
   }
 }
 
+async function setBio(text) {
+  const bio = text.trim();
+  if (bio.length > 160) {
+    return print('사용법: `/ocw bio <소개>` — 최대 160자, 한 줄. 비우려면 `/ocw bio` (인자 없이).');
+  }
+  try {
+    const res = await fetch(`${endpoint}/profile`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId: cfg.userId, bio }),
+      signal: AbortSignal.timeout(4000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      cfg.bio = data.bio ?? null;
+      saveConfig(cfg);
+      return print(
+        data.bio
+          ? `✅ 자기소개 등록 완료:\n> ${data.bio}\n상세 페이지에 이 소개가 표시됩니다.`
+          : '✅ 자기소개를 비웠습니다.',
+      );
+    }
+    if (data.error === 'invalid_bio') {
+      return print('❌ 자기소개 형식이 올바르지 않습니다 (최대 160자, 제어문자 불가).');
+    }
+    return print(`❌ 등록 실패 (status ${res.status}).`);
+  } catch {
+    return print(`❌ 서버에 연결하지 못했습니다: ${endpoint}`);
+  }
+}
+
 async function status() {
-  const lines = [
-    '**Open Code War — 내 정보**',
-    `- 닉네임: ${cfg.nickname ?? '(미설정 — `/ocw nickname <이름>`)'}`,
-    `- 집계: ${cfg.enabled === false ? '⏸ 꺼짐' : '● 켜짐'}`,
-    `- userId: \`${maskId(cfg.userId)}\`  (비밀키이므로 공유 금지)`,
-    `- 서버: ${endpoint}`,
-  ];
+  // 닉네임은 서버 기준으로 표시한다(미등록이면 자동 닉네임). 조회 실패 시에만 로컬값으로 폴백.
+  let serverNick = null;
+  let statLine = null;
   try {
     const res = await fetch(
       `${endpoint}/me?userId=${encodeURIComponent(cfg.userId)}&type=daily`,
@@ -65,14 +88,16 @@ async function status() {
     if (res.ok) {
       const d = await res.json();
       if (d.me) {
-        lines.push(
-          `- 오늘(일간): ${d.me.prompts} 프롬프트 · ${d.me.chars} 글자 · 순위 ${d.me.rank ?? '-'}/${d.me.total}`,
-        );
+        serverNick = d.me.nickname ?? null;
+        statLine = `- 오늘(일간): ${d.me.prompts} 프롬프트 · ${d.me.chars} 글자 · 순위 ${d.me.rank ?? '-'}/${d.me.total}`;
       }
     }
   } catch {
     // 순위 조회 실패는 조용히 생략
   }
+  const nickname = serverNick ?? cfg.nickname ?? '(자동 생성)';
+  const lines = ['**Open Code War — 내 정보**', `- 닉네임: ${nickname}`];
+  if (statLine) lines.push(statLine);
   return print(lines.join('\n'));
 }
 
@@ -81,6 +106,7 @@ function help() {
     [
       '**Open Code War CLI**',
       '- `/ocw nickname <이름>` — 닉네임 등록/변경',
+      '- `/ocw bio <소개>` — 자기소개 등록(상세 페이지 표시, 최대 160자)',
       '- `/ocw status` — 내 정보 및 오늘 순위',
       '- `/ocw disable` / `/ocw enable` — 집계 끄기/켜기',
       '',
@@ -93,6 +119,8 @@ async function main() {
   switch (sub) {
     case 'nickname':
       return registerNickname(rest.join(' '));
+    case 'bio':
+      return setBio(rest.join(' '));
     case 'enable':
       cfg.enabled = true;
       saveConfig(cfg);

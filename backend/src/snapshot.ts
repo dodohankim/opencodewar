@@ -5,6 +5,7 @@
 
 import type { BoardSnapshot, BoardType, Env, LeaderboardRow, Metric, Period, RankEntry, Snapshot } from './types';
 import { kstToday, weekDays, weekendDays } from './time';
+import { displayNickname } from './nickname';
 
 export const SNAPSHOT_KEY = 'lb:snapshot:v1';
 const SNAPSHOT_LIMIT = 100;
@@ -60,7 +61,8 @@ export async function computeRanking(
 
   return result.results.map((r, i) => ({
     rank: i + 1,
-    nickname: r.nickname ?? null,
+    nickname: displayNickname(r.nickname, r.user_id),
+    registered: r.nickname != null,
     country: r.country ?? null,
     prompts: Number(r.prompts) || 0,
     chars: Number(r.chars) || 0,

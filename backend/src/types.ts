@@ -21,6 +21,8 @@ export interface LeaderboardRow {
 export interface RankEntry {
   rank: number;
   nickname: string | null;
+  /** 유저가 직접 등록한 닉네임인지 여부. false면 userId 파생 자동 닉네임(상세 페이지 없음). */
+  registered: boolean;
   country: string | null;
   prompts: number;
   chars: number;

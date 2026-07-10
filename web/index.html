@@ -99,8 +99,39 @@
   .install p { font-size:12.5px; color:var(--dim); margin:8px 0 0; }
   .install code { color:var(--fg); background:var(--hover); padding:1px 4px; border-radius:3px; }
 
+  /* 클릭 가능한 코더 이름(등록 유저만) → 상세 페이지 */
+  .nm.link { cursor:pointer; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:2px; }
+  .nm.link:hover { text-decoration-color:var(--fg); }
 
-  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} }
+  /* ── 유저 상세 페이지 ── */
+  .backbtn { margin-top:2px; }
+  .profile .p-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .profile .p-nick { font-size:clamp(19px,3.6vw,26px); font-weight:700; letter-spacing:0.02em; margin:2px 0 0; word-break:break-all; }
+  .profile .p-bio { margin:10px 0 0; color:var(--dim); font-size:13.5px; line-height:1.55; word-break:break-word; white-space:pre-wrap; }
+  .profile .p-bio.empty { color:var(--faint); font-style:italic; }
+  .p-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; margin-top:16px; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); }
+  .field input { font:inherit; font-size:13px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:7px 9px; }
+  .field input:disabled { color:var(--faint); background:var(--hover); cursor:not-allowed; }
+  .field .val { font-size:13px; color:var(--fg); font-variant-numeric:tabular-nums; padding:7px 0; }
+
+  .ustats { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
+  .ustats b { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
+  .chart-wrap { margin-top:16px; }
+  .chart { display:flex; align-items:flex-end; gap:2px; height:150px; padding-top:12px; border-bottom:1px solid var(--line); }
+  .chart .col { flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; }
+  .chart .col .barv { width:100%; max-width:15px; min-height:2px; background:var(--fg); border-radius:2px 2px 0 0; }
+  .chart .col.zero .barv { background:var(--line); }
+  .chart .col.wknd .barv { background:var(--dim); }
+  .chart .col.today .barv { background:var(--ok); }
+  .chart .col:hover .barv { opacity:0.6; }
+  .chart-x { display:flex; justify-content:space-between; margin-top:7px; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .chart-peak { font-size:11px; color:var(--faint); }
+  .umsg { padding:20px 4px; text-align:center; color:var(--dim); font-size:13px; }
+  .umsg.err { color:var(--err); }
+
+  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} }
   @media (prefers-reduced-motion:reduce){ .cursor{animation:none;} }
 </style>
 </head>
@@ -115,6 +146,7 @@
     <div class="screen">
       <div class="echo"><span class="sig">you@claude-code</span>:~$ <span id="cmdEcho">GET /leaderboard?type=daily&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
 
+      <div id="boardView">
       <section class="box banner">
         <span class="legend">ocw · live</span>
         <h1 class="big">OPEN CODE WAR</h1>
@@ -182,6 +214,47 @@
           </div>
         </section>
       </div>
+      </div><!-- /#boardView -->
+
+      <div id="userView" hidden>
+        <button class="theme-toggle backbtn" id="backBtn" type="button" data-i18n="back">← Leaderboard</button>
+
+        <section class="box profile">
+          <span class="legend" data-i18n="profile_legend">profile</span>
+          <div class="p-head">
+            <h2 class="p-nick" id="uNick">–</h2>
+            <span class="cc" id="uCountry"></span>
+          </div>
+          <p class="p-bio empty" id="uBio"></p>
+          <div class="p-fields">
+            <div class="field">
+              <label data-i18n="email_label">email</label>
+              <input type="email" id="uEmail" disabled data-i18n-ph="email_ph" placeholder="Available after sign-in" />
+            </div>
+            <div class="field">
+              <label data-i18n="member_since">member since</label>
+              <span class="val" id="uJoined">–</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="box">
+          <span class="legend" id="uChartLegend">last 30 days · prompts</span>
+          <div class="controls" style="margin-top:6px">
+            <div class="ustats" id="uStats"></div>
+            <div class="sorts">
+              <span class="lbl">sort:</span>
+              <button class="usort" data-metric="prompts" aria-pressed="true">prompts</button>
+              <button class="usort" data-metric="chars" aria-pressed="false">chars</button>
+            </div>
+          </div>
+          <div class="chart-wrap" id="uChartWrap">
+            <div class="chart" id="uChart" aria-hidden="true"></div>
+            <div class="chart-x"><span id="uXfrom"></span><span class="chart-peak" id="uPeak"></span><span id="uXto"></span></div>
+          </div>
+          <div class="umsg" id="uMsg" hidden></div>
+        </section>
+      </div><!-- /#userView -->
 
     </div>
   </div>
@@ -209,6 +282,12 @@
       privacy: '[privacy] no prompt content · character count only',
       loading: 'Loading…', empty: 'No records for this period yet.', anon: '(anon)',
       error: "Can't reach the API", error_hint: 'Make sure the backend is running (cd backend && npm run dev).',
+      back: '← Leaderboard', profile_legend: 'profile',
+      email_label: 'email', email_ph: 'Available after sign-in', member_since: 'member since',
+      bio_empty: 'No bio yet.', chart_30d: 'last 30 days',
+      u_sum: 'sum', u_avg: 'avg/day', u_active: 'active days', u_peak: 'peak',
+      user_notfound: 'User not found.', user_error: "Can't load this profile.",
+      no_activity: 'No activity in the last 30 days.',
       ago_s: (n) => `${n}s ago`, ago_m: (n) => `${n}m ago`, ago_h: (n) => `${n}h ago`,
     },
     ko: {
@@ -226,6 +305,12 @@
       privacy: '[privacy] 프롬프트 내용 미수집 · 글자 수만',
       loading: '불러오는 중…', empty: '아직 이 기간의 기록이 없습니다.', anon: '(익명)',
       error: 'API에 연결할 수 없습니다', error_hint: '백엔드가 켜져 있는지 확인하세요 (cd backend && npm run dev).',
+      back: '← 리더보드', profile_legend: '프로필',
+      email_label: '이메일', email_ph: '로그인 도입 후 연동 예정', member_since: '가입일',
+      bio_empty: '아직 자기소개가 없습니다.', chart_30d: '최근 30일',
+      u_sum: '합계', u_avg: '일평균', u_active: '활동일', u_peak: '최고',
+      user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
+      no_activity: '최근 30일 활동이 없습니다.',
       ago_s: (n) => `${n}초 전`, ago_m: (n) => `${n}분 전`, ago_h: (n) => `${n}시간 전`,
     },
   };
@@ -235,6 +320,11 @@
   let curMetric = 'prompts';
   const prevRanks = {};
   let myNick = localStorage.getItem('ocw_me') || '';
+
+  // 유저 상세 페이지 상태
+  let curUser = null;   // 현재 열람 중인 닉네임(없으면 리더보드)
+  let uMetric = 'prompts';
+  let uData = null;     // 마지막으로 받은 /user 응답
 
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
@@ -272,6 +362,13 @@
     if (m < 60) return t('ago_m')(m);
     return t('ago_h')(Math.round(m / 60));
   }
+  // epoch ms → KST 'YYYY-MM-DD'
+  function fmtDate(ms) {
+    const k = new Date(ms + new Date(ms).getTimezoneOffset() * 60000 + 9 * 3600000);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${k.getFullYear()}-${p(k.getMonth() + 1)}-${p(k.getDate())}`;
+  }
+  const mmdd = (s) => (typeof s === 'string' ? s.slice(5) : '');
 
   async function load() {
     const key = `${curBoard}:${curMetric}`;
@@ -296,7 +393,13 @@
   function render(data, key) {
     const rows = data.ranking || [];
     $('countChip').textContent = fmt(data.count);
-    $('champChip').textContent = rows[0] ? (rows[0].nickname || t('anon')) : '–';
+    const champ = rows[0];
+    if (champ && champ.registered) {
+      const cn = escapeHtml(champ.nickname);
+      $('champChip').innerHTML = `<span class="nm link" data-nick="${cn}" role="button" tabindex="0">${cn}</span>`;
+    } else {
+      $('champChip').textContent = champ ? (champ.nickname || t('anon')) : '–';
+    }
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
 
     if (!rows.length) {
@@ -315,9 +418,13 @@
       const rankCls = r.rank === 1 ? 'rank one' : (r.rank <= 3 ? 'rank b' : 'rank');
       const isMe = r.nickname && r.nickname.toLowerCase() === meLc && meLc !== '';
       const pRank = r.nickname != null ? prev[r.nickname] : null;
+      const nm = escapeHtml(r.nickname || t('anon'));
+      const nmCell = r.registered
+        ? `<span class="nm link" data-nick="${nm}" role="button" tabindex="0">${nm}</span>`
+        : `<span class="nm">${nm}</span>`;
       return `<tr class="${isMe ? 'me' : ''}">
         <td><span class="${rankCls}">${r.rank}</span></td>
-        <td><span class="nm">${escapeHtml(r.nickname || t('anon'))}</span>${isMe ? ' <span class="you">[you]</span>' : ''}</td>
+        <td>${nmCell}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
         <td><span class="cc">${escapeHtml(r.country || '–')}</span></td>
         <td class="num"><span class="pnum">${fmt(primary)}</span></td>
         <td class="num"><span class="snum">${fmt(second)}</span></td>
@@ -355,11 +462,178 @@
   $('langBtn').addEventListener('click', () => {
     LANG = LANG === 'en' ? 'ko' : 'en';
     applyLang();
-    load();
+    if (curUser) { if (uData) renderUser(uData); } else { load(); }
   });
 
+  // ── 라우팅: ?user=<nickname> 이면 상세, 아니면 리더보드 ──
+  function urlFor(nick) {
+    const u = new URL(location.href);
+    if (nick) u.searchParams.set('user', nick);
+    else u.searchParams.delete('user');
+    return u.pathname + u.search;
+  }
+  function route() {
+    const nick = new URLSearchParams(location.search).get('user');
+    if (nick) showUser(nick);
+    else showBoard();
+  }
+  function showBoard() {
+    curUser = null;
+    $('userView').hidden = true;
+    $('boardView').hidden = false;
+    $('cmdEcho').textContent = `GET /leaderboard?type=${curBoard}&metric=${curMetric}`;
+    window.scrollTo(0, 0);
+  }
+  function showUser(nick) {
+    curUser = nick;
+    $('boardView').hidden = true;
+    $('userView').hidden = false;
+    window.scrollTo(0, 0);
+    loadUser(nick);
+  }
+  function navigateUser(nick) {
+    if (!nick) return;
+    history.pushState({ user: nick }, '', urlFor(nick));
+    showUser(nick);
+  }
+  function goBoard() {
+    history.pushState({}, '', urlFor(null));
+    showBoard();
+  }
+
+  // ── 유저 상세 로딩/렌더 ──
+  function syncUsortButtons() {
+    document.querySelectorAll('.usort').forEach((b) => b.setAttribute('aria-pressed', b.dataset.metric === uMetric));
+  }
+  function showUserError(msg) {
+    $('uChartWrap').hidden = true;
+    $('uBio').textContent = '';
+    $('uBio').classList.add('empty');
+    $('uStats').innerHTML = '';
+    $('uEmail').value = '';
+    $('uJoined').textContent = '–';
+    $('uCountry').textContent = '';
+    $('uMsg').hidden = false;
+    $('uMsg').classList.add('err');
+    $('uMsg').textContent = msg;
+  }
+  async function loadUser(nick) {
+    uMetric = 'prompts';
+    uData = null;
+    syncUsortButtons();
+    $('cmdEcho').textContent = `GET /user?nickname=${nick}`;
+    $('uNick').textContent = nick;
+    $('uCountry').textContent = '';
+    $('uBio').textContent = '';
+    $('uBio').classList.add('empty');
+    $('uEmail').value = '';
+    $('uJoined').textContent = '–';
+    $('uStats').innerHTML = '';
+    $('uChartWrap').hidden = true;
+    $('uMsg').hidden = false;
+    $('uMsg').classList.remove('err');
+    $('uMsg').textContent = t('loading');
+    try {
+      const res = await fetch(`${API}/user?nickname=${encodeURIComponent(nick)}`, { cache: 'no-store' });
+      if (res.status === 404) { if (curUser === nick) showUserError(t('user_notfound')); return; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (curUser !== nick) return; // 그새 다른 페이지로 이동했으면 무시
+      uData = data;
+      renderUser(data);
+    } catch (e) {
+      if (curUser === nick) showUserError(t('user_error'));
+    }
+  }
+  function renderUser(data) {
+    $('uNick').textContent = data.nickname;
+    $('uCountry').textContent = data.country || '';
+    const bioEl = $('uBio');
+    if (data.bio && String(data.bio).trim()) {
+      bioEl.textContent = data.bio;
+      bioEl.classList.remove('empty');
+    } else {
+      bioEl.textContent = t('bio_empty');
+      bioEl.classList.add('empty');
+    }
+    $('uEmail').value = data.email || '';
+    $('uJoined').textContent = data.joinedAt ? fmtDate(data.joinedAt) : '–';
+    $('uMsg').hidden = true;
+    renderUserChart();
+  }
+  function renderUserChart() {
+    if (!uData) return;
+    const days = uData.days || [];
+    const metric = uMetric;
+    $('uChartLegend').textContent = `${t('chart_30d')} · ${metric}`;
+    syncUsortButtons();
+
+    const vals = days.map((d) => d[metric] || 0);
+    const total = vals.reduce((a, b) => a + b, 0);
+    const activeDays = vals.filter((v) => v > 0).length;
+    const max = Math.max(...vals, 1);
+    const peakIdx = vals.indexOf(Math.max(...vals));
+    const avg = days.length ? Math.round(total / days.length) : 0;
+
+    $('uStats').innerHTML = [
+      `${t('u_sum')} <b>${fmt(total)}</b>`,
+      `${t('u_avg')} <b>${fmt(avg)}</b>`,
+      `${t('u_active')} <b>${activeDays}/${days.length}</b>`,
+    ].join('');
+
+    if (total === 0) {
+      $('uChartWrap').hidden = true;
+      $('uMsg').hidden = false;
+      $('uMsg').classList.remove('err');
+      $('uMsg').textContent = t('no_activity');
+      return;
+    }
+    $('uMsg').hidden = true;
+    $('uChartWrap').hidden = false;
+
+    const todayStr = days.length ? days[days.length - 1].day : '';
+    $('uChart').innerHTML = days
+      .map((d) => {
+        const v = d[metric] || 0;
+        const h = Math.max(2, Math.round((v / max) * 100));
+        const dow = new Date(d.day + 'T00:00:00Z').getUTCDay();
+        const isWknd = dow === 0 || dow === 6;
+        const isToday = d.day === todayStr;
+        const cls = v === 0 ? 'zero' : isToday ? 'today' : isWknd ? 'wknd' : '';
+        const title = `${d.day} · ${fmt(d.prompts)} prompts · ${fmt(d.chars)} chars`;
+        return `<div class="col ${cls}" title="${escapeHtml(title)}"><div class="barv" style="height:${h}%"></div></div>`;
+      })
+      .join('');
+
+    $('uXfrom').textContent = mmdd(days[0] ? days[0].day : '');
+    $('uXto').textContent = mmdd(todayStr);
+    $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${mmdd(days[peakIdx].day)} · ${fmt(max)}` : '';
+  }
+
+  // 코더 이름 클릭 → 상세 (리더보드 행 + 챔피언 칩 모두 위임 처리)
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest && e.target.closest('.nm.link');
+    if (link && link.dataset.nick) { e.preventDefault(); navigateUser(link.dataset.nick); }
+  });
+  document.addEventListener('keydown', (e) => {
+    const el = e.target;
+    if ((e.key === 'Enter' || e.key === ' ') && el.classList && el.classList.contains('link') && el.dataset && el.dataset.nick) {
+      e.preventDefault();
+      navigateUser(el.dataset.nick);
+    }
+  });
+  $('backBtn').addEventListener('click', goBoard);
+  document.querySelectorAll('.usort').forEach((b) =>
+    b.addEventListener('click', () => {
+      uMetric = b.dataset.metric;
+      renderUserChart();
+    }),
+  );
+  window.addEventListener('popstate', route);
+
   applyLang();
-  load();
+  load();  // 리더보드를 미리 채워둠(상세에서 뒤로가기 시 즉시 표시)
+  route(); // 초기 URL(?user=) 에 맞춰 뷰 결정
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import { CORS_HEADERS, json } from './http';
-import { handleLeaderboard, handleMe, handleRegister, handleTrack } from './handlers';
+import { handleLeaderboard, handleMe, handleProfile, handleRegister, handleTrack, handleUser } from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
 
 export default {
@@ -22,11 +22,17 @@ export default {
       if (pathname === '/register' && request.method === 'POST') {
         return await handleRegister(request, env);
       }
+      if (pathname === '/profile' && request.method === 'POST') {
+        return await handleProfile(request, env);
+      }
       if (pathname === '/leaderboard' && request.method === 'GET') {
         return await handleLeaderboard(url, env, ctx);
       }
       if (pathname === '/me' && request.method === 'GET') {
         return await handleMe(url, env);
+      }
+      if (pathname === '/user' && request.method === 'GET') {
+        return await handleUser(url, env);
       }
       return json({ error: 'not_found' }, 404);
     } catch (err) {

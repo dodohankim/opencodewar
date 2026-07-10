@@ -40,3 +40,9 @@ export function weekendDays(ts: number): string[] {
   const mon = mondayOf(kstDayNum(ts));
   return [dayStr(mon + 4), dayStr(mon + 5), dayStr(mon + 6)];
 }
+
+/** epoch ms 기준 최근 n일(KST)의 'YYYY-MM-DD' 배열. 오래된 날 → 오늘 순. */
+export function recentDays(ts: number, n: number): string[] {
+  const today = kstDayNum(ts);
+  return Array.from({ length: n }, (_, i) => dayStr(today - (n - 1 - i)));
+}

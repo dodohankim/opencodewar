@@ -22,6 +22,16 @@ export function isValidNickname(v: unknown): v is string {
   return t.length >= 2 && t.length <= 20 && NICKNAME_RE.test(t);
 }
 
+/** 자기소개: 한 줄, 0~160자(트림 후). 빈 문자열은 "해제"로 허용. 제어문자 금지. */
+export const MAX_BIO_LEN = 160;
+const BIO_CONTROL_RE = /[\u0000-\u001F\u007F]/;
+export function isValidBio(v: unknown): v is string {
+  if (typeof v !== 'string') return false;
+  const t = v.trim();
+  if (t.length > MAX_BIO_LEN) return false;
+  return !BIO_CONTROL_RE.test(t);
+}
+
 export function parseMetric(v: string | null): Metric {
   return v === 'chars' ? 'chars' : 'prompts';
 }

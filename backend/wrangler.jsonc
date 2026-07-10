@@ -3,8 +3,8 @@
   "name": "open-code-war-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-09",
-  // workers.dev URL 유지(폴백). 커스텀 도메인과 병행.
-  "workers_dev": true,
+  // workers.dev URL 비활성 — opencodewar.dev 커스텀 도메인만 사용.
+  "workers_dev": false,
   // 커스텀 도메인: opencodewar.dev → 이 Worker (DNS·인증서 자동 프로비저닝).
   "routes": [
     { "pattern": "opencodewar.dev", "custom_domain": true }

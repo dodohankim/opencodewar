@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kstToday, mondayOf, kstDayNum, weekDays, weekendDays, dowOf } from '../src/time';
+import { kstToday, mondayOf, kstDayNum, weekDays, weekendDays, dowOf, recentDays } from '../src/time';
 
 // 기준: 2026-07-08T03:00:00Z = 2026-07-08 12:00 KST (수요일)
 const WED_NOON_KST = Date.UTC(2026, 6, 8, 3, 0, 0);
@@ -39,5 +39,21 @@ describe('KST 날짜 계산', () => {
     const sun = Date.UTC(2026, 6, 12, 3, 0, 0);
     expect(weekDays(sun)[0]).toBe('2026-07-06');
     expect(weekendDays(sun)).toEqual(['2026-07-10', '2026-07-11', '2026-07-12']);
+  });
+
+  it('recentDays: 최근 n일을 오래된→오늘 순으로, 마지막이 오늘', () => {
+    const days = recentDays(WED_NOON_KST, 30);
+    expect(days).toHaveLength(30);
+    expect(days[29]).toBe('2026-07-08'); // 오늘(KST)
+    expect(days[0]).toBe('2026-06-09'); // 29일 전
+    // 인접일은 하루 간격, 오름차순
+    expect(days[28]).toBe('2026-07-07');
+    for (let i = 1; i < days.length; i++) {
+      expect(days[i] > days[i - 1]).toBe(true);
+    }
+  });
+
+  it('recentDays: n=1이면 오늘 하루만', () => {
+    expect(recentDays(WED_NOON_KST, 1)).toEqual(['2026-07-08']);
   });
 });
