@@ -88,7 +88,7 @@ open-code-war/
 
 Manage/enable it under the **Installed** tab of the `/plugin` menu; update with `/plugin marketplace update opencodewar`.
 
-> ⚠️ A marketplace install only collects once the backend is deployed (the plugin must ship the deployed URL baked in). Before that, use the local dev load below.
+> ℹ️ The backend is **deployed and live (beta)** with its URL baked into the plugin, so collection works right after install. (The `/plugin marketplace add` command requires this repo to be pushed to GitHub.)
 
 ### Development (local load)
 
