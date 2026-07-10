@@ -10,8 +10,8 @@ import { randomUUID } from 'node:crypto';
 const CONFIG_DIR = join(homedir(), '.open-code-war');
 export const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
-// 배포 후 실제 Worker URL로 교체하거나, OCW_API_URL 환경변수로 덮어쓴다.
-const DEFAULT_ENDPOINT = 'https://open-code-war-api.workers.dev';
+// 배포된 Worker URL. OCW_API_URL 환경변수로 덮어쓸 수 있다.
+const DEFAULT_ENDPOINT = 'https://open-code-war-api.ehgks0083.workers.dev';
 
 function newUserId() {
   return 'ocw_' + randomUUID().replace(/-/g, '');

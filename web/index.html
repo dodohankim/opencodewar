@@ -193,7 +193,7 @@
 
 <script>
   const params = new URLSearchParams(location.search);
-  const API = (params.get('api') || 'http://localhost:8787').replace(/\/+$/, '');
+  const API = (params.get('api') || 'https://open-code-war-api.ehgks0083.workers.dev').replace(/\/+$/, '');
   const BARW = 12;
 
   let LANG = localStorage.getItem('ocw_lang') || 'en';

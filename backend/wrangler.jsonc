@@ -18,17 +18,14 @@
   "kv_namespaces": [
     {
       "binding": "KV",
-      // 로컬 dev는 이 id를 무시(로컬 KV 사용). 원격 배포 전 `wrangler kv namespace create ocw-kv`로 발급받아 교체.
-      "id": "00000000000000000000000000000000"
+      "id": "a04f93e331d7462faba81f94b806949d"
     }
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "ocw-db",
-      // 로컬 개발(`wrangler dev --local`, `--local` 마이그레이션)은 이 id를 무시한다.
-      // 원격 배포 전 `wrangler d1 create ocw-db`로 실제 id를 발급받아 교체할 것.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "340fb3b8-5a64-4fd5-8d11-8cd316ad8178",
       "migrations_dir": "migrations"
     }
   ]
