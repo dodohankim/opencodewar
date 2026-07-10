@@ -99,8 +99,6 @@
   .install p { font-size:12.5px; color:var(--dim); margin:8px 0 0; }
   .install code { color:var(--fg); background:var(--hover); padding:1px 4px; border-radius:3px; }
 
-  .statusbar { margin-top:14px; background:var(--rev-bg); color:var(--rev-fg); display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; padding:6px 14px; font-size:12px; }
-  .statusbar .seg { display:flex; gap:16px; }
 
   @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} }
   @media (prefers-reduced-motion:reduce){ .cursor{animation:none;} }
@@ -185,10 +183,6 @@
         </section>
       </div>
 
-      <div class="statusbar">
-        <div class="seg"><span data-i18n="privacy">[privacy] no prompt content · character count only</span></div>
-        <div class="seg"><span id="apiChip"></span></div>
-      </div>
     </div>
   </div>
 
@@ -244,7 +238,6 @@
 
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
-  $('apiChip').textContent = 'api: ' + API;
   $('meInput').value = myNick;
 
   function applyLang() {
