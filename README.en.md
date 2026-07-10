@@ -86,7 +86,22 @@ open-code-war/
 /plugin install open-code-war@opencodewar
 ```
 
-Manage/enable it under the **Installed** tab of the `/plugin` menu; update with `/plugin marketplace update opencodewar`.
+Manage/enable it under the **Installed** tab of the `/plugin` menu.
+
+### Turn on auto-update (recommended)
+
+The plugin is **unpinned and tracks the latest commit**, so once you enable auto-update it picks up every new release automatically at Claude Code startup.
+
+```
+/plugin   →   Marketplaces tab   →   select opencodewar   →   enable auto-update
+```
+
+To update right now manually:
+
+```
+/plugin marketplace update opencodewar
+/reload-plugins
+```
 
 > ℹ️ The backend is **deployed and live (beta)** with its URL baked into the plugin, so collection works right after install. (The `/plugin marketplace add` command requires this repo to be pushed to GitHub.)
 

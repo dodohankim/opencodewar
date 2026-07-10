@@ -86,7 +86,22 @@ open-code-war/
 /plugin install open-code-war@opencodewar
 ```
 
-`/plugin` 메뉴의 **Installed** 탭에서 활성화·관리, 업데이트는 `/plugin marketplace update opencodewar`.
+`/plugin` 메뉴의 **Installed** 탭에서 활성화·관리할 수 있습니다.
+
+### 자동 업데이트 켜기 (권장)
+
+플러그인은 **버전 고정 없이 최신 커밋을 따라가도록** 설정돼 있어, 한 번 자동 업데이트를 켜두면 새 릴리스가 나올 때마다 Claude Code 시작 시 자동 반영됩니다.
+
+```
+/plugin   →   Marketplaces 탭   →   opencodewar 선택   →   auto-update 활성화
+```
+
+수동으로 지금 즉시 최신화하려면:
+
+```
+/plugin marketplace update opencodewar
+/reload-plugins
+```
 
 > ℹ️ 백엔드는 **배포되어 라이브(베타)** 이고 플러그인에 URL이 내장돼 있어 설치하면 바로 집계됩니다. (`/plugin marketplace add`는 이 레포가 GitHub에 push되어 있어야 동작합니다.)
 

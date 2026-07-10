@@ -1,7 +1,6 @@
 {
   "name": "open-code-war",
   "description": "클로드 코드 입력량을 겨루는 리더보드 — 프롬프트 제출을 익명으로 집계한다. 프롬프트 내용은 수집하지 않음.",
-  "version": "0.1.0",
   "author": {
     "name": "Open Code War"
   },
