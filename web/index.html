@@ -194,7 +194,8 @@
 
 <script>
   const params = new URLSearchParams(location.search);
-  const API = (params.get('api') || 'https://open-code-war-api.ehgks0083.workers.dev').replace(/\/+$/, '');
+  // 배포 시 웹과 API는 같은 도메인(opencodewar.dev)에서 서빙 → same-origin. 로컬은 ?api= 로 지정.
+  const API = (params.get('api') || location.origin).replace(/\/+$/, '');
   const BARW = 12;
 
   let LANG = localStorage.getItem('ocw_lang') || 'en';
