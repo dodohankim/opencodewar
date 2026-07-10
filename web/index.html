@@ -60,7 +60,6 @@
   .toolbar input[type=text]::placeholder { color:var(--faint); }
   .toolbar button { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); border-radius:5px; padding:5px 10px; cursor:pointer; }
   .toolbar button:hover { color:var(--fg); }
-  .toolbar label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
 
   .board-scroll { overflow-x:auto; }
   table { width:100%; border-collapse:collapse; min-width:640px; }
@@ -96,6 +95,9 @@
   ul.list li { display:flex; gap:10px; font-size:13px; color:var(--dim); }
   ul.list .k { color:var(--faint); flex:none; }
   ul.list b { color:var(--fg); font-weight:600; }
+  .install .cmd { font-family:var(--mono); font-size:12.5px; color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:5px; padding:6px 9px; margin-bottom:6px; word-break:break-all; }
+  .install p { font-size:12.5px; color:var(--dim); margin:8px 0 0; }
+  .install code { color:var(--fg); background:var(--hover); padding:1px 4px; border-radius:3px; }
 
   .statusbar { margin-top:14px; background:var(--rev-bg); color:var(--rev-fg); display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; padding:6px 14px; font-size:12px; }
   .statusbar .seg { display:flex; gap:16px; }
@@ -113,7 +115,7 @@
       <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
     </div>
     <div class="screen">
-      <div class="echo"><span class="sig">dohan@claude-code</span>:~$ <span id="cmdEcho">GET /leaderboard?type=daily&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
+      <div class="echo"><span class="sig">you@claude-code</span>:~$ <span id="cmdEcho">GET /leaderboard?type=daily&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
 
       <section class="box banner">
         <span class="legend">ocw · live</span>
@@ -145,7 +147,6 @@
       <div class="toolbar">
         <input type="text" id="meInput" data-i18n-ph="me_ph" placeholder="your nickname (highlight)" />
         <button id="refreshBtn" type="button" data-i18n="refresh">↻ Refresh</button>
-        <label><input type="checkbox" id="autoChk" checked /> <span data-i18n="auto">Auto-refresh 30s</span></label>
       </div>
 
       <section class="box">
@@ -175,12 +176,12 @@
           </ul>
         </section>
         <section class="box">
-          <span class="legend">roadmap</span>
-          <ul class="list">
-            <li><span class="k">[x]</span><span data-i18n="roadmap1">backend + plugin + web connected (you are here)</span></li>
-            <li><span class="k">[~]</span><span data-i18n="roadmap2">coder profile · jobs (hiring/seeking)</span></li>
-            <li><span class="k">[ ]</span><span data-i18n="roadmap3">world map — per-country ranking</span></li>
-          </ul>
+          <span class="legend" data-i18n="install_legend">join · install</span>
+          <div class="install">
+            <div class="cmd">/plugin marketplace add dodohankim/opencodewar</div>
+            <div class="cmd">/plugin install open-code-war@opencodewar</div>
+            <p data-i18n-html="install_note">Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.</p>
+          </div>
         </section>
       </div>
 
@@ -204,13 +205,12 @@
       live_on: 'Live', live_off: 'Server unreachable',
       joined: 'joined', rank1: '#1', updated: 'Updated',
       sub_daily: 'today', sub_weekly: 'mon–sun', sub_weekend: 'fri·sat·sun',
-      me_ph: 'your nickname (highlight)', refresh: '↻ Refresh', auto: 'Auto-refresh 30s',
+      me_ph: 'your nickname (highlight)', refresh: '↻ Refresh',
       rules1: '<b>Input = a prompt submit.</b> +1 each Enter; characters counted too.',
       rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
       rules3: '<b>Three boards.</b> Daily, weekly, and weekend = <b>Fri·Sat·Sun</b>.',
-      roadmap1: 'backend + plugin + web connected (you are here)',
-      roadmap2: 'coder profile · jobs (hiring/seeking)',
-      roadmap3: 'world map — per-country ranking',
+      install_legend: 'join · install',
+      install_note: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
       privacy: '[privacy] no prompt content · character count only',
       loading: 'Loading…', empty: 'No records for this period yet.', anon: '(anon)',
       error: "Can't reach the API", error_hint: 'Make sure the backend is running (cd backend && npm run dev).',
@@ -222,13 +222,12 @@
       live_on: '집계 중', live_off: '서버 연결 실패',
       joined: '참가', rank1: '1위', updated: '집계',
       sub_daily: '일간', sub_weekly: '주간', sub_weekend: '금·토·일',
-      me_ph: '내 닉네임 (하이라이트)', refresh: '↻ 새로고침', auto: '자동 새로고침 30s',
+      me_ph: '내 닉네임 (하이라이트)', refresh: '↻ 새로고침',
       rules1: '<b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.',
       rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
       rules3: '<b>세 개의 판.</b> 일간·주간, 주말은 <b>금·토·일</b>.',
-      roadmap1: 'backend + plugin + web 연결 (지금 여기)',
-      roadmap2: 'coder profile · 구직/구인',
-      roadmap3: 'world map — 국가별 랭킹',
+      install_legend: '참가 · 설치',
+      install_note: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
       privacy: '[privacy] 프롬프트 내용 미수집 · 글자 수만',
       loading: '불러오는 중…', empty: '아직 이 기간의 기록이 없습니다.', anon: '(익명)',
       error: 'API에 연결할 수 없습니다', error_hint: '백엔드가 켜져 있는지 확인하세요 (cd backend && npm run dev).',
@@ -239,7 +238,6 @@
 
   let curBoard = 'daily';
   let curMetric = 'prompts';
-  let autoTimer = null;
   const prevRanks = {};
   let myNick = localStorage.getItem('ocw_me') || '';
 
@@ -343,11 +341,6 @@
     return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function setupAuto() {
-    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
-    if ($('autoChk').checked) autoTimer = setInterval(load, 30000);
-  }
-
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((x) => x.setAttribute('aria-selected', x === b));
     curBoard = b.dataset.board; load();
@@ -357,7 +350,6 @@
     curMetric = b.dataset.metric; load();
   }));
   $('refreshBtn').addEventListener('click', load);
-  $('autoChk').addEventListener('change', setupAuto);
   $('meInput').addEventListener('input', (e) => {
     myNick = e.target.value; localStorage.setItem('ocw_me', myNick); load();
   });
@@ -374,7 +366,6 @@
 
   applyLang();
   load();
-  setupAuto();
 </script>
 </body>
 </html>
