@@ -34,3 +34,6 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Private / internal docs (not for public repo)
+private/
