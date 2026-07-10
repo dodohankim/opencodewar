@@ -79,14 +79,21 @@ open-code-war/
 
 ## 🚀 플러그인 설치
 
-> 아직 초기 개발 단계라 마켓플레이스 배포 전입니다. 로컬 로드로 사용합니다.
+### 마켓플레이스에서 설치 (권장)
+
+```
+/plugin marketplace add dodohankim/opencodewar
+/plugin install open-code-war@opencodewar
+```
+
+`/plugin` 메뉴의 **Installed** 탭에서 활성화·관리, 업데이트는 `/plugin marketplace update opencodewar`.
+
+> ⚠️ 마켓플레이스 설치본은 **백엔드가 배포돼 있어야** 실제 집계됩니다(플러그인에 배포 URL이 내장되어야 함). 배포 전이라면 아래 개발용 로컬 로드로 테스트하세요.
+
+### 개발용 (로컬 로드)
 
 ```bash
-# 백엔드 API URL 지정 (미지정 시 config 기본값 사용)
-export OCW_API_URL="https://<your-worker>.workers.dev"   # 배포된 백엔드
-# 로컬 개발 백엔드라면:  export OCW_API_URL="http://localhost:8787"
-
-# 플러그인 로드
+export OCW_API_URL="http://localhost:8787"   # 로컬 백엔드 (cd backend && npm run dev)
 claude --plugin-dir ./plugin
 ```
 

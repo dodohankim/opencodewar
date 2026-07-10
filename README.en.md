@@ -79,14 +79,21 @@ open-code-war/
 
 ## 🚀 Install the plugin
 
-> Still early development — not yet published to a marketplace. Use local loading.
+### From the marketplace (recommended)
+
+```
+/plugin marketplace add dodohankim/opencodewar
+/plugin install open-code-war@opencodewar
+```
+
+Manage/enable it under the **Installed** tab of the `/plugin` menu; update with `/plugin marketplace update opencodewar`.
+
+> ⚠️ A marketplace install only collects once the backend is deployed (the plugin must ship the deployed URL baked in). Before that, use the local dev load below.
+
+### Development (local load)
 
 ```bash
-# Point at the backend API URL (falls back to the config default if unset)
-export OCW_API_URL="https://<your-worker>.workers.dev"   # deployed backend
-# For a local dev backend:  export OCW_API_URL="http://localhost:8787"
-
-# Load the plugin
+export OCW_API_URL="http://localhost:8787"   # local backend (cd backend && npm run dev)
 claude --plugin-dir ./plugin
 ```
 

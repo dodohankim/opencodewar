@@ -1,0 +1,20 @@
+{
+  "$schema": "https://code.claude.com/plugin-marketplace-schema.json",
+  "name": "opencodewar",
+  "description": "Open Code War — Claude Code 입력 리더보드 플러그인 마켓플레이스",
+  "owner": {
+    "name": "dodohankim"
+  },
+  "plugins": [
+    {
+      "name": "open-code-war",
+      "source": "./plugin",
+      "description": "클로드 코드 입력량을 익명 집계하는 리더보드 플러그인. 프롬프트 내용은 수집하지 않습니다.",
+      "homepage": "https://opencodewar.dev",
+      "repository": "https://github.com/dodohankim/opencodewar",
+      "license": "BUSL-1.1",
+      "category": "productivity",
+      "keywords": ["leaderboard", "telemetry", "game", "claude-code", "korea"]
+    }
+  ]
+}
