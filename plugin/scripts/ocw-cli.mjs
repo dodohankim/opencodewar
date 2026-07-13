@@ -350,7 +350,7 @@ function help() {
       '',
       '값을 비우려면 인자 없이 실행하세요 (예: `/ocw bio`, `/ocw link github`).',
       '프롬프트 내용은 수집하지 않습니다. 글자 수만 집계합니다.',
-      '개인정보처리방침: https://opencodewar.dev/privacy',
+      '개인정보처리방침: https://opencodewar.dev/privacy · 문의: contact@opencodewar.dev',
     ].join('\n'),
   );
 }
