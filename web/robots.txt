@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# JSON API 엔드포인트는 색인 대상이 아니다 (앱 UI만 크롤 유도)
+Disallow: /leaderboard
+Disallow: /user
+Disallow: /me
+Disallow: /profile
+Disallow: /register
+Disallow: /track
+Disallow: /health
+
+Sitemap: https://opencodewar.dev/sitemap.xml

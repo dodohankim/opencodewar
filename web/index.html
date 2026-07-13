@@ -4,6 +4,44 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Open Code War — Leaderboard (live)</title>
+<meta name="description" content="A live leaderboard for who types the most into Claude Code — daily, weekly and weekend boards. Privacy-first: no prompt content is collected, only character counts." />
+<link rel="canonical" href="https://opencodewar.dev/" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F4" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0E0D" />
+
+<!-- Open Graph (Facebook, KakaoTalk, Slack, LinkedIn 등) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Open Code War" />
+<meta property="og:title" content="Open Code War — Claude Code Leaderboard" />
+<meta property="og:description" content="A live leaderboard for who types the most into Claude Code — daily, weekly and weekend. Privacy-first: no prompt content, only character counts." />
+<meta property="og:url" content="https://opencodewar.dev/" />
+<meta property="og:image" content="https://opencodewar.dev/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Open Code War — the Claude Code typing leaderboard" />
+<meta property="og:locale" content="en_US" />
+<meta property="og:locale:alternate" content="ko_KR" />
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Open Code War — Claude Code Leaderboard" />
+<meta name="twitter:description" content="A live leaderboard for who types the most into Claude Code. Privacy-first: no prompt content, only character counts." />
+<meta name="twitter:image" content="https://opencodewar.dev/og.png" />
+
+<!-- 구조화 데이터 (검색 리치 결과) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Open Code War",
+  "url": "https://opencodewar.dev/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "description": "A live leaderboard for who types the most into Claude Code — daily, weekly and weekend boards. Privacy-first: no prompt content is collected, only character counts.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
 <style>
   :root {
     --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
@@ -477,17 +515,20 @@
     if (nick) showUser(nick);
     else showBoard();
   }
+  const BASE_TITLE = 'Open Code War — Leaderboard (live)';
   function showBoard() {
     curUser = null;
     $('userView').hidden = true;
     $('boardView').hidden = false;
     $('cmdEcho').textContent = `GET /leaderboard?type=${curBoard}&metric=${curMetric}`;
+    document.title = BASE_TITLE;
     window.scrollTo(0, 0);
   }
   function showUser(nick) {
     curUser = nick;
     $('boardView').hidden = true;
     $('userView').hidden = false;
+    document.title = `${nick} · Open Code War`;
     window.scrollTo(0, 0);
     loadUser(nick);
   }
@@ -635,5 +676,10 @@
   load();  // 리더보드를 미리 채워둠(상세에서 뒤로가기 시 즉시 표시)
   route(); // 초기 URL(?user=) 에 맞춰 뷰 결정
 </script>
+
+<!-- Cloudflare Web Analytics — 쿠키리스·PII 없음·동의배너 불필요.
+     대시보드(Web Analytics → Add a site)에서 발급받은 토큰으로 아래 __CF_BEACON_TOKEN__ 을 교체하세요. -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "__CF_BEACON_TOKEN__"}'></script>
 </body>
 </html>

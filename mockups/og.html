@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- Open Code War OG 카드 소스 (1200×630). web/og.png 재생성용:
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
+       --force-device-scale-factor=1 --window-size=1200,630 \
+       --screenshot=web/og.png file://.../mockups/og.html -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --ok:#6DA875;
+    --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--mono);
+    padding: 50px 60px 48px; display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  .lights { display: flex; gap: 11px; margin-bottom: 22px; }
+  .lights i { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--faint); display: block; }
+  .prompt { color: var(--dim); font-size: 22px; letter-spacing: 0.01em; }
+  .prompt .sig { color: var(--fg); }
+  .prompt .cur { display: inline-block; width: 11px; height: 1.05em; background: var(--ok); vertical-align: text-bottom; margin-left: 4px; }
+  .big { font-size: 100px; font-weight: 700; letter-spacing: 0.03em; line-height: 1.02; margin-top: 16px; }
+  .rule { color: var(--faint); font-size: 24px; letter-spacing: -2px; margin: 8px 0 16px; white-space: nowrap; overflow: hidden; }
+  .tag { color: var(--dim); font-size: 25px; line-height: 1.42; max-width: 1050px; }
+  .tag b { color: var(--fg); font-weight: 600; }
+  .rows { margin-top: 26px; display: flex; flex-direction: column; gap: 11px; }
+  .row { display: flex; align-items: center; gap: 18px; font-size: 23px; }
+  .row .rk { color: var(--fg); font-weight: 700; width: 32px; }
+  .row .rk.one { background: var(--fg); color: var(--bg); border-radius: 5px; text-align: center; }
+  .row .nk { color: var(--fg); width: 200px; }
+  .row .bar { letter-spacing: -2px; }
+  .row .bar .on { color: var(--fg); }
+  .row .bar .off { color: var(--faint); }
+  .row .n { color: var(--dim); margin-left: 6px; font-variant-numeric: tabular-nums; }
+  .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+  .dom { font-size: 29px; font-weight: 600; color: var(--fg); letter-spacing: 0.02em; }
+  .live { display: flex; align-items: center; gap: 10px; color: var(--dim); font-size: 22px; }
+  .live i { width: 12px; height: 12px; border-radius: 50%; background: var(--ok); display: block; }
+</style>
+</head>
+<body>
+  <div class="lights"><i></i><i></i><i></i></div>
+  <div class="prompt"><span class="sig">you@claude-code</span>:~$ GET /leaderboard<span class="cur"></span></div>
+  <div class="big">OPEN CODE WAR</div>
+  <div class="rule">════════════════════════════════════════════════════════════════════════</div>
+  <div class="tag">The leaderboard for who types the most into <b>Claude Code</b> — no prompt content, character counts only.</div>
+  <div class="rows">
+    <div class="row"><span class="rk one">1</span><span class="nk">프롬프트장인</span><span class="bar"><span class="on">████████████████</span><span class="off">░░</span></span><span class="n">304</span></div>
+    <div class="row"><span class="rk">2</span><span class="nk">코드깎는노인</span><span class="bar"><span class="on">█████████████</span><span class="off">░░░░░</span></span><span class="n">247</span></div>
+    <div class="row"><span class="rk">3</span><span class="nk">vim_귀신</span><span class="bar"><span class="on">████████████</span><span class="off">░░░░░░</span></span><span class="n">233</span></div>
+  </div>
+  <div class="foot">
+    <div class="dom">opencodewar.dev</div>
+    <div class="live"><i></i>daily · weekly · weekend</div>
+  </div>
+</body>
+</html>
