@@ -1,6 +1,14 @@
 import type { Env } from './types';
 import { CORS_HEADERS, json } from './http';
-import { handleLeaderboard, handleMe, handleProfile, handleRegister, handleTrack, handleUser } from './handlers';
+import {
+  handleDelete,
+  handleLeaderboard,
+  handleMe,
+  handleProfile,
+  handleRegister,
+  handleTrack,
+  handleUser,
+} from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
 
 export default {
@@ -24,6 +32,9 @@ export default {
       }
       if (pathname === '/profile' && request.method === 'POST') {
         return await handleProfile(request, env);
+      }
+      if (pathname === '/delete' && request.method === 'POST') {
+        return await handleDelete(request, env);
       }
       if (pathname === '/leaderboard' && request.method === 'GET') {
         return await handleLeaderboard(url, env, ctx);

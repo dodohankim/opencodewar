@@ -292,6 +292,30 @@ export async function handleProfile(request: Request, env: Env): Promise<Respons
 }
 
 /**
+ * POST /delete — 본인 데이터 완전 삭제(삭제권 대응). body: { userId }.
+ * events·daily_stats·users 에서 해당 userId 행을 모두 지우고 스냅샷을 무효화한다.
+ * 닉네임과 동일한 신뢰 모델: 비밀 userId 소유자만 자기 데이터를 지울 수 있다.
+ */
+export async function handleDelete(request: Request, env: Env): Promise<Response> {
+  const body = await readJson(request);
+  if (!body || !isValidUserId(body.userId)) {
+    return json({ error: 'invalid_userId' }, 400);
+  }
+  const userId = body.userId;
+
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM events WHERE user_id = ?').bind(userId),
+    env.DB.prepare('DELETE FROM daily_stats WHERE user_id = ?').bind(userId),
+    env.DB.prepare('DELETE FROM users WHERE user_id = ?').bind(userId),
+  ]);
+
+  // 리더보드에서 즉시 사라지도록 스냅샷을 무효화(다음 조회 시 재빌드).
+  await env.KV.delete(SNAPSHOT_KEY);
+
+  return json({ ok: true, deleted: true });
+}
+
+/**
  * GET /user?nickname=... — 유저 상세(프로필 + 최근 30일 일별 사용량).
  * 공개 페이지이므로 등록 닉네임(유니크)으로만 조회한다. user_id(비밀키)는 반환하지 않는다.
  */

@@ -8,6 +8,7 @@ Disallow: /me
 Disallow: /profile
 Disallow: /register
 Disallow: /track
+Disallow: /delete
 Disallow: /health
 
 Sitemap: https://opencodewar.dev/sitemap.xml

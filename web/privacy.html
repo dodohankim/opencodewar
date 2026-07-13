@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — Open Code War</title>
+<meta name="description" content="How Open Code War handles your data: minimal, no prompt content, open source. What we collect, international data transfers, and how to delete everything." />
+<link rel="canonical" href="https://opencodewar.dev/privacy" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="robots" content="index, follow" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F4" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0E0D" />
+<style>
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; color-scheme: dark;
+    }
+  }
+  :root[data-theme="light"] {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05); --ok:#4F8258; color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06); --ok:#6DA875; color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px;
+    line-height:1.6; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased; }
+  .term { max-width:760px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .titlebar button { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
+  .titlebar button:hover { color:var(--fg); }
+  .screen { padding:clamp(16px,3vw,28px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; font-size:13px; }
+  .echo .sig { color:var(--fg); }
+  .backlink { color:var(--dim); text-decoration:none; border:1px solid var(--line); border-radius:5px; padding:4px 10px; font-size:12px; display:inline-block; margin-bottom:18px; }
+  .backlink:hover { color:var(--fg); border-color:var(--fg); }
+
+  h1 { font-size:clamp(21px,4vw,28px); font-weight:700; letter-spacing:0.02em; margin:0 0 4px; text-wrap:balance; }
+  .updated { color:var(--faint); font-size:12px; margin:0 0 20px; }
+  .lead { color:var(--dim); font-size:13.5px; border:1px solid var(--line); border-radius:6px; padding:14px 15px; margin:0 0 8px; }
+  .lead b { color:var(--fg); font-weight:600; }
+
+  h2 { font-size:14px; font-weight:700; color:var(--fg); margin:26px 0 8px; display:flex; gap:9px; align-items:baseline; }
+  h2 .n { color:var(--ok); font-size:12px; font-weight:700; }
+  p { margin:0 0 10px; color:var(--dim); max-width:66ch; }
+  p.tight { margin-bottom:4px; }
+  strong { color:var(--fg); font-weight:600; }
+  ul { margin:0 0 10px; padding-left:0; list-style:none; display:grid; gap:7px; max-width:66ch; }
+  li { color:var(--dim); position:relative; padding-left:18px; }
+  li::before { content:"–"; position:absolute; left:2px; color:var(--faint); }
+  li b { color:var(--fg); font-weight:600; }
+  code { color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:12.5px; }
+  a.link { color:var(--ok); text-decoration:none; border-bottom:1px solid var(--line); }
+  a.link:hover { border-bottom-color:var(--ok); }
+  .repo { display:inline-block; margin-top:4px; font-size:13px; }
+
+  .foot { margin-top:26px; padding-top:14px; border-top:1px solid var(--line); font-size:11.5px; color:var(--faint); }
+  a:focus-visible, button:focus-visible { outline:2px solid var(--ok); outline-offset:2px; }
+  [hidden] { display:none !important; }
+  @media (max-width:600px){ .titlebar .name { display:none; } }
+</style>
+</head>
+<body>
+  <div class="term">
+    <div class="titlebar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="name">ocw — privacy</span>
+      <button id="langBtn" type="button">한국어</button>
+      <button id="themeBtn" type="button">◐ theme</button>
+    </div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@claude-code</span>:~$ cat privacy.txt</div>
+      <a class="backlink" href="/">← Leaderboard</a>
+
+      <!-- ============ ENGLISH ============ -->
+      <div id="en">
+        <h1>Privacy Policy</h1>
+        <p class="updated">Last updated: July 13, 2026</p>
+
+        <p class="lead"><b>The short version.</b> Open Code War ranks how much you type into Claude Code. We collect the minimum needed to build the leaderboard and never see or store the <b>content</b> of your prompts — only counts. The whole codebase is open source, so you can verify exactly what happens.
+          <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
+
+        <h2><span class="n">01</span> What we collect</h2>
+        <ul>
+          <li><b>Anonymous device ID</b> — a random identifier generated on your machine at install. Not linked to your name, email, or any account.</li>
+          <li><b>Usage counts</b> — the number of prompts you submit and the number of characters in them (numbers only).</li>
+          <li><b>Country</b> — derived by Cloudflare from your IP. We store only the 2-letter code (e.g. <code>KR</code>), never your IP.</li>
+          <li><b>Profile you choose to add</b> — nickname, bio, role, company, links, projects. Optional and <strong>public</strong>.</li>
+        </ul>
+
+        <h2><span class="n">02</span> What we never collect</h2>
+        <ul>
+          <li>The <b>content</b> of your prompts or Claude's responses.</li>
+          <li>Your code, files, or project data.</li>
+          <li>Your name, email, or password — there is no login.</li>
+        </ul>
+
+        <h2><span class="n">03</span> How we use it</h2>
+        <p>Only to compute and show the public leaderboard and your public profile. We do not sell data and we do not run ads.</p>
+
+        <h2><span class="n">04</span> Public information</h2>
+        <p>Your nickname, bio, role, company, links, and projects appear publicly on the leaderboard and profile pages. Don't add anything you don't want to be public. Outbound links you add are marked <code>rel="nofollow"</code>.</p>
+
+        <h2><span class="n">05</span> Third parties &amp; international data transfers</h2>
+        <p class="tight">The service runs entirely on <strong>Cloudflare</strong> (Workers, the D1 database, KV, and Web Analytics) and is operated from <strong>South Korea</strong>. Your data may therefore be stored and processed on Cloudflare's global network and accessed from South Korea — that is, outside your own country.</p>
+        <ul>
+          <li>South Korea holds an <b>EU adequacy decision (2021)</b>, so EU/EEA personal data may be transferred there without additional safeguards.</li>
+          <li>Cloudflare provides a Data Processing Addendum and Standard Contractual Clauses for its processing.</li>
+          <li>We use <b>Cloudflare Web Analytics</b>, which is cookieless and does not track you across sites.</li>
+        </ul>
+
+        <h2><span class="n">06</span> Retention</h2>
+        <p>We keep your data while your participation is active. You can delete all of it at any time (below). Raw events may be kept briefly for abuse prevention and re-aggregation.</p>
+
+        <h2><span class="n">07</span> Your rights &amp; how to delete</h2>
+        <p class="tight">Because there is no login, we identify you only by your local anonymous ID. From the plugin you can:</p>
+        <ul>
+          <li>Stop collection anytime — <code>/ocw disable</code></li>
+          <li>Clear your public profile — <code>/ocw delete</code> — removes your bio, role, company, links, and projects. Your nickname and usage stay on the leaderboard.</li>
+          <li>Erase everything — <code>/ocw delete all confirm</code> — permanently removes your events, statistics, and profile, and takes you off the leaderboard.</li>
+        </ul>
+
+        <h2><span class="n">08</span> Children</h2>
+        <p>Open Code War is not directed to children under 14 and does not knowingly collect their data.</p>
+
+        <h2><span class="n">09</span> Open source — verify us</h2>
+        <p>Don't just trust this page. The full source, including exactly what the plugin sends, is public:
+          <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
+
+        <h2><span class="n">10</span> Changes &amp; contact</h2>
+        <p>We may update this policy; the date at the top reflects the latest version. Questions or requests: open an issue at
+          <a class="link" href="https://github.com/dodohankim/opencodewar/issues" target="_blank" rel="noopener">github.com/dodohankim/opencodewar/issues ↗</a>.</p>
+      </div>
+
+      <!-- ============ 한국어 ============ -->
+      <div id="ko" hidden>
+        <h1>개인정보처리방침</h1>
+        <p class="updated">최종 업데이트: 2026년 7월 13일</p>
+
+        <p class="lead"><b>요약.</b> Open Code War는 Claude Code에 얼마나 많이 입력하는지로 순위를 매기는 리더보드입니다. 리더보드에 필요한 최소한만 수집하며, 프롬프트의 <b>내용</b>은 절대 보거나 저장하지 않습니다 — 오직 개수만 셉니다. 전체 코드가 오픈소스라 무엇이 일어나는지 직접 검증할 수 있습니다.
+          <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
+
+        <h2><span class="n">01</span> 수집하는 것</h2>
+        <ul>
+          <li><b>익명 기기 ID</b> — 설치 시 기기에서 생성되는 무작위 식별자. 이름·이메일·계정과 연결되지 않습니다.</li>
+          <li><b>사용량 수치</b> — 제출한 프롬프트 개수와 글자 수(숫자만).</li>
+          <li><b>국가</b> — Cloudflare가 IP로부터 추정. 2자리 코드(<code>KR</code> 등)만 저장하고 IP는 저장하지 않습니다.</li>
+          <li><b>직접 추가하는 프로필</b> — 닉네임·자기소개·직함·회사·링크·프로젝트. 선택 사항이며 <strong>공개</strong>됩니다.</li>
+        </ul>
+
+        <h2><span class="n">02</span> 절대 수집하지 않는 것</h2>
+        <ul>
+          <li>프롬프트나 Claude 응답의 <b>내용</b>.</li>
+          <li>당신의 코드·파일·프로젝트 데이터.</li>
+          <li>이름·이메일·비밀번호 — 로그인이 없습니다.</li>
+        </ul>
+
+        <h2><span class="n">03</span> 이용 목적</h2>
+        <p>공개 리더보드와 공개 프로필을 계산·표시하는 데에만 사용합니다. 데이터를 판매하지 않으며 광고도 없습니다.</p>
+
+        <h2><span class="n">04</span> 공개되는 정보</h2>
+        <p>닉네임·자기소개·직함·회사·링크·프로젝트는 리더보드와 프로필 페이지에 공개됩니다. 공개되면 안 되는 정보는 넣지 마세요. 추가한 외부 링크에는 <code>rel="nofollow"</code>가 붙습니다.</p>
+
+        <h2><span class="n">05</span> 제3자 및 국외 이전</h2>
+        <p class="tight">서비스는 전적으로 <strong>Cloudflare</strong>(Workers, D1 데이터베이스, KV, Web Analytics) 위에서 동작하며 <strong>대한민국</strong>에서 운영됩니다. 따라서 데이터가 Cloudflare 글로벌 네트워크에 저장·처리되고 한국에서 접근될 수 있습니다 — 즉 이용자 본국 밖입니다.</p>
+        <ul>
+          <li>대한민국은 <b>EU 적정성 결정(2021)</b>을 받았으므로, EU/EEA 개인정보를 추가 안전장치 없이 이전할 수 있습니다.</li>
+          <li>Cloudflare는 데이터 처리 부속서(DPA)와 표준계약조항(SCC)을 제공합니다.</li>
+          <li><b>Cloudflare Web Analytics</b>를 사용하며, 쿠키가 없고 사이트 간 추적을 하지 않습니다.</li>
+        </ul>
+
+        <h2><span class="n">06</span> 보관 기간</h2>
+        <p>참여가 유효한 동안 보관합니다. 언제든 전체 삭제할 수 있습니다(아래). 원시 이벤트는 어뷰징 방지·재집계를 위해 짧게 보관될 수 있습니다.</p>
+
+        <h2><span class="n">07</span> 이용자 권리 및 삭제 방법</h2>
+        <p class="tight">로그인이 없으므로 로컬 익명 ID로만 식별합니다. 플러그인에서:</p>
+        <ul>
+          <li>집계 중지 — <code>/ocw disable</code></li>
+          <li>공개 프로필 비우기 — <code>/ocw delete</code> — 자기소개·직함·회사·링크·프로젝트를 지웁니다. 닉네임과 사용량(순위)은 리더보드에 그대로 남습니다.</li>
+          <li>완전 삭제 — <code>/ocw delete all confirm</code> — 이벤트·통계·프로필을 영구 삭제하고 리더보드에서도 제거합니다.</li>
+        </ul>
+
+        <h2><span class="n">08</span> 아동</h2>
+        <p>Open Code War는 만 14세 미만 아동을 대상으로 하지 않으며 그들의 정보를 고의로 수집하지 않습니다.</p>
+
+        <h2><span class="n">09</span> 오픈소스 — 직접 검증하세요</h2>
+        <p>이 페이지를 그냥 믿지 마세요. 플러그인이 무엇을 보내는지까지 전체 소스가 공개돼 있습니다:
+          <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
+
+        <h2><span class="n">10</span> 변경 및 문의</h2>
+        <p>본 방침은 변경될 수 있으며 상단 날짜가 최신본을 나타냅니다. 문의·요청은 이슈로 남겨주세요:
+          <a class="link" href="https://github.com/dodohankim/opencodewar/issues" target="_blank" rel="noopener">github.com/dodohankim/opencodewar/issues ↗</a></p>
+      </div>
+
+      <div class="foot" id="foot">Open Code War · opencodewar.dev · open source, privacy-first</div>
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let LANG = localStorage.getItem('ocw_lang') || 'en';
+
+  function applyLang() {
+    const ko = LANG === 'ko';
+    $('en').hidden = ko;
+    $('ko').hidden = !ko;
+    $('langBtn').textContent = ko ? 'EN' : '한국어';
+    document.documentElement.lang = ko ? 'ko' : 'en';
+    $('foot').textContent = ko
+      ? 'Open Code War · opencodewar.dev · 오픈소스 · 프라이버시 우선'
+      : 'Open Code War · opencodewar.dev · open source, privacy-first';
+    localStorage.setItem('ocw_lang', LANG);
+  }
+  $('langBtn').addEventListener('click', () => { LANG = LANG === 'en' ? 'ko' : 'en'; applyLang(); });
+
+  $('themeBtn').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light'
+      : cur === 'light' ? 'dark'
+      : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', next);
+  });
+
+  applyLang();
+</script>
+</body>
+</html>

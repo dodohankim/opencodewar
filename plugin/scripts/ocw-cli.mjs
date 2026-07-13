@@ -232,6 +232,68 @@ async function project(input) {
   return print(projectUsage());
 }
 
+/**
+ * delete             → 프로필만 비움(bio·직함·회사·링크·프로젝트). 닉네임·사용량·순위는 유지.
+ * delete all         → 완전 삭제 경고(확인 요구).
+ * delete all confirm → 사용량·통계·프로필 전부 영구 삭제 + 집계 중지(삭제권).
+ */
+async function deleteData(arg) {
+  const a = arg.trim().toLowerCase();
+
+  // ── 완전 삭제(삭제권): /ocw delete all [confirm] ──
+  if (a === 'all' || a === 'all confirm') {
+    if (a !== 'all confirm') {
+      return print(
+        [
+          '⚠️ **완전 삭제 — 되돌릴 수 없습니다.**',
+          '사용량 기록·통계·프로필이 모두 영구 삭제되고 리더보드에서도 사라집니다.',
+          '',
+          '확실하면 → `/ocw delete all confirm`',
+          '(프로필만 비우고 순위는 남기려면 → `/ocw delete`)',
+        ].join('\n'),
+      );
+    }
+    try {
+      const res = await fetch(`${endpoint}/delete`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: cfg.userId }),
+        signal: AbortSignal.timeout(4000),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        // 로컬 미러 초기화 + 집계 중지(다음 프롬프트에서 재생성 방지). userId 는 유지.
+        Object.assign(cfg, { nickname: null, bio: null, role: null, company: null, links: {}, projects: [], enabled: false });
+        saveConfig(cfg);
+        return print('✅ 모든 데이터를 삭제했고 집계를 껐습니다.\n다시 시작하려면 `/ocw enable` 후 프롬프트를 입력하세요.');
+      }
+      return print(`❌ 삭제 실패 (status ${res.status}).`);
+    } catch {
+      return print(`❌ 서버에 연결하지 못했습니다: ${endpoint}`);
+    }
+  }
+
+  // ── 기본: 프로필만 비우기(닉네임·사용량·순위는 그대로) ──
+  try {
+    const { res, data } = await apiPost({ bio: '', role: '', company: '', links: {}, projects: [] });
+    if (res.ok && data.ok) {
+      Object.assign(cfg, { bio: null, role: null, company: null, links: {}, projects: [] });
+      saveConfig(cfg);
+      return print(
+        [
+          '✅ 프로필을 비웠습니다 — 자기소개·직함·회사·링크·프로젝트 제거.',
+          '닉네임과 사용량(리더보드 순위)은 그대로 유지됩니다.',
+          '',
+          '기록까지 완전히 지우려면 → `/ocw delete all`',
+        ].join('\n'),
+      );
+    }
+    return print(`❌ 실패 (status ${res.status}).`);
+  } catch {
+    return print(`❌ 서버에 연결하지 못했습니다: ${endpoint}`);
+  }
+}
+
 async function status() {
   // 서버(/me)를 기준으로 표시하고, 조회 실패 시에만 로컬 config 로 폴백한다.
   const me = await fetchMe();
@@ -283,9 +345,12 @@ function help() {
       '- `/ocw project list | remove <번호> | clear` — 프로젝트 관리',
       '- `/ocw status` — 내 정보 및 오늘 순위',
       '- `/ocw disable` / `/ocw enable` — 집계 끄기/켜기',
+      '- `/ocw delete` — 프로필만 비움(닉네임·순위·사용량 유지)',
+      '- `/ocw delete all` — 사용량 포함 전부 영구 삭제(되돌릴 수 없음)',
       '',
       '값을 비우려면 인자 없이 실행하세요 (예: `/ocw bio`, `/ocw link github`).',
       '프롬프트 내용은 수집하지 않습니다. 글자 수만 집계합니다.',
+      '개인정보처리방침: https://opencodewar.dev/privacy',
     ].join('\n'),
   );
 }
@@ -303,6 +368,8 @@ async function main() {
     case 'project':
     case 'projects':
       return project(rest);
+    case 'delete':
+      return deleteData(rest);
     case 'enable':
       cfg.enabled = true;
       saveConfig(cfg);
