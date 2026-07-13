@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // /ocw 슬래시 커맨드가 호출하는 CLI. 출력(stdout)은 커맨드 결과로 사용자에게 노출된다.
-// 서브커맨드: nickname <이름> | status | whoami | enable | disable | help
+// 서브커맨드: nickname <이름> | bio <소개> | status | whoami | enable | disable | help
 
 import { ensureConfig, saveConfig, endpointOf } from './lib/config.mjs';
 
@@ -77,8 +77,9 @@ async function setBio(text) {
 }
 
 async function status() {
-  // 닉네임은 서버 기준으로 표시한다(미등록이면 자동 닉네임). 조회 실패 시에만 로컬값으로 폴백.
+  // 닉네임/자기소개는 서버 기준으로 표시한다(미등록이면 자동 닉네임). 조회 실패 시에만 로컬값으로 폴백.
   let serverNick = null;
+  let serverBio;
   let statLine = null;
   try {
     const res = await fetch(
@@ -89,6 +90,7 @@ async function status() {
       const d = await res.json();
       if (d.me) {
         serverNick = d.me.nickname ?? null;
+        serverBio = d.me.bio ?? null;
         statLine = `- 오늘(일간): ${d.me.prompts} 프롬프트 · ${d.me.chars} 글자 · 순위 ${d.me.rank ?? '-'}/${d.me.total}`;
       }
     }
@@ -96,7 +98,10 @@ async function status() {
     // 순위 조회 실패는 조용히 생략
   }
   const nickname = serverNick ?? cfg.nickname ?? '(자동 생성)';
+  // 서버 조회 성공 시 서버 bio, 실패 시 로컬 config bio로 폴백.
+  const bio = serverBio !== undefined ? serverBio : cfg.bio ?? null;
   const lines = ['**Open Code War — 내 정보**', `- 닉네임: ${nickname}`];
+  lines.push(bio ? `- 자기소개: ${bio}` : '- 자기소개: (없음) — `/ocw bio <소개>` 로 등록');
   if (statLine) lines.push(statLine);
   return print(lines.join('\n'));
 }

@@ -141,9 +141,11 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
 
   const sql = `
     WITH agg AS (${aggSql}),
-         me AS (SELECT prompts, chars FROM agg WHERE user_id = ?)
+         me AS (SELECT prompts, chars FROM agg WHERE user_id = ?),
+         prof AS (SELECT nickname, bio FROM users WHERE user_id = ?)
     SELECT
-      (SELECT nickname FROM users WHERE user_id = ?) AS nickname,
+      (SELECT nickname FROM prof) AS nickname,
+      (SELECT bio FROM prof) AS bio,
       COALESCE((SELECT prompts FROM me), 0) AS prompts,
       COALESCE((SELECT chars FROM me), 0) AS chars,
       (SELECT COUNT(*) FROM agg) AS total,
@@ -153,7 +155,14 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
 
   const row = await env.DB.prepare(sql)
     .bind(...aggBinds, userId, userId)
-    .first<{ nickname: string | null; prompts: number; chars: number; total: number; rank: number | null }>();
+    .first<{
+      nickname: string | null;
+      bio: string | null;
+      prompts: number;
+      chars: number;
+      total: number;
+      rank: number | null;
+    }>();
 
   return json({
     type,
@@ -161,6 +170,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
     period: periodOf(type, now),
     me: {
       nickname: displayNickname(row?.nickname, userId),
+      bio: row?.bio ?? null,
       prompts: Number(row?.prompts) || 0,
       chars: Number(row?.chars) || 0,
       rank: row?.rank ?? null,

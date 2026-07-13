@@ -1,5 +1,5 @@
 ---
-description: Open Code War — 닉네임 등록, 내 순위/집계 상태 확인
+description: Open Code War — 닉네임·자기소개(bio) 등록, 내 순위/집계 상태 확인
 argument-hint: "nickname <이름> | bio <소개> | status | enable | disable"
 disable-model-invocation: true
 allowed-tools: Bash(node:*)
