@@ -22,7 +22,18 @@ export function loadConfig() {
     if (!existsSync(CONFIG_FILE)) return null;
     const cfg = JSON.parse(readFileSync(CONFIG_FILE, 'utf8'));
     if (!cfg || typeof cfg.userId !== 'string') return null;
-    return { nickname: null, endpoint: null, enabled: true, ...cfg };
+    // 서버가 진실의 원천이지만, 오프라인 status 표시를 위해 로컬에도 미러링한다.
+    return {
+      nickname: null,
+      endpoint: null,
+      enabled: true,
+      bio: null,
+      role: null,
+      company: null,
+      links: {},
+      projects: [],
+      ...cfg,
+    };
   } catch {
     return null;
   }

@@ -32,6 +32,93 @@ export function isValidBio(v: unknown): v is string {
   return !BIO_CONTROL_RE.test(t);
 }
 
+/** 직함(role)·회사(company): 한 줄, 0~40자(트림 후). 빈 문자열은 "해제". 제어문자 금지. */
+export const MAX_ROLE_LEN = 40;
+export const MAX_COMPANY_LEN = 40;
+export function isValidShortText(v: unknown, max: number): v is string {
+  if (typeof v !== 'string') return false;
+  const t = v.trim();
+  if (t.length > max) return false;
+  return !BIO_CONTROL_RE.test(t);
+}
+
+/** 링크/프로젝트 URL: http(s) 절대 URL, 최대 200자. (웹에서 rel=nofollow 로 렌더) */
+export const MAX_URL_LEN = 200;
+export function isValidUrl(v: unknown): v is string {
+  if (typeof v !== 'string') return false;
+  const t = v.trim();
+  if (!t || t.length > MAX_URL_LEN) return false;
+  try {
+    const u = new URL(t);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/** 허용되는 소셜/개인 링크 키. */
+export const LINK_KEYS = ['website', 'github', 'x', 'linkedin'] as const;
+export type LinkKey = (typeof LINK_KEYS)[number];
+export type Links = Partial<Record<LinkKey, string>>;
+
+/**
+ * links 객체를 검증·정규화한다. 허용 키만, 값은 http(s) URL(트림).
+ * 빈 문자열 값은 "해당 링크 해제"로 간주해 결과에서 제외한다.
+ * 유효하지 않으면 null(요청 거절), 유효하면 정규화된 객체(빈 객체 = 전체 해제).
+ */
+export function normalizeLinks(v: unknown): Links | null {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
+  const out: Links = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (!LINK_KEYS.includes(k as LinkKey)) return null;
+    if (typeof val !== 'string') return null;
+    const t = val.trim();
+    if (!t) continue; // 빈 값 = 해제
+    if (!isValidUrl(t)) return null;
+    out[k as LinkKey] = t;
+  }
+  return out;
+}
+
+/** 홍보용 사이드프로젝트. name 필수, desc·url 선택. */
+export const MAX_PROJECTS = 5;
+export const MAX_PROJECT_NAME_LEN = 40;
+export const MAX_PROJECT_DESC_LEN = 80;
+export interface Project {
+  name: string;
+  desc?: string;
+  url?: string;
+}
+
+/**
+ * projects 배열을 검증·정규화한다. 최대 5개, 각 항목 {name, desc?, url?}.
+ * 빈 desc/url 은 결과에서 생략한다. 유효하지 않으면 null, 빈 배열은 "전체 해제".
+ */
+export function normalizeProjects(v: unknown): Project[] | null {
+  if (!Array.isArray(v)) return null;
+  if (v.length > MAX_PROJECTS) return null;
+  const out: Project[] = [];
+  for (const item of v) {
+    if (typeof item !== 'object' || item === null) return null;
+    const rec = item as Record<string, unknown>;
+    if (!isValidShortText(rec.name, MAX_PROJECT_NAME_LEN)) return null;
+    const name = (rec.name as string).trim();
+    if (!name) return null; // name 은 필수
+    const project: Project = { name };
+    if (rec.desc !== undefined && rec.desc !== null && rec.desc !== '') {
+      if (!isValidShortText(rec.desc, MAX_PROJECT_DESC_LEN)) return null;
+      const desc = (rec.desc as string).trim();
+      if (desc) project.desc = desc;
+    }
+    if (rec.url !== undefined && rec.url !== null && rec.url !== '') {
+      if (!isValidUrl(rec.url)) return null;
+      project.url = (rec.url as string).trim();
+    }
+    out.push(project);
+  }
+  return out;
+}
+
 export function parseMetric(v: string | null): Metric {
   return v === 'chars' ? 'chars' : 'prompts';
 }

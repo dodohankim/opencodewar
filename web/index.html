@@ -147,7 +147,25 @@
   .profile .p-nick { font-size:clamp(19px,3.6vw,26px); font-weight:700; letter-spacing:0.02em; margin:2px 0 0; word-break:break-all; }
   .profile .p-bio { margin:10px 0 0; color:var(--dim); font-size:13.5px; line-height:1.55; word-break:break-word; white-space:pre-wrap; }
   .profile .p-bio.empty { color:var(--faint); font-style:italic; }
+  .p-role { margin:10px 0 0; color:var(--fg); font-size:13.5px; }
+  .p-role .at { color:var(--faint); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); border:1px solid var(--line); border-radius:5px; padding:4px 10px; text-decoration:none; }
+  .chip:hover { color:var(--fg); border-color:var(--fg); }
+  .chip .arr { color:var(--faint); }
+  .chip:hover .arr { color:var(--ok); }
   .p-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; margin-top:16px; }
+
+  /* ── shipping (사이드프로젝트 = 홍보 지면) ── */
+  .ships { display:grid; gap:10px; }
+  .ship { display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:6px; padding:12px 14px; }
+  .ship:hover { background:var(--hover); }
+  .ship-main { min-width:0; flex:1; }
+  .ship-name { font-size:13.5px; font-weight:700; color:var(--fg); word-break:break-word; }
+  .ship-desc { font-size:12.5px; color:var(--dim); margin-top:3px; word-break:break-word; }
+  .ship-host { font-size:11px; color:var(--faint); margin-top:5px; word-break:break-all; }
+  .visit { flex:none; font-size:12px; color:var(--fg); text-decoration:none; border:1px solid var(--line); border-radius:5px; padding:6px 12px; white-space:nowrap; }
+  .visit:hover { border-color:var(--ok); color:var(--ok); }
   .field { display:flex; flex-direction:column; gap:4px; }
   .field label { font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); }
   .field input { font:inherit; font-size:13px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:7px 9px; }
@@ -169,7 +187,7 @@
   .umsg { padding:20px 4px; text-align:center; color:var(--dim); font-size:13px; }
   .umsg.err { color:var(--err); }
 
-  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} }
+  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} .ship{flex-wrap:wrap;} }
   @media (prefers-reduced-motion:reduce){ .cursor{animation:none;} }
 </style>
 </head>
@@ -263,7 +281,9 @@
             <h2 class="p-nick" id="uNick">–</h2>
             <span class="cc" id="uCountry"></span>
           </div>
+          <p class="p-role" id="uRole" hidden></p>
           <p class="p-bio empty" id="uBio"></p>
+          <div class="chips" id="uLinks"></div>
           <div class="p-fields">
             <div class="field">
               <label data-i18n="email_label">email</label>
@@ -274,6 +294,11 @@
               <span class="val" id="uJoined">–</span>
             </div>
           </div>
+        </section>
+
+        <section class="box" id="uShipBox" hidden>
+          <span class="legend" id="uShipLegend">shipping</span>
+          <div class="ships" id="uShips"></div>
         </section>
 
         <section class="box">
@@ -325,7 +350,7 @@
       bio_empty: 'No bio yet.', chart_30d: 'last 30 days',
       u_sum: 'sum', u_avg: 'avg/day', u_active: 'active days', u_peak: 'peak',
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
-      no_activity: 'No activity in the last 30 days.',
+      no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗',
       ago_s: (n) => `${n}s ago`, ago_m: (n) => `${n}m ago`, ago_h: (n) => `${n}h ago`,
     },
     ko: {
@@ -348,7 +373,7 @@
       bio_empty: '아직 자기소개가 없습니다.', chart_30d: '최근 30일',
       u_sum: '합계', u_avg: '일평균', u_active: '활동일', u_peak: '최고',
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
-      no_activity: '최근 30일 활동이 없습니다.',
+      no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗',
       ago_s: (n) => `${n}초 전`, ago_m: (n) => `${n}분 전`, ago_h: (n) => `${n}시간 전`,
     },
   };
@@ -548,8 +573,13 @@
   }
   function showUserError(msg) {
     $('uChartWrap').hidden = true;
+    $('uRole').hidden = true;
+    $('uRole').innerHTML = '';
     $('uBio').textContent = '';
     $('uBio').classList.add('empty');
+    $('uLinks').innerHTML = '';
+    $('uShipBox').hidden = true;
+    $('uShips').innerHTML = '';
     $('uStats').innerHTML = '';
     $('uEmail').value = '';
     $('uJoined').textContent = '–';
@@ -565,8 +595,13 @@
     $('cmdEcho').textContent = `GET /user?nickname=${nick}`;
     $('uNick').textContent = nick;
     $('uCountry').textContent = '';
+    $('uRole').hidden = true;
+    $('uRole').innerHTML = '';
     $('uBio').textContent = '';
     $('uBio').classList.add('empty');
+    $('uLinks').innerHTML = '';
+    $('uShipBox').hidden = true;
+    $('uShips').innerHTML = '';
     $('uEmail').value = '';
     $('uJoined').textContent = '–';
     $('uStats').innerHTML = '';
@@ -586,9 +621,62 @@
       if (curUser === nick) showUserError(t('user_error'));
     }
   }
+  // href 로 쓸 수 있는 안전한 URL만 통과(http/https). 그 외는 링크로 만들지 않는다.
+  function safeUrl(u) {
+    return typeof u === 'string' && /^https?:\/\//i.test(u) ? u : '';
+  }
+  // URL → 'host/path' 형태의 보기 좋은 라벨 (github.com/dohan 처럼).
+  function linkLabel(u) {
+    try {
+      const x = new URL(u);
+      const path = x.pathname === '/' ? '' : x.pathname.replace(/\/$/, '');
+      return x.host + path;
+    } catch {
+      return u;
+    }
+  }
+  function renderRole(role, company) {
+    const el = $('uRole');
+    if (!role && !company) { el.hidden = true; el.innerHTML = ''; return; }
+    const parts = [];
+    if (role) parts.push(escapeHtml(role));
+    if (company) parts.push(`<span class="at">@</span> ${escapeHtml(company)}`);
+    el.innerHTML = parts.join(' ');
+    el.hidden = false;
+  }
+  function renderLinks(links) {
+    const el = $('uLinks');
+    const keys = links && typeof links === 'object' ? Object.keys(links) : [];
+    el.innerHTML = keys
+      .map((k) => {
+        const url = safeUrl(links[k]);
+        if (!url) return '';
+        return `<a class="chip" href="${escapeHtml(url)}" target="_blank" rel="nofollow noopener">${escapeHtml(linkLabel(url))} <span class="arr">↗</span></a>`;
+      })
+      .join('');
+  }
+  function renderProjects(projects) {
+    const box = $('uShipBox');
+    const list = Array.isArray(projects) ? projects : [];
+    if (!list.length) { box.hidden = true; $('uShips').innerHTML = ''; return; }
+    $('uShipLegend').textContent = `shipping · ${list.length}`;
+    $('uShips').innerHTML = list
+      .map((p) => {
+        const url = p && p.url ? safeUrl(p.url) : '';
+        const host = url ? `<div class="ship-host">${escapeHtml(linkLabel(url))}</div>` : '';
+        const visit = url
+          ? `<a class="visit" href="${escapeHtml(url)}" target="_blank" rel="nofollow noopener">${t('visit')}</a>`
+          : '';
+        const desc = p && p.desc ? `<div class="ship-desc">${escapeHtml(p.desc)}</div>` : '';
+        return `<div class="ship"><div class="ship-main"><div class="ship-name">${escapeHtml((p && p.name) || '')}</div>${desc}${host}</div>${visit}</div>`;
+      })
+      .join('');
+    box.hidden = false;
+  }
   function renderUser(data) {
     $('uNick').textContent = data.nickname;
     $('uCountry').textContent = data.country || '';
+    renderRole(data.role, data.company);
     const bioEl = $('uBio');
     if (data.bio && String(data.bio).trim()) {
       bioEl.textContent = data.bio;
@@ -597,6 +685,8 @@
       bioEl.textContent = t('bio_empty');
       bioEl.classList.add('empty');
     }
+    renderLinks(data.links);
+    renderProjects(data.projects);
     $('uEmail').value = data.email || '';
     $('uJoined').textContent = data.joinedAt ? fmtDate(data.joinedAt) : '–';
     $('uMsg').hidden = true;

@@ -6,15 +6,42 @@ import {
   clampLimit,
   isValidBio,
   isValidNickname,
+  isValidShortText,
   isValidUserId,
+  MAX_COMPANY_LEN,
+  MAX_ROLE_LEN,
+  normalizeLinks,
+  normalizeProjects,
   parseMetric,
   parseType,
+  type Links,
+  type Project,
 } from './validate';
 import { METRIC_COL, SNAPSHOT_KEY, getSnapshot, periodOf } from './snapshot';
 import { displayNickname } from './nickname';
 
 /** 유저 상세 페이지가 보여주는 최근 사용량 구간(일). */
 const PROFILE_WINDOW_DAYS = 30;
+
+/** links/projects 는 users 테이블에 JSON 문자열로 저장된다. 파싱 실패 시 기본값 반환. */
+function parseLinks(raw: string | null): Links {
+  if (!raw) return {};
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Links) : {};
+  } catch {
+    return {};
+  }
+}
+function parseProjects(raw: string | null): Project[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? (v as Project[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 /** POST /track — 입력 이벤트 1건 수집. body: { userId, chars } */
 export async function handleTrack(request: Request, env: Env): Promise<Response> {
@@ -142,10 +169,14 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
   const sql = `
     WITH agg AS (${aggSql}),
          me AS (SELECT prompts, chars FROM agg WHERE user_id = ?),
-         prof AS (SELECT nickname, bio FROM users WHERE user_id = ?)
+         prof AS (SELECT nickname, bio, role, company, links, projects FROM users WHERE user_id = ?)
     SELECT
       (SELECT nickname FROM prof) AS nickname,
       (SELECT bio FROM prof) AS bio,
+      (SELECT role FROM prof) AS role,
+      (SELECT company FROM prof) AS company,
+      (SELECT links FROM prof) AS links,
+      (SELECT projects FROM prof) AS projects,
       COALESCE((SELECT prompts FROM me), 0) AS prompts,
       COALESCE((SELECT chars FROM me), 0) AS chars,
       (SELECT COUNT(*) FROM agg) AS total,
@@ -158,6 +189,10 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
     .first<{
       nickname: string | null;
       bio: string | null;
+      role: string | null;
+      company: string | null;
+      links: string | null;
+      projects: string | null;
       prompts: number;
       chars: number;
       total: number;
@@ -171,6 +206,10 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
     me: {
       nickname: displayNickname(row?.nickname, userId),
       bio: row?.bio ?? null,
+      role: row?.role ?? null,
+      company: row?.company ?? null,
+      links: parseLinks(row?.links ?? null),
+      projects: parseProjects(row?.projects ?? null),
       prompts: Number(row?.prompts) || 0,
       chars: Number(row?.chars) || 0,
       rank: row?.rank ?? null,
@@ -179,29 +218,77 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
   });
 }
 
-/** POST /profile — 자기소개(bio) 설정/해제. body: { userId, bio }. (닉네임과 동일 신뢰 모델) */
+/**
+ * POST /profile — 프로필 부분 갱신. body 에 포함된 필드만 바꾼다(부분 패치).
+ * body: { userId, bio?, role?, company?, links?, projects? }
+ * - 텍스트(bio/role/company): 빈 문자열이면 해제(NULL).
+ * - links: {website?,github?,x?,linkedin?} 전체 교체(빈 객체 = 전체 해제).
+ * - projects: [{name,desc?,url?}] 전체 교체, 최대 5개(빈 배열 = 전체 해제).
+ * 닉네임과 동일한 신뢰 모델(비밀 userId 소유자만 설정).
+ */
 export async function handleProfile(request: Request, env: Env): Promise<Response> {
   const body = await readJson(request);
   if (!body || !isValidUserId(body.userId)) {
     return json({ error: 'invalid_userId' }, 400);
   }
-  if (!isValidBio(body.bio)) {
+  const userId = body.userId;
+
+  // 제공된 필드만 SET 절에 넣는다. echo 는 정규화된 값을 응답에 담아 클라이언트가 로컬 캐시 갱신에 쓴다.
+  const cols: string[] = [];
+  const vals: (string | null)[] = [];
+  const echo: Record<string, unknown> = {};
+
+  const setText = (key: string, col: string, valid: boolean, raw: unknown) => {
+    if (!valid) return false;
+    const t = (raw as string).trim();
+    const v = t.length ? t : null;
+    cols.push(`${col} = ?`);
+    vals.push(v);
+    echo[key] = v;
+    return true;
+  };
+
+  if ('bio' in body && !setText('bio', 'bio', isValidBio(body.bio), body.bio)) {
     return json({ error: 'invalid_bio' }, 400);
   }
-  const userId = body.userId;
-  const trimmed = (body.bio as string).trim();
-  const bio = trimmed.length ? trimmed : null; // 빈 문자열이면 해제(NULL)
-  const now = Date.now();
+  if ('role' in body && !setText('role', 'role', isValidShortText(body.role, MAX_ROLE_LEN), body.role)) {
+    return json({ error: 'invalid_role' }, 400);
+  }
+  if (
+    'company' in body &&
+    !setText('company', 'company', isValidShortText(body.company, MAX_COMPANY_LEN), body.company)
+  ) {
+    return json({ error: 'invalid_company' }, 400);
+  }
+  if ('links' in body) {
+    const links = normalizeLinks(body.links);
+    if (links === null) return json({ error: 'invalid_links' }, 400);
+    cols.push('links = ?');
+    vals.push(Object.keys(links).length ? JSON.stringify(links) : null);
+    echo.links = links;
+  }
+  if ('projects' in body) {
+    const projects = normalizeProjects(body.projects);
+    if (projects === null) return json({ error: 'invalid_projects' }, 400);
+    cols.push('projects = ?');
+    vals.push(projects.length ? JSON.stringify(projects) : null);
+    echo.projects = projects;
+  }
 
+  if (!cols.length) {
+    return json({ error: 'no_fields' }, 400);
+  }
+
+  const now = Date.now();
   await env.DB.batch([
     env.DB.prepare(
       `INSERT INTO users (user_id, created_at, last_seen_at) VALUES (?, ?, ?)
        ON CONFLICT(user_id) DO NOTHING`,
     ).bind(userId, now, now),
-    env.DB.prepare('UPDATE users SET bio = ? WHERE user_id = ?').bind(bio, userId),
+    env.DB.prepare(`UPDATE users SET ${cols.join(', ')} WHERE user_id = ?`).bind(...vals, userId),
   ]);
 
-  return json({ ok: true, bio });
+  return json({ ok: true, ...echo });
 }
 
 /**
@@ -216,13 +303,17 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   const nickname = (nicknameParam as string).trim();
 
   const user = await env.DB.prepare(
-    'SELECT user_id, nickname, bio, email, country, created_at FROM users WHERE nickname = ?',
+    'SELECT user_id, nickname, bio, role, company, links, projects, email, country, created_at FROM users WHERE nickname = ?',
   )
     .bind(nickname)
     .first<{
       user_id: string;
       nickname: string;
       bio: string | null;
+      role: string | null;
+      company: string | null;
+      links: string | null;
+      projects: string | null;
       email: string | null;
       country: string | null;
       created_at: number;
@@ -254,6 +345,10 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   return json({
     nickname: user.nickname,
     bio: user.bio ?? null,
+    role: user.role ?? null,
+    company: user.company ?? null,
+    links: parseLinks(user.links),
+    projects: parseProjects(user.projects),
     email: user.email ?? null, // 로그인 도입 전까지 항상 null
     country: user.country ?? null,
     joinedAt: Number(user.created_at) || null,
