@@ -10,6 +10,7 @@ import {
   handleUser,
 } from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
+import { handleProfilePage } from './og';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -21,6 +22,10 @@ export default {
     }
 
     try {
+      // 루트는 run_worker_first 로 Worker가 먼저 받는다. ?user= 면 OG 재작성, 아니면 에셋 그대로.
+      if (pathname === '/') {
+        return await handleProfilePage(request, url, env);
+      }
       if (pathname === '/health') {
         return json({ ok: true, service: 'open-code-war-api', ts: Date.now() });
       }

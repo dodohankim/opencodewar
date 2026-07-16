@@ -1,6 +1,8 @@
 export interface Env {
   DB: D1Database;
   KV: KVNamespace;
+  /** 정적 에셋(../web). 루트(/)는 run_worker_first 로 Worker가 먼저 받아 OG 재작성 후 이 바인딩으로 서빙. */
+  ASSETS: Fetcher;
   /** 리더보드 스냅샷 신선도(ms). 미설정 시 30분. 로컬 테스트는 .dev.vars로 낮춤. */
   SNAPSHOT_TTL_MS?: string;
 }

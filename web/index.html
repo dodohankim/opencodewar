@@ -144,6 +144,7 @@
   /* ── 유저 상세 페이지 ── */
   .backbtn { margin-top:2px; }
   .profile .p-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .sharebtn { margin-left:auto; }
   .profile .p-nick { font-size:clamp(19px,3.6vw,26px); font-weight:700; letter-spacing:0.02em; margin:2px 0 0; word-break:break-all; }
   .profile .p-bio { margin:10px 0 0; color:var(--dim); font-size:13.5px; line-height:1.55; word-break:break-word; white-space:pre-wrap; }
   .profile .p-bio.empty { color:var(--faint); font-style:italic; }
@@ -291,6 +292,7 @@
           <div class="p-head">
             <h2 class="p-nick" id="uNick">–</h2>
             <span class="cc" id="uCountry"></span>
+            <button class="theme-toggle sharebtn" id="shareBtn" type="button" hidden data-i18n="share">⧉ share</button>
           </div>
           <p class="p-role" id="uRole" hidden></p>
           <p class="p-bio empty" id="uBio"></p>
@@ -371,6 +373,7 @@
       u_sum: 'sum', u_avg: 'avg/day', u_active: 'active days', u_peak: 'peak',
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗',
+      share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
       ago_s: (n) => `${n}s ago`, ago_m: (n) => `${n}m ago`, ago_h: (n) => `${n}h ago`,
     },
@@ -395,6 +398,7 @@
       u_sum: '합계', u_avg: '일평균', u_active: '활동일', u_peak: '최고',
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗',
+      share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
       ago_s: (n) => `${n}초 전`, ago_m: (n) => `${n}분 전`, ago_h: (n) => `${n}시간 전`,
     },
@@ -594,6 +598,7 @@
     document.querySelectorAll('.usort').forEach((b) => b.setAttribute('aria-pressed', b.dataset.metric === uMetric));
   }
   function showUserError(msg) {
+    $('shareBtn').hidden = true;
     $('uChartWrap').hidden = true;
     $('uRole').hidden = true;
     $('uRole').innerHTML = '';
@@ -616,6 +621,7 @@
     syncUsortButtons();
     $('cmdEcho').textContent = `GET /user?nickname=${nick}`;
     $('uNick').textContent = nick;
+    $('shareBtn').hidden = true;
     $('uCountry').textContent = '';
     $('uRole').hidden = true;
     $('uRole').innerHTML = '';
@@ -697,6 +703,7 @@
   }
   function renderUser(data) {
     $('uNick').textContent = data.nickname;
+    $('shareBtn').hidden = false;
     $('uCountry').textContent = data.country || '';
     renderRole(data.role, data.company);
     const bioEl = $('uBio');
@@ -776,6 +783,46 @@
     }
   });
   $('backBtn').addEventListener('click', goBoard);
+
+  // ── 프로필 공유: 모바일(터치)은 시스템 공유 시트, 데스크톱은 링크 복사 ──
+  // 공유 URL 은 ?user= 만 남긴 정식 주소(api·기타 파라미터 제거).
+  function profileUrl(nick) {
+    const u = new URL(location.origin + location.pathname);
+    u.searchParams.set('user', nick);
+    return u.toString();
+  }
+  let shareFlashTimer = null;
+  function flashShareBtn(msg) {
+    const btn = $('shareBtn');
+    btn.textContent = msg;
+    clearTimeout(shareFlashTimer);
+    shareFlashTimer = setTimeout(() => { btn.textContent = t('share'); }, 1600);
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+    // 클립보드 API 미지원/거부 시 임시 textarea 로 폴백
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch { return false; }
+  }
+  $('shareBtn').addEventListener('click', async () => {
+    if (!curUser) return;
+    const url = profileUrl(curUser);
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      try { await navigator.share({ title: `${curUser} · Open Code War`, url }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; } // 사용자가 시트를 닫음 → 무시. 그 외 실패는 복사로 폴백.
+    }
+    flashShareBtn((await copyText(url)) ? t('copied') : t('copy_fail'));
+  });
   document.querySelectorAll('.usort').forEach((b) =>
     b.addEventListener('click', () => {
       uMetric = b.dataset.metric;
