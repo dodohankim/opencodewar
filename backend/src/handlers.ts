@@ -5,9 +5,11 @@ import {
   clampChars,
   clampLimit,
   isValidBio,
+  isValidCountryCode,
   isValidNickname,
   isValidShortText,
   isValidUserId,
+  MAX_CITY_LEN,
   MAX_COMPANY_LEN,
   MAX_ROLE_LEN,
   normalizeLinks,
@@ -17,8 +19,9 @@ import {
   type Links,
   type Project,
 } from './validate';
-import { METRIC_COL, SNAPSHOT_KEY, getSnapshot, periodOf } from './snapshot';
+import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, getSnapshot, periodOf } from './snapshot';
 import { displayNickname } from './nickname';
+import { cityKey, cleanCity, countryFlag } from './zones';
 
 /** 유저 상세 페이지가 보여주는 최근 사용량 구간(일). */
 const PROFILE_WINDOW_DAYS = 30;
@@ -129,13 +132,47 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
 
 /**
  * GET /leaderboard?type=daily|weekly|weekend&metric=prompts|chars&limit=100
- * KV 스냅샷에서 서빙(D1 미접근). 스냅샷 신선도는 SNAPSHOT_TTL_MS.
+ *   &scope=global|country|city [&country=KR] [&city=Seoul]
+ * - scope=global(기본): KV 스냅샷에서 서빙(D1 미접근).
+ * - scope=country|city: 구역 필터 랭킹을 D1에서 실시간 계산("이 구역 코드워리어").
  */
 export async function handleLeaderboard(url: URL, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const type = parseType(url.searchParams.get('type'));
   const metric = parseMetric(url.searchParams.get('metric'));
   const limit = clampLimit(url.searchParams.get('limit'));
+  const scope = url.searchParams.get('scope');
 
+  // ── 구역 리더보드(국가 / 국가+도시) — 실시간 D1 ──
+  if (scope === 'country' || scope === 'city') {
+    const countryParam = url.searchParams.get('country');
+    if (!isValidCountryCode(countryParam)) return json({ error: 'invalid_country' }, 400);
+    const country = countryParam.toUpperCase();
+
+    let cityLabel: string | null = null;
+    let cityLower: string | null = null;
+    if (scope === 'city') {
+      const cityParam = url.searchParams.get('city');
+      if (!isValidShortText(cityParam, MAX_CITY_LEN)) return json({ error: 'invalid_city' }, 400);
+      cityLabel = cleanCity(cityParam);
+      if (!cityLabel) return json({ error: 'invalid_city' }, 400);
+      cityLower = cityKey(cityLabel);
+    }
+
+    const ranking = await computeZoneRanking(env, type, metric, limit, country, cityLower);
+    return json({
+      type,
+      metric,
+      scope,
+      country,
+      flag: countryFlag(country),
+      ...(scope === 'city' ? { city: cityLabel } : {}),
+      period: periodOf(type, Date.now()),
+      count: ranking.length,
+      ranking,
+    });
+  }
+
+  // ── 글로벌(기본) — KV 스냅샷 ──
   const snap = await getSnapshot(env, ctx);
   const board = snap.boards[type];
   const full = board ? board[metric] : [];
@@ -144,6 +181,7 @@ export async function handleLeaderboard(url: URL, env: Env, ctx?: ExecutionConte
   return json({
     type,
     metric,
+    scope: 'global',
     period: board ? board.period : periodOf(type, Date.now()),
     builtAt: snap.builtAt,
     count: ranking.length,
@@ -162,23 +200,28 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
   const orderCol = METRIC_COL[metric];
   const now = Date.now();
 
-  let aggSql: string;
-  let aggBinds: string[];
-  if (type === 'daily') {
-    aggSql = 'SELECT user_id, prompts, chars FROM daily_stats WHERE day = ?';
-    aggBinds = [kstToday(now)];
-  } else {
-    const days = type === 'weekly' ? weekDays(now) : weekendDays(now);
-    const placeholders = days.map(() => '?').join(',');
-    aggSql = `SELECT user_id, SUM(prompts) AS prompts, SUM(chars) AS chars
-              FROM daily_stats WHERE day IN (${placeholders}) GROUP BY user_id`;
-    aggBinds = days;
-  }
+  const days = type === 'daily' ? [kstToday(now)] : type === 'weekly' ? weekDays(now) : weekendDays(now);
+  const ph = days.map(() => '?').join(',');
 
+  // 한 번의 쿼리로 프로필 + 글로벌/국가/도시 구역의 순위·인원을 계산한다.
+  // agg  = 기간 내 전체 유저 집계(글로벌). aggc = 내 국가로 좁힘. aggt = 내 국가+도시로 좁힘.
+  // 도시 구역 키 = (country, LOWER(city)) — 동명 도시 분리(파리 FR/US) + Hangul 은 LOWER 무영향.
   const sql = `
-    WITH agg AS (${aggSql}),
-         me AS (SELECT prompts, chars FROM agg WHERE user_id = ?),
-         prof AS (SELECT nickname, bio, role, company, links, projects FROM users WHERE user_id = ?)
+    WITH agg AS (
+      SELECT s.user_id, SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
+      FROM daily_stats s WHERE s.day IN (${ph}) GROUP BY s.user_id
+    ),
+    me AS (SELECT prompts, chars FROM agg WHERE user_id = ?),
+    prof AS (SELECT nickname, bio, role, company, links, projects, country, city FROM users WHERE user_id = ?),
+    aggc AS (
+      SELECT a.prompts, a.chars FROM agg a JOIN users u ON u.user_id = a.user_id
+      WHERE u.country = (SELECT country FROM prof)
+    ),
+    aggt AS (
+      SELECT a.prompts, a.chars FROM agg a JOIN users u ON u.user_id = a.user_id
+      WHERE u.country = (SELECT country FROM prof)
+        AND LOWER(u.city) = LOWER((SELECT city FROM prof))
+    )
     SELECT
       (SELECT nickname FROM prof) AS nickname,
       (SELECT bio FROM prof) AS bio,
@@ -186,15 +229,22 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
       (SELECT company FROM prof) AS company,
       (SELECT links FROM prof) AS links,
       (SELECT projects FROM prof) AS projects,
+      (SELECT country FROM prof) AS country,
+      (SELECT city FROM prof) AS city,
       COALESCE((SELECT prompts FROM me), 0) AS prompts,
       COALESCE((SELECT chars FROM me), 0) AS chars,
       (SELECT COUNT(*) FROM agg) AS total,
       CASE WHEN (SELECT COUNT(*) FROM me) = 0 THEN NULL
-           ELSE (SELECT COUNT(*) + 1 FROM agg WHERE ${orderCol} > (SELECT ${orderCol} FROM me))
-      END AS rank`;
+           ELSE (SELECT COUNT(*) + 1 FROM agg WHERE ${orderCol} > (SELECT ${orderCol} FROM me)) END AS rank,
+      (SELECT COUNT(*) FROM aggc) AS country_total,
+      CASE WHEN (SELECT COUNT(*) FROM me) = 0 OR (SELECT country FROM prof) IS NULL THEN NULL
+           ELSE (SELECT COUNT(*) + 1 FROM aggc WHERE ${orderCol} > (SELECT ${orderCol} FROM me)) END AS country_rank,
+      (SELECT COUNT(*) FROM aggt) AS city_total,
+      CASE WHEN (SELECT COUNT(*) FROM me) = 0 OR (SELECT city FROM prof) IS NULL OR (SELECT country FROM prof) IS NULL THEN NULL
+           ELSE (SELECT COUNT(*) + 1 FROM aggt WHERE ${orderCol} > (SELECT ${orderCol} FROM me)) END AS city_rank`;
 
   const row = await env.DB.prepare(sql)
-    .bind(...aggBinds, userId, userId)
+    .bind(...days, userId, userId)
     .first<{
       nickname: string | null;
       bio: string | null;
@@ -202,11 +252,40 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
       company: string | null;
       links: string | null;
       projects: string | null;
+      country: string | null;
+      city: string | null;
       prompts: number;
       chars: number;
       total: number;
       rank: number | null;
+      country_total: number;
+      country_rank: number | null;
+      city_total: number;
+      city_rank: number | null;
     }>();
+
+  const country = row?.country ?? null;
+  const city = row?.city ?? null;
+  const zones = {
+    global: { rank: row?.rank ?? null, total: Number(row?.total) || 0 },
+    country: country
+      ? {
+          code: country,
+          flag: countryFlag(country),
+          rank: row?.country_rank ?? null,
+          total: Number(row?.country_total) || 0,
+        }
+      : null,
+    city:
+      city && country
+        ? {
+            label: city,
+            key: cityKey(city),
+            rank: row?.city_rank ?? null,
+            total: Number(row?.city_total) || 0,
+          }
+        : null,
+  };
 
   return json({
     type,
@@ -219,10 +298,13 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
       company: row?.company ?? null,
       links: parseLinks(row?.links ?? null),
       projects: parseProjects(row?.projects ?? null),
+      country,
+      city,
       prompts: Number(row?.prompts) || 0,
       chars: Number(row?.chars) || 0,
-      rank: row?.rank ?? null,
+      rank: row?.rank ?? null, // 글로벌(하위호환)
       total: Number(row?.total) || 0,
+      zones,
     },
   });
 }
@@ -268,6 +350,14 @@ export async function handleProfile(request: Request, env: Env): Promise<Respons
     !setText('company', 'company', isValidShortText(body.company, MAX_COMPANY_LEN), body.company)
   ) {
     return json({ error: 'invalid_company' }, 400);
+  }
+  if ('city' in body) {
+    // 도시는 표시용으로 공백 정규화(내부 연속공백 축소)해 저장. 빈 값이면 해제(NULL).
+    if (!isValidShortText(body.city, MAX_CITY_LEN)) return json({ error: 'invalid_city' }, 400);
+    const cleaned = cleanCity(body.city);
+    cols.push('city = ?');
+    vals.push(cleaned);
+    echo.city = cleaned;
   }
   if ('links' in body) {
     const links = normalizeLinks(body.links);
@@ -336,7 +426,7 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   const nickname = (nicknameParam as string).trim();
 
   const user = await env.DB.prepare(
-    'SELECT user_id, nickname, bio, role, company, links, projects, email, country, created_at FROM users WHERE nickname = ?',
+    'SELECT user_id, nickname, bio, role, company, links, projects, email, country, city, created_at FROM users WHERE nickname = ?',
   )
     .bind(nickname)
     .first<{
@@ -349,6 +439,7 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
       projects: string | null;
       email: string | null;
       country: string | null;
+      city: string | null;
       created_at: number;
     }>();
 
@@ -384,6 +475,8 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     projects: parseProjects(user.projects),
     email: user.email ?? null, // 로그인 도입 전까지 항상 null
     country: user.country ?? null,
+    flag: countryFlag(user.country), // 국가 구역 표시용 국기(없으면 '')
+    city: user.city ?? null,
     joinedAt: Number(user.created_at) || null,
     range: { from: days[0], to: days[days.length - 1], days: days.length },
     days: series,

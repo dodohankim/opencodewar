@@ -32,14 +32,21 @@ export function isValidBio(v: unknown): v is string {
   return !BIO_CONTROL_RE.test(t);
 }
 
-/** 직함(role)·회사(company): 한 줄, 0~40자(트림 후). 빈 문자열은 "해제". 제어문자 금지. */
+/** 직함(role)·회사(company)·도시(city): 한 줄, 0~40자(트림 후). 빈 문자열은 "해제". 제어문자 금지. */
 export const MAX_ROLE_LEN = 40;
 export const MAX_COMPANY_LEN = 40;
+export const MAX_CITY_LEN = 40;
 export function isValidShortText(v: unknown, max: number): v is string {
   if (typeof v !== 'string') return false;
   const t = v.trim();
   if (t.length > max) return false;
   return !BIO_CONTROL_RE.test(t);
+}
+
+/** 국가코드 파라미터: ISO 3166-1 alpha-2(2글자 영문). 구역 리더보드 필터용. */
+const COUNTRY_RE = /^[A-Za-z]{2}$/;
+export function isValidCountryCode(v: unknown): v is string {
+  return typeof v === 'string' && COUNTRY_RE.test(v);
 }
 
 /** 링크/프로젝트 URL: http(s) 절대 URL, 최대 200자. (웹에서 rel=nofollow 로 렌더) */

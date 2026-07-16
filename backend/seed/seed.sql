@@ -9,17 +9,19 @@
 DELETE FROM daily_stats WHERE user_id LIKE 'seed_user_%';
 DELETE FROM users WHERE user_id LIKE 'seed_user_%';
 
-INSERT INTO users (user_id, nickname, bio, country, created_at, last_seen_at) VALUES
-  ('seed_user_01', '코드깎는노인',   '20년째 손맛으로 코드를 깎습니다. vim + claude 조합.', 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_02', 'vim_귀신',       'hjkl로 산다. 마우스는 장식.', 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_03', '새벽5시개발자',  '해 뜨기 전이 제일 집중 잘 됨.', 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_04', '반포자이코더',   NULL, 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_05', '프롬프트장인',   '좋은 프롬프트가 좋은 코드를 만든다.', 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_06', '리팩터_고양이',  NULL, 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_07', '세미콜론수집가', ';', 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_08', '버그사냥꾼',     '오늘도 한 마리 잡았다.', 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_09', '토큰_수도꼭지',  NULL, 'KR', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_10', NULL,             NULL, 'KR', unixepoch() * 1000, unixepoch() * 1000);
+-- country(IP 자동)·city(자기선언)를 다양화해 구역 리더보드 테스트가 되게 한다.
+--   KR/Seoul: 01,02,03,10 · KR/Busan: 04,05 · KR/(미설정): 06 · US/San Francisco: 07,08 · JP/Tokyo: 09
+INSERT INTO users (user_id, nickname, bio, country, city, created_at, last_seen_at) VALUES
+  ('seed_user_01', '코드깎는노인',   '20년째 손맛으로 코드를 깎습니다. vim + claude 조합.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_02', 'vim_귀신',       'hjkl로 산다. 마우스는 장식.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_03', '새벽5시개발자',  '해 뜨기 전이 제일 집중 잘 됨.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_04', '반포자이코더',   NULL, 'KR', 'Busan',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_05', '프롬프트장인',   '좋은 프롬프트가 좋은 코드를 만든다.', 'KR', 'Busan',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_06', '리팩터_고양이',  NULL, 'KR', NULL,            unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_07', '세미콜론수집가', ';', 'US', 'San Francisco', unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_08', '버그사냥꾼',     '오늘도 한 마리 잡았다.', 'US', 'San Francisco', unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_09', '토큰_수도꼭지',  NULL, 'JP', 'Tokyo',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_10', NULL,             NULL, 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000);
 
 INSERT INTO daily_stats (user_id, day, prompts, chars, country) VALUES
   -- 오늘 (daily 보드)

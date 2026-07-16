@@ -30,6 +30,7 @@ export function loadConfig() {
       bio: null,
       role: null,
       company: null,
+      city: null,
       links: {},
       projects: [],
       ...cfg,

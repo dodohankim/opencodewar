@@ -21,11 +21,12 @@ const endpoint = endpointOf(cfg);
 const LINK_KEYS = ['website', 'github', 'x', 'linkedin'];
 const MAX_PROJECTS = 5;
 
-// 직함/회사/자기소개 공통 텍스트 필드 메타.
+// 직함/회사/자기소개/도시 공통 텍스트 필드 메타.
 const TEXT_FIELDS = {
   bio: { max: 160, label: '자기소개' },
   role: { max: 40, label: '직함' },
   company: { max: 40, label: '회사' },
+  city: { max: 40, label: '도시' },
 };
 
 function print(s) {
@@ -305,6 +306,7 @@ async function status() {
   const company = pick('company', null);
   const links = pick('links', {}) || {};
   const projects = pick('projects', []) || [];
+  const city = pick('city', null);
 
   const lines = ['**Open Code War — 내 정보**', `- 닉네임: ${nickname}`];
 
@@ -326,8 +328,24 @@ async function status() {
     lines.push(`- 프로젝트: (없음) — \`/ocw project add <이름> :: <설명> :: <url>\``);
   }
 
+  // 구역: 국가(IP 자동) + 도시(자기선언). 국가/국기는 서버(/me)에서만 온다.
+  const zones = (me && me.zones) || {};
+  const flag = (zones.country && zones.country.flag) || '';
+  const country = (me && me.country) || null;
+  const zoneChip = [];
+  if (country) zoneChip.push(`${flag} ${country}`.trim());
+  zoneChip.push(city ? city : '(도시 미설정) — `/ocw city <도시>`');
+  lines.push(`- 구역: ${zoneChip.join(' · ')}`);
+
   if (me) {
-    lines.push(`- 오늘(일간): ${me.prompts} 프롬프트 · ${me.chars} 글자 · 순위 ${me.rank ?? '-'}/${me.total}`);
+    lines.push(`- 오늘(일간): ${me.prompts} 프롬프트 · ${me.chars} 글자`);
+
+    // 구역별 순위: 🌍 글로벌 · 🇰🇷 국가 · 도시. rank 없으면 '-'.
+    const fmt = (z) => (z && z.rank != null ? `${z.rank}/${z.total}` : `-/${(z && z.total) || 0}`);
+    const rankParts = [`🌍 ${fmt(zones.global)}`];
+    if (zones.country) rankParts.push(`${zones.country.flag} ${fmt(zones.country)}`);
+    if (zones.city) rankParts.push(`${zones.city.label} ${fmt(zones.city)}`);
+    lines.push(`- 순위(일간): ${rankParts.join(' · ')}`);
   }
   return print(lines.join('\n'));
 }
@@ -340,6 +358,7 @@ function help() {
       '- `/ocw bio <소개>` — 자기소개 (최대 160자)',
       '- `/ocw role <직함>` — 직함 (예: Frontend Engineer)',
       '- `/ocw company <회사>` — 소속/회사',
+      '- `/ocw city <도시>` — 내 도시 (도시 구역 랭킹 "이 구역 코드워리어")',
       '- `/ocw link <종류> <url>` — 링크 (종류: website/github/x/linkedin)',
       '- `/ocw project add <이름> :: <설명> :: <url>` — 사이드프로젝트 (최대 5개)',
       '- `/ocw project list | remove <번호> | clear` — 프로젝트 관리',
@@ -362,6 +381,7 @@ async function main() {
     case 'bio':
     case 'role':
     case 'company':
+    case 'city':
       return setText(sub, rest);
     case 'link':
       return setLink(rest);

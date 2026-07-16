@@ -69,6 +69,50 @@ export async function computeRanking(
   }));
 }
 
+/**
+ * 구역(국가, 또는 국가+도시) 필터를 건 top-N 랭킹을 D1에서 실시간 계산한다.
+ * 스냅샷을 쓰지 않는다(구역 조합이 많고 저트래픽 → 조회 시 직접 집계).
+ * @param country ISO alpha-2(대문자). @param cityLower 소문자 도시 키(있으면 국가+도시로 좁힘).
+ */
+export async function computeZoneRanking(
+  env: Env,
+  type: BoardType,
+  metric: Metric,
+  limit: number,
+  country: string,
+  cityLower?: string | null,
+): Promise<RankEntry[]> {
+  const orderCol = METRIC_COL[metric];
+  const now = Date.now();
+  const days = type === 'daily' ? [kstToday(now)] : type === 'weekly' ? weekDays(now) : weekendDays(now);
+  const ph = days.map(() => '?').join(',');
+  const cityClause = cityLower != null ? 'AND LOWER(u.city) = ?' : '';
+  const binds: (string | number)[] = [...days, country];
+  if (cityLower != null) binds.push(cityLower);
+  binds.push(limit);
+
+  const result = await env.DB.prepare(
+    `SELECT s.user_id, u.nickname, u.country AS country,
+            SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
+     FROM daily_stats s JOIN users u ON u.user_id = s.user_id
+     WHERE s.day IN (${ph}) AND u.country = ? ${cityClause}
+     GROUP BY s.user_id, u.nickname
+     ORDER BY ${orderCol} DESC, s.user_id ASC
+     LIMIT ?`,
+  )
+    .bind(...binds)
+    .all<LeaderboardRow>();
+
+  return result.results.map((r, i) => ({
+    rank: i + 1,
+    nickname: displayNickname(r.nickname, r.user_id),
+    registered: r.nickname != null,
+    country: r.country ?? null,
+    prompts: Number(r.prompts) || 0,
+    chars: Number(r.chars) || 0,
+  }));
+}
+
 /** 전 보드/지표를 계산해 스냅샷 객체 생성 */
 export async function buildSnapshot(env: Env): Promise<Snapshot> {
   const now = Date.now();

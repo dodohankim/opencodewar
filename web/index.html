@@ -223,7 +223,7 @@
         <div class="status">
           <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">Connecting…</span></span>
           <span><span data-i18n="joined">joined</span> <b id="countChip">–</b></span>
-          <span>region <b>KR</b></span>
+          <span>region <b id="regionChip">KR</b></span>
           <span><span data-i18n="rank1">#1</span> <b id="champChip">–</b></span>
           <span id="updChip"></span>
         </div>
@@ -489,6 +489,7 @@
     } else {
       $('champChip').textContent = champ ? (champ.nickname || t('anon')) : '–';
     }
+    $('regionChip').textContent = champ && champ.country ? `${champ.country} ${flagOf(champ.country)}` : '–';
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
 
     if (!rows.length) {
@@ -514,7 +515,7 @@
       return `<tr class="${isMe ? 'me' : ''}">
         <td><span class="${rankCls}">${r.rank}</span></td>
         <td>${nmCell}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
-        <td><span class="cc">${escapeHtml(r.country || '–')}</span></td>
+        <td><span class="cc">${r.country ? escapeHtml(r.country) + ' ' + flagOf(r.country) : '–'}</span></td>
         <td class="num"><span class="pnum">${fmt(primary)}</span></td>
         <td class="num"><span class="snum">${fmt(second)}</span></td>
         <td><span class="bar">${bar(pct)}</span></td>
@@ -529,6 +530,13 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // 2글자 국가코드 → 국기 이모지(regional indicator). 유효하지 않으면 ''.
+  function flagOf(code) {
+    if (typeof code !== 'string' || !/^[A-Za-z]{2}$/.test(code)) return '';
+    const cc = code.toUpperCase();
+    return String.fromCodePoint(cc.charCodeAt(0) + 0x1f1a5, cc.charCodeAt(1) + 0x1f1a5);
   }
 
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
@@ -704,7 +712,10 @@
   function renderUser(data) {
     $('uNick').textContent = data.nickname;
     $('shareBtn').hidden = false;
-    $('uCountry').textContent = data.country || '';
+    $('uCountry').textContent = [
+      data.country ? `${data.country} ${flagOf(data.country)}` : '',
+      data.city || '',
+    ].filter(Boolean).join(' · ');
     renderRole(data.role, data.company);
     const bioEl = $('uBio');
     if (data.bio && String(data.bio).trim()) {
