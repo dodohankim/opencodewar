@@ -8,6 +8,7 @@ import {
   handleRegister,
   handleTrack,
   handleUser,
+  handleZones,
 } from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
 import { handleProfilePage } from './og';
@@ -43,6 +44,9 @@ export default {
       }
       if (pathname === '/leaderboard' && request.method === 'GET') {
         return await handleLeaderboard(url, env, ctx);
+      }
+      if (pathname === '/zones' && request.method === 'GET') {
+        return await handleZones(env);
       }
       if (pathname === '/me' && request.method === 'GET') {
         return await handleMe(url, env);

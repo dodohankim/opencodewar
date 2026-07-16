@@ -189,6 +189,52 @@ export async function handleLeaderboard(url: URL, env: Env, ctx?: ExecutionConte
   });
 }
 
+/**
+ * GET /zones — 구역 셀렉터용 목록: 실제 활동 유저가 있는 국가 + 각 국가의 도시(인원수).
+ * 세계 도시 사전이 아니라 우리 유저 실데이터에서 뽑는다(빈 구역 안 생김).
+ * 도시는 대소문자 무시로 병합(리더보드 그룹키와 동일: LOWER(city)), 대표 라벨은 최다 표기.
+ */
+export async function handleZones(env: Env): Promise<Response> {
+  const rows = await env.DB.prepare(
+    `SELECT u.country AS country, u.city AS city, COUNT(*) AS n
+     FROM users u
+     WHERE u.country IS NOT NULL
+       AND EXISTS (SELECT 1 FROM daily_stats d WHERE d.user_id = u.user_id)
+     GROUP BY u.country, u.city`,
+  ).all<{ country: string; city: string | null; n: number }>();
+
+  type CityAgg = { label: string; count: number };
+  type CountryAgg = { code: string; count: number; cities: Map<string, CityAgg> };
+  const byCountry = new Map<string, CountryAgg>();
+
+  for (const r of rows.results) {
+    const n = Number(r.n) || 0;
+    let c = byCountry.get(r.country);
+    if (!c) {
+      c = { code: r.country, count: 0, cities: new Map() };
+      byCountry.set(r.country, c);
+    }
+    c.count += n;
+    if (r.city) {
+      const key = cityKey(r.city);
+      const existing = c.cities.get(key);
+      if (!existing) c.cities.set(key, { label: r.city, count: n });
+      else existing.count += n; // 대소문자 변형 병합(대표 라벨은 첫 표기 유지)
+    }
+  }
+
+  const countries = [...byCountry.values()]
+    .map((c) => ({
+      code: c.code,
+      flag: countryFlag(c.code),
+      count: c.count,
+      cities: [...c.cities.values()].sort((a, b) => b.count - a.count),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return json({ countries });
+}
+
 /** GET /me?userId=...&type=...&metric=... — 내 집계와 순위(실시간 D1, 저빈도). */
 export async function handleMe(url: URL, env: Env): Promise<Response> {
   const userId = url.searchParams.get('userId');

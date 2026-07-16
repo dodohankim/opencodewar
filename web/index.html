@@ -99,6 +99,18 @@
   .toolbar button { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); border-radius:5px; padding:5px 10px; cursor:pointer; }
   .toolbar button:hover { color:var(--fg); }
 
+  /* 구역(zone) 스코프 셀렉터: Global / Country / City 드릴다운 */
+  .zonebar { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-top:10px; }
+  .scopes { display:inline-flex; gap:6px; }
+  .scope { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:6px 12px; border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .scope:hover { color:var(--fg); }
+  .scope[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .zonepick { display:inline-flex; gap:12px; align-items:center; font-size:12px; color:var(--faint); }
+  .zonepick label { display:inline-flex; gap:6px; align-items:center; }
+  /* display 지정이 [hidden] 속성(display:none)을 덮어쓰므로 명시적으로 숨김 처리 */
+  .zonepick[hidden], .zonepick label[hidden] { display:none !important; }
+  .zonepick select { font:inherit; font-size:12px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 8px; cursor:pointer; max-width:180px; }
+
   .board-scroll { overflow-x:auto; }
   table { width:100%; border-collapse:collapse; min-width:640px; }
   thead th { font-size:10.5px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); text-align:left; padding:6px 15px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
@@ -242,6 +254,18 @@
         </div>
       </div>
 
+      <div class="zonebar">
+        <div class="scopes" role="tablist" aria-label="zone scope">
+          <button class="scope" data-scope="global" aria-pressed="true">🌍 <span data-i18n="scope_global">Global</span></button>
+          <button class="scope" data-scope="country" aria-pressed="false">🏳️ <span data-i18n="scope_country">Country</span></button>
+          <button class="scope" data-scope="city" aria-pressed="false">🏙️ <span data-i18n="scope_city">City</span></button>
+        </div>
+        <div class="zonepick" id="zonePick" hidden>
+          <label><span data-i18n="zone_region">region</span> <select id="countrySel" aria-label="country"></select></label>
+          <label id="cityWrap" hidden><span data-i18n="zone_city">city</span> <select id="citySel" aria-label="city"></select></label>
+        </div>
+      </div>
+
       <div class="toolbar">
         <input type="text" id="meInput" data-i18n-ph="me_ph" placeholder="your nickname (highlight)" />
         <button id="refreshBtn" type="button" data-i18n="refresh">↻ Refresh</button>
@@ -366,6 +390,8 @@
       install_note: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
       privacy: '[privacy] no prompt content · character count only',
       loading: 'Loading…', empty: 'No records for this period yet.', anon: '(anon)',
+      scope_global: 'Global', scope_country: 'Country', scope_city: 'City',
+      zone_region: 'region', zone_city: 'city', zone_nocity: 'No cities registered in this region yet.',
       error: "Can't reach the API", error_hint: 'Make sure the backend is running (cd backend && npm run dev).',
       back: '← Leaderboard', profile_legend: 'profile',
       email_label: 'email', email_ph: 'Available after sign-in', member_since: 'member since',
@@ -391,6 +417,8 @@
       install_note: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
       privacy: '[privacy] 프롬프트 내용 미수집 · 글자 수만',
       loading: '불러오는 중…', empty: '아직 이 기간의 기록이 없습니다.', anon: '(익명)',
+      scope_global: '글로벌', scope_country: '국가', scope_city: '도시',
+      zone_region: '국가', zone_city: '도시', zone_nocity: '이 국가엔 아직 등록된 도시가 없습니다.',
       error: 'API에 연결할 수 없습니다', error_hint: '백엔드가 켜져 있는지 확인하세요 (cd backend && npm run dev).',
       back: '← 리더보드', profile_legend: '프로필',
       email_label: '이메일', email_ph: '로그인 도입 후 연동 예정', member_since: '가입일',
@@ -407,6 +435,22 @@
 
   let curBoard = 'daily';
   let curMetric = 'prompts';
+  let curScope = 'global';   // global | country | city
+  let curCountry = null;     // 선택된 국가코드
+  let curCity = null;        // 선택된 도시 라벨(원문)
+  let zonesData = null;      // GET /zones 응답 캐시
+  let lastChampCountry = null; // 현재 보드 챔피언 국가(히어로 region 클릭 점프용)
+
+  // 현재 스코프에 맞는 /leaderboard 쿼리스트링.
+  function boardQuery() {
+    let q = `type=${curBoard}&metric=${curMetric}`;
+    if (curScope === 'country' && curCountry) {
+      q += `&scope=country&country=${encodeURIComponent(curCountry)}`;
+    } else if (curScope === 'city' && curCountry && curCity) {
+      q += `&scope=city&country=${encodeURIComponent(curCountry)}&city=${encodeURIComponent(curCity)}`;
+    }
+    return q;
+  }
   const prevRanks = {};
   let myNick = localStorage.getItem('ocw_me') || '';
 
@@ -460,13 +504,20 @@
   const mmdd = (s) => (typeof s === 'string' ? s.slice(5) : '');
 
   async function load() {
-    const key = `${curBoard}:${curMetric}`;
-    $('cmdEcho').textContent = `GET /leaderboard?type=${curBoard}&metric=${curMetric}`;
-    $('boardLegend').textContent = `leaderboard · ${curBoard} · ${curMetric}`;
+    const q = boardQuery();
+    const scopeTag = curScope === 'global' ? '' : ` · ${curScope === 'city' ? (curCity || '?') : curCountry}`;
+    const key = `${curScope}:${curCountry || ''}:${curCity || ''}:${curBoard}:${curMetric}`;
+    $('cmdEcho').textContent = `GET /leaderboard?${q}`;
+    $('boardLegend').textContent = `leaderboard · ${curBoard} · ${curMetric}${scopeTag}`;
     $('thPrimary').textContent = curMetric;
     $('thSecond').textContent = curMetric === 'prompts' ? 'chars' : 'prompts';
+    // city 스코프인데 고를 도시가 없으면(해당 국가에 등록 도시 없음) 빈 상태 안내.
+    if (curScope === 'city' && !curCity) {
+      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('zone_nocity')}</div></td></tr>`;
+      return;
+    }
     try {
-      const res = await fetch(`${API}/leaderboard?type=${curBoard}&metric=${curMetric}&limit=50`, { cache: 'no-store' });
+      const res = await fetch(`${API}/leaderboard?${q}&limit=50`, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       render(data, key);
@@ -489,6 +540,7 @@
     } else {
       $('champChip').textContent = champ ? (champ.nickname || t('anon')) : '–';
     }
+    lastChampCountry = champ && champ.country ? champ.country : null;
     $('regionChip').textContent = champ && champ.country ? `${champ.country} ${flagOf(champ.country)}` : '–';
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
 
@@ -547,6 +599,72 @@
     document.querySelectorAll('.sort').forEach((x) => x.setAttribute('aria-pressed', x === b));
     curMetric = b.dataset.metric; load();
   }));
+
+  // ── 구역(zone) 셀렉터: Global → Country → City ──
+  async function loadZones() {
+    try {
+      const res = await fetch(`${API}/zones`, { cache: 'no-store' });
+      if (!res.ok) return;
+      zonesData = await res.json();
+      if (curScope !== 'global') populateCountrySel();
+    } catch (e) { /* zones 실패해도 global 은 동작 */ }
+  }
+  function fillSelect(sel, items, val, text) {
+    sel.innerHTML = '';
+    items.forEach((it) => {
+      const o = document.createElement('option');
+      o.value = val(it); o.textContent = text(it);
+      sel.appendChild(o);
+    });
+  }
+  function citiesFor(code) {
+    const c = ((zonesData && zonesData.countries) || []).find((x) => x.code === code);
+    return (c && c.cities) || [];
+  }
+  function populateCountrySel() {
+    const countries = (zonesData && zonesData.countries) || [];
+    fillSelect($('countrySel'), countries, (c) => c.code, (c) => `${c.code} ${flagOf(c.code)} (${c.count})`);
+    if (countries.length) {
+      if (!curCountry || !countries.some((c) => c.code === curCountry)) curCountry = countries[0].code;
+      $('countrySel').value = curCountry;
+    }
+    populateCitySel();
+  }
+  function populateCitySel() {
+    const cities = citiesFor(curCountry);
+    fillSelect($('citySel'), cities, (ct) => ct.label, (ct) => `${ct.label} (${ct.count})`);
+    if (cities.length) {
+      if (!curCity || !cities.some((ct) => ct.label === curCity)) curCity = cities[0].label;
+      $('citySel').value = curCity;
+    } else {
+      curCity = null;
+    }
+  }
+  function updateZonePick() {
+    $('zonePick').hidden = curScope === 'global';
+    $('cityWrap').hidden = curScope !== 'city';
+  }
+  document.querySelectorAll('.scope').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.scope').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    curScope = b.dataset.scope;
+    if (curScope !== 'global' && zonesData && !curCountry) populateCountrySel();
+    if (curScope === 'city') populateCitySel();
+    updateZonePick();
+    load();
+  }));
+  $('countrySel').addEventListener('change', (e) => { curCountry = e.target.value; populateCitySel(); load(); });
+  $('citySel').addEventListener('change', (e) => { curCity = e.target.value; load(); });
+
+  // 홈 히어로의 region 국기를 클릭하면 그 국가 보드로 점프.
+  $('regionChip').style.cursor = 'pointer';
+  $('regionChip').addEventListener('click', () => {
+    if (!lastChampCountry) return;
+    curScope = 'country'; curCountry = lastChampCountry;
+    document.querySelectorAll('.scope').forEach((x) => x.setAttribute('aria-pressed', x.dataset.scope === 'country'));
+    if (zonesData) { populateCountrySel(); $('countrySel').value = curCountry; }
+    updateZonePick();
+    load();
+  });
   $('refreshBtn').addEventListener('click', load);
   $('meInput').addEventListener('input', (e) => {
     myNick = e.target.value; localStorage.setItem('ocw_me', myNick); load();
@@ -579,7 +697,7 @@
     curUser = null;
     $('userView').hidden = true;
     $('boardView').hidden = false;
-    $('cmdEcho').textContent = `GET /leaderboard?type=${curBoard}&metric=${curMetric}`;
+    $('cmdEcho').textContent = `GET /leaderboard?${boardQuery()}`;
     document.title = BASE_TITLE;
     window.scrollTo(0, 0);
   }
@@ -873,6 +991,7 @@
 
   applyLang();
   load();  // 리더보드를 미리 채워둠(상세에서 뒤로가기 시 즉시 표시)
+  loadZones(); // 구역 셀렉터 드롭다운 채우기(백그라운드)
   route(); // 초기 URL(?user=) 에 맞춰 뷰 결정
 </script>
 
