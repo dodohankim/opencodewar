@@ -35,6 +35,16 @@
       "id": "a04f93e331d7462faba81f94b806949d"
     }
   ],
+  // /track 남용 방지: 클라이언트 IP당 60초 60건 상한(사람은 도달 불가, 스팸은 차단).
+  // 집계는 Cloudflare 위치(colo)별 — 분산 공격은 위치 수만큼 완화. 추가 인프라 없이 Worker 네이티브.
+  // period 는 10 또는 60만 허용. namespace_id 는 계정 내 rate-limiter 고유 정수.
+  "ratelimits": [
+    {
+      "name": "TRACK_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

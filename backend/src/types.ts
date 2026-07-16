@@ -1,8 +1,19 @@
+/**
+ * Cloudflare 네이티브 Rate Limiting 바인딩(wrangler.jsonc 의 unsafe.bindings 에서 정의).
+ * key 당 simple.limit/period 로 카운트하며, 집계는 Cloudflare 위치(colo) 단위다.
+ * @cloudflare/workers-types 버전에 따라 미포함일 수 있어 최소 형태로 직접 선언한다.
+ */
+export interface RateLimit {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
 export interface Env {
   DB: D1Database;
   KV: KVNamespace;
   /** 정적 에셋(../web). 루트(/)는 run_worker_first 로 Worker가 먼저 받아 OG 재작성 후 이 바인딩으로 서빙. */
   ASSETS: Fetcher;
+  /** POST /track 남용 방지 rate-limiter. 클라이언트 IP 기준(분당 상한은 wrangler.jsonc). */
+  TRACK_RATE_LIMITER: RateLimit;
   /** 리더보드 스냅샷 신선도(ms). 미설정 시 30분. 로컬 테스트는 .dev.vars로 낮춤. */
   SNAPSHOT_TTL_MS?: string;
 }

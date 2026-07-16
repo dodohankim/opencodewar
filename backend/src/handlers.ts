@@ -45,6 +45,15 @@ function parseProjects(raw: string | null): Project[] {
 
 /** POST /track — 입력 이벤트 1건 수집. body: { userId, chars } */
 export async function handleTrack(request: Request, env: Env): Promise<Response> {
+  // 남용 방지: 본문 파싱 전에 IP 기준으로 먼저 차단(플러드 시 비용 최소화).
+  // userId는 클라이언트가 임의 생성/회전 가능하므로 회전 비용이 큰 IP를 키로 쓴다.
+  // (완전한 위조 차단은 서버 발급 서명 userId 도입 시. 지금은 스팸 완화가 목적.)
+  const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
+  const { success } = await env.TRACK_RATE_LIMITER.limit({ key: ip });
+  if (!success) {
+    return json({ error: 'rate_limited' }, 429);
+  }
+
   const body = await readJson(request);
   if (!body || !isValidUserId(body.userId)) {
     return json({ error: 'invalid_userId' }, 400);
