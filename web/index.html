@@ -277,10 +277,10 @@
           <table>
             <thead>
               <tr>
-                <th>#</th><th>coder</th><th>cc</th>
+                <th>#</th><th>coder</th>
                 <th class="num" id="thPrimary">prompts</th>
                 <th class="num" id="thSecond">chars</th>
-                <th>activity</th><th class="num">Δ</th>
+                <th>activity</th><th class="num">Δ</th><th>cc</th>
               </tr>
             </thead>
             <tbody id="tbody"><tr><td colspan="7"><div class="msg" id="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
@@ -567,11 +567,11 @@
       return `<tr class="${isMe ? 'me' : ''}">
         <td><span class="${rankCls}">${r.rank}</span></td>
         <td>${nmCell}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
-        <td><span class="cc">${r.country ? escapeHtml(r.country) + ' ' + flagOf(r.country) : '–'}</span></td>
         <td class="num"><span class="pnum">${fmt(primary)}</span></td>
         <td class="num"><span class="snum">${fmt(second)}</span></td>
         <td><span class="bar">${bar(pct)}</span></td>
         <td class="num">${move(r.rank, pRank)}</td>
+        <td><span class="cc">${r.country ? escapeHtml(r.country) + ' ' + flagOf(r.country) : '–'}</span></td>
       </tr>`;
     }).join('');
 
