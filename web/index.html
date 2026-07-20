@@ -318,8 +318,8 @@
             <div class="agents" role="tablist" aria-label="agent">
               <button class="agent" type="button" data-agent="claude" aria-pressed="true">Claude Code</button>
               <button class="agent" type="button" data-agent="codex" aria-pressed="false">Codex <span class="soon" data-i18n="soon">soon</span></button>
-              <button class="agent" type="button" data-agent="opencode" aria-pressed="false">OpenCode <span class="soon" data-i18n="soon">soon</span></button>
-              <button class="agent" type="button" data-agent="pi" aria-pressed="false">pi <span class="soon" data-i18n="soon">soon</span></button>
+              <button class="agent" type="button" data-agent="opencode" aria-pressed="false">OpenCode</button>
+              <button class="agent" type="button" data-agent="pi" aria-pressed="false">pi</button>
             </div>
             <div id="installCmds">
               <div class="cmd">/plugin marketplace add dodohankim/opencodewar</div>
@@ -413,9 +413,9 @@
       install_legend: 'join · install',
       soon: 'soon',
       install_note_claude: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
-      install_note_codex: 'Approve the hook once with <code>/hooks</code>, then type prompts in Codex to start counting. Set a display name with <code>/ocw nickname &lt;name&gt;</code>.',
-      install_note_opencode: 'Restart OpenCode and type prompts to start counting. Set a display name with <code>/ocw nickname &lt;name&gt;</code>.',
-      install_note_pi: 'Then type prompts in pi to start counting. Set a display name with <code>/ocw nickname &lt;name&gt;</code>.',
+      install_note_codex: 'No adapter yet — Codex plugin hooks have no prompt-submit event to count. Claude Code, OpenCode and pi work today.',
+      install_note_opencode: 'Restart OpenCode and type prompts to start counting. Set a display name with <code>node ~/.open-code-war/src/plugin/scripts/ocw-cli.mjs nickname &lt;name&gt;</code>. Needs Node.js on your PATH.',
+      install_note_pi: 'Restart pi and type prompts to start counting. Set a display name with <code>node ~/.open-code-war/src/plugin/scripts/ocw-cli.mjs nickname &lt;name&gt;</code>. Needs Node.js on your PATH.',
       privacy: '[privacy] no prompt content · character count only',
       loading: 'Loading…', empty: 'No records for this period yet.', anon: '(anon)',
       scope_global: 'Global', scope_country: 'Country', scope_city: 'City',
@@ -444,9 +444,9 @@
       install_legend: '참가 · 설치',
       soon: '준비 중',
       install_note_claude: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
-      install_note_codex: '<code>/hooks</code>에서 훅을 한 번 승인한 뒤 Codex에 프롬프트를 입력하면 집계가 시작됩니다. <code>/ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
-      install_note_opencode: 'OpenCode를 재시작하고 프롬프트를 입력하면 집계가 시작됩니다. <code>/ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
-      install_note_pi: '설치 후 pi에 프롬프트를 입력하면 집계가 시작됩니다. <code>/ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
+      install_note_codex: '아직 어댑터가 없습니다 — Codex 플러그인 훅에는 셀 수 있는 프롬프트 제출 시점이 없습니다. Claude Code·OpenCode·pi는 지금 바로 됩니다.',
+      install_note_opencode: 'OpenCode를 재시작하고 프롬프트를 입력하면 집계가 시작됩니다. <code>node ~/.open-code-war/src/plugin/scripts/ocw-cli.mjs nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요. PATH에 Node.js가 있어야 합니다.',
+      install_note_pi: 'pi를 재시작하고 프롬프트를 입력하면 집계가 시작됩니다. <code>node ~/.open-code-war/src/plugin/scripts/ocw-cli.mjs nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요. PATH에 Node.js가 있어야 합니다.',
       privacy: '[privacy] 프롬프트 내용 미수집 · 글자 수만',
       loading: '불러오는 중…', empty: '아직 이 기간의 기록이 없습니다.', anon: '(익명)',
       scope_global: '글로벌', scope_country: '국가', scope_city: '도시',
@@ -628,12 +628,21 @@
     curBoard = b.dataset.board; load();
   }));
 
-  // join·install 패널: 에이전트별 설치 명령 전환 (Codex/OpenCode/pi 어댑터는 출시 전 → soon 표기)
+  // join·install 패널: 에이전트별 설치 명령 전환.
+  // Codex 는 플러그인 훅에 프롬프트 제출 시점이 없어 아직 어댑터가 없다 → soon 표기, 명령 없음.
   const INSTALL_CMDS = {
     claude: ['/plugin marketplace add dodohankim/opencodewar', '/plugin install open-code-war@opencodewar'],
-    codex: ['codex plugin marketplace add dodohankim/opencodewar', 'codex plugin install open-code-war@opencodewar'],
-    opencode: ['opencode plugin open-code-war -g'],
-    pi: ['pi install git:github.com/dodohankim/opencodewar'],
+    codex: [],
+    opencode: [
+      'git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src',
+      'mkdir -p ~/.config/opencode/plugin',
+      'ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugin/ocw-track.js',
+    ],
+    pi: [
+      'git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src',
+      'mkdir -p ~/.pi/agent/extensions',
+      'ln -sf ~/.open-code-war/src/adapters/pi/ocw-track.ts ~/.pi/agent/extensions/ocw-track.ts',
+    ],
   };
   document.querySelectorAll('.agent').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.agent').forEach((x) => x.setAttribute('aria-pressed', x === b));
