@@ -5,9 +5,28 @@ import {
   MAX_PROJECT_NAME_LEN,
   MAX_ROLE_LEN,
   MAX_URL_LEN,
+  normalizeAgent,
   normalizeLinks,
   normalizeProjects,
 } from '../src/validate';
+
+describe('normalizeAgent', () => {
+  it('화이트리스트 에이전트를 그대로 반환한다', () => {
+    expect(normalizeAgent('claude-code')).toBe('claude-code');
+    expect(normalizeAgent('codex')).toBe('codex');
+    expect(normalizeAgent('opencode')).toBe('opencode');
+    expect(normalizeAgent('pi')).toBe('pi');
+  });
+
+  it('미지정·미지원 값은 claude-code 로 정규화한다 (구버전 플러그인 하위호환)', () => {
+    expect(normalizeAgent(undefined)).toBe('claude-code');
+    expect(normalizeAgent(null)).toBe('claude-code');
+    expect(normalizeAgent('')).toBe('claude-code');
+    expect(normalizeAgent('cursor')).toBe('claude-code');
+    expect(normalizeAgent('CLAUDE-CODE')).toBe('claude-code'); // 대소문자 변형도 기본값
+    expect(normalizeAgent(123)).toBe('claude-code');
+  });
+});
 
 describe('isValidUrl', () => {
   it('http(s) 절대 URL 을 허용한다', () => {

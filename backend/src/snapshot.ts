@@ -31,33 +31,20 @@ export async function computeRanking(
   const orderCol = METRIC_COL[metric];
   const now = Date.now();
 
-  let result;
-  if (type === 'daily') {
-    const day = kstToday(now);
-    result = await env.DB.prepare(
-      `SELECT s.user_id, u.nickname, s.country, s.prompts, s.chars
-       FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
-       WHERE s.day = ?
-       ORDER BY s.${orderCol} DESC, s.user_id ASC
-       LIMIT ?`,
-    )
-      .bind(day, limit)
-      .all<LeaderboardRow>();
-  } else {
-    const days = type === 'weekly' ? weekDays(now) : weekendDays(now);
-    const placeholders = days.map(() => '?').join(',');
-    result = await env.DB.prepare(
-      `SELECT s.user_id, u.nickname, MAX(s.country) AS country,
-              SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
-       FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
-       WHERE s.day IN (${placeholders})
-       GROUP BY s.user_id, u.nickname
-       ORDER BY ${orderCol} DESC, s.user_id ASC
-       LIMIT ?`,
-    )
-      .bind(...days, limit)
-      .all<LeaderboardRow>();
-  }
+  // daily_stats 는 (user_id, day, agent) 단위 행 — daily 도 유저별 합산이 필요해 전 보드 동일 쿼리.
+  const days = type === 'daily' ? [kstToday(now)] : type === 'weekly' ? weekDays(now) : weekendDays(now);
+  const placeholders = days.map(() => '?').join(',');
+  const result = await env.DB.prepare(
+    `SELECT s.user_id, u.nickname, MAX(s.country) AS country,
+            SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
+     FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
+     WHERE s.day IN (${placeholders})
+     GROUP BY s.user_id, u.nickname
+     ORDER BY ${orderCol} DESC, s.user_id ASC
+     LIMIT ?`,
+  )
+    .bind(...days, limit)
+    .all<LeaderboardRow>();
 
   return result.results.map((r, i) => ({
     rank: i + 1,

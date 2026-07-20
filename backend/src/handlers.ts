@@ -9,6 +9,7 @@ import {
   isValidNickname,
   isValidShortText,
   isValidUserId,
+  normalizeAgent,
   MAX_CITY_LEN,
   MAX_COMPANY_LEN,
   MAX_ROLE_LEN,
@@ -46,7 +47,7 @@ function parseProjects(raw: string | null): Project[] {
   }
 }
 
-/** POST /track — 입력 이벤트 1건 수집. body: { userId, chars } */
+/** POST /track — 입력 이벤트 1건 수집. body: { userId, chars, agent? } (agent 미지정 = claude-code) */
 export async function handleTrack(request: Request, env: Env): Promise<Response> {
   // 남용 방지: 본문 파싱 전에 IP 기준으로 먼저 차단(플러드 시 비용 최소화).
   // userId는 클라이언트가 임의 생성/회전 가능하므로 회전 비용이 큰 IP를 키로 쓴다.
@@ -63,6 +64,7 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
   }
   const userId = body.userId;
   const chars = clampChars(body.chars);
+  const agent = normalizeAgent(body.agent);
   const now = Date.now();
   const day = kstToday(now);
   const country = request.cf?.country ?? null;
@@ -70,10 +72,11 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
   // events insert + users insert(신규만) + daily_stats upsert 를 단일 트랜잭션(batch)으로.
   // 쓰기 절감: 기존 유저는 users를 다시 쓰지 않는다(DO NOTHING). last_seen 매번 갱신 X.
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO events (user_id, chars, country, created_at) VALUES (?, ?, ?, ?)').bind(
+    env.DB.prepare('INSERT INTO events (user_id, chars, country, agent, created_at) VALUES (?, ?, ?, ?, ?)').bind(
       userId,
       chars,
       country,
+      agent,
       now,
     ),
     env.DB.prepare(
@@ -82,13 +85,13 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
        ON CONFLICT(user_id) DO NOTHING`,
     ).bind(userId, country, now, now),
     env.DB.prepare(
-      `INSERT INTO daily_stats (user_id, day, prompts, chars, country)
-       VALUES (?, ?, 1, ?, ?)
-       ON CONFLICT(user_id, day) DO UPDATE SET
+      `INSERT INTO daily_stats (user_id, day, agent, prompts, chars, country)
+       VALUES (?, ?, ?, 1, ?, ?)
+       ON CONFLICT(user_id, day, agent) DO UPDATE SET
          prompts = daily_stats.prompts + 1,
          chars = daily_stats.chars + excluded.chars,
          country = COALESCE(daily_stats.country, excluded.country)`,
-    ).bind(userId, day, chars, country),
+    ).bind(userId, day, agent, chars, country),
   ]);
 
   return json({ ok: true, day });
@@ -496,8 +499,10 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   const now = Date.now();
   const days = recentDays(now, PROFILE_WINDOW_DAYS); // 오래된 날 → 오늘
   const placeholders = days.map(() => '?').join(',');
+  // daily_stats 는 (user_id, day, agent) 단위 행이므로 일별 시리즈는 agent 를 합산한다.
   const rows = await env.DB.prepare(
-    `SELECT day, prompts, chars FROM daily_stats WHERE user_id = ? AND day IN (${placeholders})`,
+    `SELECT day, SUM(prompts) AS prompts, SUM(chars) AS chars
+     FROM daily_stats WHERE user_id = ? AND day IN (${placeholders}) GROUP BY day`,
   )
     .bind(user.user_id, ...days)
     .all<{ day: string; prompts: number; chars: number }>();

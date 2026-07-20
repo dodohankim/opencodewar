@@ -27,7 +27,8 @@ Open Code War **never collects prompt content.** It only counts the number of su
 | Anonymous `userId` (auto-generated on device, irreversible) | Prompt **content** |
 | Number of prompt **submissions** | Code · files · paths |
 | Prompt **character count** (a single integer) | Email · real name or other PII |
-| (server-side) request country `cf.country` | Raw IP storage |
+| **Agent type** used (Claude Code·Codex etc., a single label) | Raw IP storage |
+| (server-side) request country `cf.country` | |
 
 > Even though the hook receives the raw prompt, it **computes only the character count and sends that — never the text.** It runs **fail-open** (short timeout + background fire-and-forget) so it never blocks or slows down your use of Claude Code, even if the network fails.
 
@@ -37,7 +38,7 @@ Open Code War **never collects prompt content.** It only counts the number of su
 
 ```
 ┌──────────────────────────────┐   POST /track      ┌───────────────────────────┐
-│  Claude Code plugin           │  ─ userId,chars ─▶ │  Cloudflare Worker         │
+│  Claude Code plugin           │ userId,chars,agent▶│  Cloudflare Worker         │
 │  · UserPromptSubmit hook      │                    │  · detects cf.country      │
 │  · /ocw nickname command      │  ─ POST /register ▶│  · records events + aggreg.│
 │  · ~/.open-code-war/config    │                    │  · Cron snapshot (KV)      │

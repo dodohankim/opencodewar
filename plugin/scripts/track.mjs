@@ -14,6 +14,15 @@ const SELF = fileURLToPath(import.meta.url);
 const SEND_TIMEOUT_MS = 2000;
 const STDIN_TIMEOUT_MS = 800;
 
+// 어느 에이전트의 훅에서 실행됐는지. 훅 설정에서 `--agent codex` 처럼 넘긴다(서버 화이트리스트와 동일).
+// 미지정·미지원 값은 claude-code — 이 플러그인의 기본 훅은 Claude Code 이기 때문.
+const AGENTS = ['claude-code', 'codex', 'opencode', 'pi'];
+function parseAgent(argv) {
+  const i = argv.indexOf('--agent');
+  const v = i !== -1 ? argv[i + 1] : undefined;
+  return AGENTS.includes(v) ? v : 'claude-code';
+}
+
 async function send(endpoint, payload) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), SEND_TIMEOUT_MS);
@@ -57,7 +66,11 @@ async function hookMode() {
       // 파싱 실패 시 chars=0으로 진행 (여전히 1건으로 집계)
     }
 
-    const payload = JSON.stringify({ userId: cfg.userId, chars: countChars(prompt) });
+    const payload = JSON.stringify({
+      userId: cfg.userId,
+      chars: countChars(prompt),
+      agent: parseAgent(process.argv),
+    });
 
     // 전송은 detached 자식에게 위임하고 부모는 즉시 종료 → 프롬프트 지연 0
     const child = spawn(process.execPath, [SELF, '--send', endpointOf(cfg), payload], {

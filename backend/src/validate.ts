@@ -6,6 +6,20 @@ export function isValidUserId(v: unknown): v is string {
   return typeof v === 'string' && USER_ID_RE.test(v);
 }
 
+/** 트래킹을 보낼 수 있는 에이전트(클라이언트) 화이트리스트. DB 컬럼 값으로 그대로 저장된다. */
+export const AGENTS = ['claude-code', 'codex', 'opencode', 'pi'] as const;
+export type Agent = (typeof AGENTS)[number];
+export const DEFAULT_AGENT: Agent = 'claude-code';
+
+/**
+ * agent 값 정규화. 미지정·미지원 값은 기본값(claude-code)으로 받는다 —
+ * 구버전 플러그인은 agent 필드 없이 보내며, 그 전부가 Claude Code 훅이었다.
+ * (화이트리스트 강제로 임의 문자열이 DB에 쌓이는 것도 함께 차단.)
+ */
+export function normalizeAgent(v: unknown): Agent {
+  return typeof v === 'string' && (AGENTS as readonly string[]).includes(v) ? (v as Agent) : DEFAULT_AGENT;
+}
+
 /** 이벤트 1건당 인정 글자 수 상한 (어뷰징에 의한 폭증 방지). */
 export const MAX_CHARS_PER_EVENT = 20_000;
 export function clampChars(v: unknown): number {
