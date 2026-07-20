@@ -25,8 +25,12 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 **pi** 는 자체 패키지 체계로 레포를 그대로 설치한다. npm 발행 없이 git 소스를 받는다.
 
 ```bash
-pi install git:github.com/dodohankim/opencodewar
+pi install git:github.com/dodohankim/opencodewar     # 설치
+pi update  git:github.com/dodohankim/opencodewar     # 최신화
+pi remove  git:github.com/dodohankim/opencodewar     # 제거
 ```
+
+설치본은 `~/.pi/agent/git/github.com/dodohankim/opencodewar` 에 스냅샷으로 들어간다.
 
 **OpenCode** 는 npm 패키지 또는 로컬 플러그인 디렉토리만 지원한다(설정의 `plugin` 배열은
 npm 패키지명만 받는다). 아직 npm 에 올리지 않았으므로 심볼릭 링크로 설치한다.
