@@ -120,22 +120,26 @@ codex plugin add open-code-war@opencodewar
 여기서 **Trust all and continue** 를 선택해야 훅이 동작합니다 — 선택 전에는 아무 경고 없이
 조용히 집계되지 않습니다. 최신화는 `codex plugin marketplace upgrade`.
 
-### 다른 에이전트 (OpenCode · pi)
+### pi
 
-나머지 에이전트는 `adapters/` 의 어댑터를 설치하면 **같은 계정으로 합산**됩니다.
+pi 도 자체 패키지 체계가 있어 **한 줄이면 됩니다** (npm 발행 없이 git 소스를 받습니다).
+
+```bash
+pi install git:github.com/dodohankim/opencodewar
+```
+
+### OpenCode
+
+OpenCode 설정의 `plugin` 배열은 npm 패키지명만 받습니다. 아직 npm 에 올리지 않았으므로
+플러그인 디렉토리에 심볼릭 링크로 설치합니다.
 
 ```bash
 git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
-
-# OpenCode
-mkdir -p ~/.config/opencode/plugin
-ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugin/ocw-track.js
-
-# pi
-mkdir -p ~/.pi/agent/extensions
-ln -sf ~/.open-code-war/src/adapters/pi/ocw-track.ts ~/.pi/agent/extensions/ocw-track.ts
+mkdir -p ~/.config/opencode/plugins
+ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugins/ocw-track.js
 ```
 
+셋 다 같은 `userId` 로 합산되며, 에이전트별 내역은 프로필 그래프에서 따로 볼 수 있습니다.
 자세한 동작 요건과 집계 기준은 [`adapters/README.md`](adapters/README.md) 참고.
 
 ### 개발용 (로컬 로드)

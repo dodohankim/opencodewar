@@ -120,22 +120,26 @@ Then start `codex`: the startup screen shows **"Hooks need review"** — pick
 **Trust all and continue**, otherwise the hook is silently skipped. Update with
 `codex plugin marketplace upgrade`.
 
-### Other agents (OpenCode · pi)
+### pi
 
-The remaining agents are counted **into the same account** via the adapters in `adapters/`.
+pi has its own package system, so it is **a single line** (git source, no npm publish needed).
+
+```bash
+pi install git:github.com/dodohankim/opencodewar
+```
+
+### OpenCode
+
+OpenCode's `plugin` config array only accepts npm package names, and this is not on npm yet,
+so install it into the plugin directory with a symlink.
 
 ```bash
 git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
-
-# OpenCode
-mkdir -p ~/.config/opencode/plugin
-ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugin/ocw-track.js
-
-# pi
-mkdir -p ~/.pi/agent/extensions
-ln -sf ~/.open-code-war/src/adapters/pi/ocw-track.ts ~/.pi/agent/extensions/ocw-track.ts
+mkdir -p ~/.config/opencode/plugins
+ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugins/ocw-track.js
 ```
 
+All of them add up under the same `userId`; the per-agent split shows on your profile chart.
 See [`adapters/README.md`](adapters/README.md) for requirements and counting rules.
 
 ### Development (local load)

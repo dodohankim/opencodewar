@@ -1,0 +1,15 @@
+{
+  "name": "open-code-war",
+  "description": "코딩 에이전트 입력량을 겨루는 리더보드 — pi 확장 매니페스트. 프롬프트 내용은 수집하지 않음.",
+  "keywords": ["pi-package", "leaderboard", "telemetry"],
+  "homepage": "https://opencodewar.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dodohankim/opencodewar.git"
+  },
+  "license": "BUSL-1.1",
+  "private": true,
+  "pi": {
+    "extensions": ["adapters/pi"]
+  }
+}

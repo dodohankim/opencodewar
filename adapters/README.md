@@ -5,6 +5,9 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 > **Codex 는 여기 없다.** 코덱스는 Claude Code 와 같은 플러그인·마켓플레이스 체계를 갖고 있어서
 > `plugin/` 을 그대로 설치한다 (`codex plugin marketplace add` → `codex plugin add`).
 > 설치 방법은 루트 [README](../README.md#-플러그인-설치) 참고.
+>
+> pi 는 여기 있는 확장을 쓰지만 설치는 pi 의 패키지 체계(`pi install git:…`)로 한다.
+> 레포 루트 `package.json` 의 `pi.extensions` 가 `adapters/pi` 를 가리킨다.
 
 각 어댑터는 해당 에이전트의 "사용자 입력" 훅에 붙어서, Claude Code 훅과 **동일한**
 `plugin/scripts/track.mjs` 를 실행한다. 따라서 userId(`~/.open-code-war/config.json`),
@@ -14,24 +17,25 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 | 에이전트 | 훅 | 어댑터 | 설치 위치 |
 |---|---|---|---|
 | Claude Code | `UserPromptSubmit` | `plugin/hooks/hooks.json` | 플러그인 마켓플레이스 |
-| OpenCode | `chat.message` | `adapters/opencode/ocw-track.js` | `~/.config/opencode/plugin/` |
-| pi | `input` | `adapters/pi/ocw-track.ts` | `~/.pi/agent/extensions/` |
+| OpenCode | `chat.message` | `adapters/opencode/ocw-track.js` | `~/.config/opencode/plugins/` |
+| pi | `input` | `adapters/pi/ocw-track.ts` | `pi install git:…` (패키지) |
 
 ## 설치
 
-레포를 클론한 뒤 심볼릭 링크를 건다. 링크를 쓰면 레포를 `git pull` 할 때 어댑터도 같이 갱신된다.
+**pi** 는 자체 패키지 체계로 레포를 그대로 설치한다. npm 발행 없이 git 소스를 받는다.
 
 ```bash
-git clone https://github.com/dodohankim/opencodewar.git
-cd opencodewar
+pi install git:github.com/dodohankim/opencodewar
+```
 
-# OpenCode
-mkdir -p ~/.config/opencode/plugin
-ln -sf "$PWD/adapters/opencode/ocw-track.js" ~/.config/opencode/plugin/ocw-track.js
+**OpenCode** 는 npm 패키지 또는 로컬 플러그인 디렉토리만 지원한다(설정의 `plugin` 배열은
+npm 패키지명만 받는다). 아직 npm 에 올리지 않았으므로 심볼릭 링크로 설치한다.
+링크를 쓰면 레포를 `git pull` 할 때 어댑터도 같이 갱신된다.
 
-# pi
-mkdir -p ~/.pi/agent/extensions
-ln -sf "$PWD/adapters/pi/ocw-track.ts" ~/.pi/agent/extensions/ocw-track.ts
+```bash
+git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
+mkdir -p ~/.config/opencode/plugins
+ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugins/ocw-track.js
 ```
 
 설치 후 각 에이전트를 재시작하면 다음 프롬프트부터 집계된다.
