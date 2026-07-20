@@ -148,6 +148,12 @@
   .install .cmd { font-family:var(--mono); font-size:12.5px; color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:5px; padding:6px 9px; margin-bottom:6px; word-break:break-all; }
   .install p { font-size:12.5px; color:var(--dim); margin:8px 0 0; }
   .install code { color:var(--fg); background:var(--hover); padding:1px 4px; border-radius:3px; }
+  .install .agents { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px; }
+  .install .agent { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:3px 9px; border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .install .agent:hover { color:var(--fg); }
+  .install .agent[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .install .agent .soon { font-size:9.5px; color:var(--faint); margin-left:2px; }
+  .install .agent[aria-pressed="true"] .soon { color:var(--rev-fg); opacity:0.7; }
 
   /* 클릭 가능한 코더 이름(등록 유저만) → 상세 페이지 */
   .nm.link { cursor:pointer; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:2px; }
@@ -300,9 +306,17 @@
         <section class="box">
           <span class="legend" data-i18n="install_legend">join · install</span>
           <div class="install">
-            <div class="cmd">/plugin marketplace add dodohankim/opencodewar</div>
-            <div class="cmd">/plugin install open-code-war@opencodewar</div>
-            <p data-i18n-html="install_note">Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.</p>
+            <div class="agents" role="tablist" aria-label="agent">
+              <button class="agent" type="button" data-agent="claude" aria-pressed="true">Claude Code</button>
+              <button class="agent" type="button" data-agent="codex" aria-pressed="false">Codex <span class="soon" data-i18n="soon">soon</span></button>
+              <button class="agent" type="button" data-agent="opencode" aria-pressed="false">OpenCode <span class="soon" data-i18n="soon">soon</span></button>
+              <button class="agent" type="button" data-agent="pi" aria-pressed="false">pi <span class="soon" data-i18n="soon">soon</span></button>
+            </div>
+            <div id="installCmds">
+              <div class="cmd">/plugin marketplace add dodohankim/opencodewar</div>
+              <div class="cmd">/plugin install open-code-war@opencodewar</div>
+            </div>
+            <p id="installNote" data-i18n-html="install_note_claude">Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.</p>
           </div>
         </section>
       </div>
@@ -387,7 +401,11 @@
       rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
       rules3: '<b>Three boards.</b> Daily, weekly, and weekend = <b>Fri·Sat·Sun</b>.',
       install_legend: 'join · install',
-      install_note: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
+      soon: 'soon',
+      install_note_claude: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
+      install_note_codex: 'Approve the hook once with <code>/hooks</code>, then type prompts in Codex to start counting. Set a display name with <code>/ocw nickname &lt;name&gt;</code>.',
+      install_note_opencode: 'Restart OpenCode and type prompts to start counting. Set a display name with <code>/ocw nickname &lt;name&gt;</code>.',
+      install_note_pi: 'Then type prompts in pi to start counting. Set a display name with <code>/ocw nickname &lt;name&gt;</code>.',
       privacy: '[privacy] no prompt content · character count only',
       loading: 'Loading…', empty: 'No records for this period yet.', anon: '(anon)',
       scope_global: 'Global', scope_country: 'Country', scope_city: 'City',
@@ -414,7 +432,11 @@
       rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
       rules3: '<b>세 개의 판.</b> 일간·주간, 주말은 <b>금·토·일</b>.',
       install_legend: '참가 · 설치',
-      install_note: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
+      soon: '준비 중',
+      install_note_claude: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
+      install_note_codex: '<code>/hooks</code>에서 훅을 한 번 승인한 뒤 Codex에 프롬프트를 입력하면 집계가 시작됩니다. <code>/ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
+      install_note_opencode: 'OpenCode를 재시작하고 프롬프트를 입력하면 집계가 시작됩니다. <code>/ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
+      install_note_pi: '설치 후 pi에 프롬프트를 입력하면 집계가 시작됩니다. <code>/ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
       privacy: '[privacy] 프롬프트 내용 미수집 · 글자 수만',
       loading: '불러오는 중…', empty: '아직 이 기간의 기록이 없습니다.', anon: '(익명)',
       scope_global: '글로벌', scope_country: '국가', scope_city: '도시',
@@ -594,6 +616,28 @@
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((x) => x.setAttribute('aria-selected', x === b));
     curBoard = b.dataset.board; load();
+  }));
+
+  // join·install 패널: 에이전트별 설치 명령 전환 (Codex/OpenCode/pi 어댑터는 출시 전 → soon 표기)
+  const INSTALL_CMDS = {
+    claude: ['/plugin marketplace add dodohankim/opencodewar', '/plugin install open-code-war@opencodewar'],
+    codex: ['codex plugin marketplace add dodohankim/opencodewar', 'codex plugin install open-code-war@opencodewar'],
+    opencode: ['opencode plugin open-code-war -g'],
+    pi: ['pi install git:github.com/dodohankim/opencodewar'],
+  };
+  document.querySelectorAll('.agent').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.agent').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    const wrap = $('installCmds');
+    wrap.textContent = '';
+    INSTALL_CMDS[b.dataset.agent].forEach((c) => {
+      const d = document.createElement('div');
+      d.className = 'cmd';
+      d.textContent = c;
+      wrap.appendChild(d);
+    });
+    const note = $('installNote');
+    note.dataset.i18nHtml = 'install_note_' + b.dataset.agent;
+    note.innerHTML = t(note.dataset.i18nHtml);
   }));
   document.querySelectorAll('.sort').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.sort').forEach((x) => x.setAttribute('aria-pressed', x === b));
