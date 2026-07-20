@@ -1,0 +1,9 @@
+{
+  "name": "open-code-war",
+  "description": "코딩 에이전트 입력량을 겨루는 리더보드 — 프롬프트 제출을 익명으로 집계한다. 프롬프트 내용은 수집하지 않음.",
+  "author": {
+    "name": "Open Code War"
+  },
+  "homepage": "https://opencodewar.dev",
+  "hooks": "./hooks/codex-hooks.json"
+}

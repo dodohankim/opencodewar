@@ -107,16 +107,25 @@ To update right now manually:
 
 > ℹ️ The backend is **deployed and live (beta)** with its URL baked into the plugin, so collection works right after install. (The `/plugin marketplace add` command requires this repo to be pushed to GitHub.)
 
-### Other agents (Codex · OpenCode · pi)
+### Codex
 
-Agents other than Claude Code are counted **into the same account** via the adapters in `adapters/`.
+Codex uses the same plugin / marketplace system, so you install **the very same plugin**.
+
+```bash
+codex plugin marketplace add dodohankim/opencodewar
+codex plugin add open-code-war@opencodewar
+```
+
+Then start `codex`: the startup screen shows **"Hooks need review"** — pick
+**Trust all and continue**, otherwise the hook is silently skipped. Update with
+`codex plugin marketplace upgrade`.
+
+### Other agents (OpenCode · pi)
+
+The remaining agents are counted **into the same account** via the adapters in `adapters/`.
 
 ```bash
 git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
-
-# Codex — the installer merges a hook into ~/.codex/hooks.json. Then start codex
-#         and pick "Trust all and continue" on the "Hooks need review" screen.
-node ~/.open-code-war/src/adapters/codex/install.mjs
 
 # OpenCode
 mkdir -p ~/.config/opencode/plugin

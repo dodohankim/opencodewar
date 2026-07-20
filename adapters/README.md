@@ -2,6 +2,10 @@
 
 Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한 어댑터.
 
+> **Codex 는 여기 없다.** 코덱스는 Claude Code 와 같은 플러그인·마켓플레이스 체계를 갖고 있어서
+> `plugin/` 을 그대로 설치한다 (`codex plugin marketplace add` → `codex plugin add`).
+> 설치 방법은 루트 [README](../README.md#-플러그인-설치) 참고.
+
 각 어댑터는 해당 에이전트의 "사용자 입력" 훅에 붙어서, Claude Code 훅과 **동일한**
 `plugin/scripts/track.mjs` 를 실행한다. 따라서 userId(`~/.open-code-war/config.json`),
 엔드포인트, 글자 수 계산 규칙이 전부 공유되고, 한 PC 안에서 여러 에이전트를 써도
@@ -10,7 +14,6 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 | 에이전트 | 훅 | 어댑터 | 설치 위치 |
 |---|---|---|---|
 | Claude Code | `UserPromptSubmit` | `plugin/hooks/hooks.json` | 플러그인 마켓플레이스 |
-| Codex | `UserPromptSubmit` | `adapters/codex/ocw-track.sh` | `~/.codex/hooks.json` (설치기가 병합) |
 | OpenCode | `chat.message` | `adapters/opencode/ocw-track.js` | `~/.config/opencode/plugin/` |
 | pi | `input` | `adapters/pi/ocw-track.ts` | `~/.pi/agent/extensions/` |
 
@@ -31,16 +34,6 @@ mkdir -p ~/.pi/agent/extensions
 ln -sf "$PWD/adapters/pi/ocw-track.ts" ~/.pi/agent/extensions/ocw-track.ts
 ```
 
-Codex 만 방식이 다르다. 플러그인 디렉토리가 없고 훅을 `~/.codex/hooks.json`(또는 `config.toml`
-의 `[hooks]`)에서만 읽기 때문에, 심볼릭 링크 대신 설치기가 기존 파일에 항목을 **병합**한다.
-기존 훅은 그대로 두고, 덮어쓰기 전에 `hooks.json.bak` 을 남기며, 여러 번 실행해도 중복되지 않는다.
-
-```bash
-# Codex (설치 / 제거)
-node adapters/codex/install.mjs
-node adapters/codex/install.mjs --uninstall
-```
-
 설치 후 각 에이전트를 재시작하면 다음 프롬프트부터 집계된다.
 표시명은 Claude Code 와 동일하게 `/ocw nickname <이름>` 으로 등록한다.
 
@@ -53,22 +46,11 @@ node adapters/codex/install.mjs --uninstall
 - `track.mjs` 경로는 `OCW_TRACK_SCRIPT` → 레포 상대 경로 → Claude Code 플러그인 설치 경로
   순으로 찾는다.
 - `OCW_API_URL` 로 엔드포인트를 바꿀 수 있다(로컬 백엔드 테스트용).
-- **Codex 는 훅을 "신뢰(trust)" 해야 실행한다.** 설치만으로는 동작하지 않는다. 설치 후 `codex` 를
-  실행하면 시작 화면에 `Hooks need review` 가 뜨고, 여기서 **Trust all and continue** 를 선택해야
-  훅이 돈다. 선택 전에는 아무 경고 없이 조용히 건너뛴다(0.144.6 실측). 훅 항목이 바뀌면
-  (`install.mjs` 재실행으로 경로가 바뀌는 등) 다시 신뢰를 받아야 한다.
-  자동화용으로 `codex exec --dangerously-bypass-hook-trust` 가 있지만 이름 그대로 권장하지 않는다.
-- Codex 어댑터는 sh 스크립트라 POSIX 셸이 필요하다(Windows 는 WSL). 설치기는 레포의
-  **절대 경로**를 등록하므로 레포를 옮기면 다시 실행한다.
 
 ## 집계 기준
 
 Claude Code 의 `UserPromptSubmit` 과 최대한 같은 의미가 되도록 맞췄다.
 
-- **Codex**: 훅 이름·페이로드(`prompt` 필드)가 Claude Code 와 사실상 같아서 별도 필터가 없다.
-  서브에이전트는 `SubagentStart`/`SubagentStop` 으로 따로 분리돼 있어 `UserPromptSubmit` 에는
-  사용자 프롬프트만 들어온다. 훅 stdout 은 Codex 가 "추가 개발자 컨텍스트"로 프롬프트에 주입하므로
-  어댑터는 stdout 에 아무것도 쓰지 않는다(종료 코드 2 는 프롬프트 차단이라 항상 0 으로 끝낸다).
 - **OpenCode**: 서브에이전트 세션(`Session.parentID` 보유)에서 오는 메시지는 사용자가 친
   프롬프트가 아니므로 제외한다. 세션당 한 번만 조회하고 캐시한다.
 - **pi**: `event.source` 가 `interactive`(직접 입력) 또는 `rpc`(API 호출)인 것만 센다.

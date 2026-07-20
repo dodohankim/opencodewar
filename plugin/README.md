@@ -1,7 +1,21 @@
 # Open Code War — Claude Code 플러그인 (M2)
 
 클로드 코드에 프롬프트를 제출할 때마다 **입력 활동(횟수 + 글자 수)** 을 익명으로 집계해 리더보드로 보낸다.
-리더보드 자체는 코딩 에이전트 전반을 대상으로 하며, 코덱스·오픈코드·파이는 `adapters/` 의 어댑터로 같은 계정에 합산된다.
+리더보드 자체는 코딩 에이전트 전반을 대상으로 한다.
+
+이 플러그인 디렉토리는 **Claude Code 와 Codex 양쪽의 플러그인**이다. 두 CLI 가 같은 마켓플레이스
+포맷(`.claude-plugin/marketplace.json`)을 읽기 때문에 하나의 디렉토리로 겸한다.
+
+| | 매니페스트 | 훅 파일 | 실행 |
+|---|---|---|---|
+| Claude Code | `.claude-plugin/plugin.json` | `hooks/hooks.json` | `track.mjs` (async·비차단) |
+| Codex | `.codex-plugin/plugin.json` | `hooks/codex-hooks.json` | `track.mjs --agent codex` |
+
+훅 파일을 나눈 이유: Codex 는 `async` 훅을 아직 지원하지 않아 그대로 두면 조용히 건너뛰고
+(`skipping async hook … not supported yet`), `--agent codex` 가 없으면 코덱스 입력이
+`claude-code` 로 잘못 집계된다. 경로 변수도 다르다(`${CLAUDE_PLUGIN_ROOT}` vs `${PLUGIN_ROOT}`).
+
+오픈코드·파이는 플러그인 체계가 달라 `adapters/` 의 어댑터로 같은 계정에 합산된다.
 
 ## 무엇을 수집하나 / 안 하나
 

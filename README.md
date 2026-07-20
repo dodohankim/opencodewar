@@ -107,16 +107,25 @@ open-code-war/
 
 > ℹ️ 백엔드는 **배포되어 라이브(베타)** 이고 플러그인에 URL이 내장돼 있어 설치하면 바로 집계됩니다. (`/plugin marketplace add`는 이 레포가 GitHub에 push되어 있어야 동작합니다.)
 
-### 다른 에이전트 (Codex · OpenCode · pi)
+### Codex
 
-Claude Code 외의 에이전트는 `adapters/` 의 어댑터를 설치하면 **같은 계정으로 합산**됩니다.
+Codex 도 같은 플러그인·마켓플레이스 체계를 쓰기 때문에 **같은 플러그인을 그대로** 설치합니다.
+
+```bash
+codex plugin marketplace add dodohankim/opencodewar
+codex plugin add open-code-war@opencodewar
+```
+
+설치 후 `codex` 를 실행하면 시작 화면에 **"Hooks need review"** 가 뜹니다.
+여기서 **Trust all and continue** 를 선택해야 훅이 동작합니다 — 선택 전에는 아무 경고 없이
+조용히 집계되지 않습니다. 최신화는 `codex plugin marketplace upgrade`.
+
+### 다른 에이전트 (OpenCode · pi)
+
+나머지 에이전트는 `adapters/` 의 어댑터를 설치하면 **같은 계정으로 합산**됩니다.
 
 ```bash
 git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
-
-# Codex — 설치기가 ~/.codex/hooks.json 에 훅을 병합. 이후 codex 실행 시
-#          "Hooks need review" 에서 Trust all and continue 를 선택해야 동작합니다.
-node ~/.open-code-war/src/adapters/codex/install.mjs
 
 # OpenCode
 mkdir -p ~/.config/opencode/plugin
