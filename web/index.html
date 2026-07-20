@@ -47,6 +47,8 @@
     --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
     --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
     --ok:#4F8258; --err:#B0553F;
+    /* 에이전트별 차트 색 (claude-code 는 기본 막대색 --fg 사용) */
+    --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
     color-scheme: light;
   }
@@ -55,6 +57,7 @@
       --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
       --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
       --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+      --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
     }
   }
   * { box-sizing: border-box; }
@@ -208,6 +211,11 @@
   .chart .col.wknd .barv { background:var(--dim); }
   .chart .col.today .barv { background:var(--ok); }
   .chart .col:hover .barv { opacity:0.6; }
+  /* 에이전트 2종 이상일 때: 막대를 에이전트별 세그먼트로 스택(아래→위) */
+  .chart .col .barv.stack { background:transparent; display:flex; flex-direction:column-reverse; overflow:hidden; }
+  .chart .col .barv.stack .seg { width:100%; min-height:1px; }
+  .ag-legend { font-size:11px; color:var(--dim); }
+  .ag-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin:0 4px 0 10px; vertical-align:-1px; }
   .chart-x { display:flex; justify-content:space-between; margin-top:7px; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
   .chart-peak { font-size:11px; color:var(--faint); }
   .umsg { padding:20px 4px; text-align:center; color:var(--dim); font-size:13px; }
@@ -220,7 +228,7 @@
   @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} .ship{flex-wrap:wrap;} }
   @media (prefers-reduced-motion:reduce){ .cursor{animation:none;} }
 </style>
-<script defer src="https://analytics.stonkradar.io/k.js" data-site="kdf_9e315b52f3f2"></script>
+<script defer src="https://analytics.stonkradar.io/k.js" data-site="kdf_9e315b52f3f2" data-track-params="user"></script>
 </head>
 <body>
   <div class="term">
@@ -355,6 +363,7 @@
 
         <section class="box">
           <span class="legend" id="uChartLegend">last 30 days · prompts</span>
+          <span class="ag-legend" id="uAgentLegend"></span>
           <div class="controls" style="margin-top:6px">
             <div class="ustats" id="uStats"></div>
             <div class="sorts">
@@ -895,12 +904,31 @@
     $('uMsg').hidden = true;
     renderUserChart();
   }
+  // 에이전트별 차트 색. claude-code 는 기본 막대색(--fg), 목록 밖 값은 --dim.
+  const AGENT_ORDER = ['claude-code', 'codex', 'opencode', 'pi'];
+  const AGENT_COLOR = { 'claude-code': 'var(--fg)', codex: 'var(--ag-codex)', opencode: 'var(--ag-opencode)', pi: 'var(--ag-pi)' };
+  // 툴팁은 반전 배경이라 claude-code(=--fg)를 그대로 쓰면 배경에 묻힌다 → 반전색으로 바꾼다.
+  const agColor = (a, onTip) => (a === 'claude-code' && onTip ? 'var(--rev-fg)' : AGENT_COLOR[a] || 'var(--dim)');
+  // agents 객체의 키를 고정 순서(claude-code→codex→opencode→pi, 그 외 뒤)로 정렬
+  function orderedAgents(keys) {
+    return [...AGENT_ORDER.filter((a) => keys.includes(a)), ...keys.filter((a) => !AGENT_ORDER.includes(a))];
+  }
+
   function renderUserChart() {
     if (!uData) return;
     const days = uData.days || [];
     const metric = uMetric;
     $('uChartLegend').textContent = `${t('chart_30d')} · ${metric}`;
     syncUsortButtons();
+
+    // 30일 내 활동이 있는 에이전트 — 2종 이상일 때만 스택 표시(1종이면 기존 그래프 그대로)
+    const seen = new Set();
+    for (const d of days) for (const a in d.agents || {}) seen.add(a);
+    const agents = orderedAgents([...seen]);
+    const multi = agents.length >= 2;
+    $('uAgentLegend').innerHTML = multi
+      ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
+      : '';
 
     const vals = days.map((d) => d[metric] || 0);
     const total = vals.reduce((a, b) => a + b, 0);
@@ -934,8 +962,18 @@
         const isWknd = dow === 0 || dow === 6;
         const isToday = d.day === todayStr;
         const cls = v === 0 ? 'zero' : isToday ? 'today' : isWknd ? 'wknd' : '';
+        // 에이전트 2종 이상이면 막대를 에이전트별 세그먼트로 쌓는다(아래부터 고정 순서)
+        const segs =
+          multi && v > 0
+            ? agents
+                .map((a) => ({ a, val: (d.agents && d.agents[a] && d.agents[a][metric]) || 0 }))
+                .filter((s) => s.val > 0)
+                .map((s) => `<div class="seg" style="height:${(s.val / v) * 100}%;background:${agColor(s.a)}"></div>`)
+                .join('')
+            : '';
+        const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(d.agents || {}))}"` : '';
         // 커스텀 툴팁(#uTip)이 읽을 값. day 는 'YYYY-MM-DD' 안전 문자열.
-        return `<div class="col ${cls}" data-day="${d.day}" data-p="${d.prompts}" data-c="${d.chars}"><div class="barv" style="height:${h}%"></div></div>`;
+        return `<div class="col ${cls}" data-day="${d.day}" data-p="${d.prompts}" data-c="${d.chars}"${ag}><div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
@@ -1017,10 +1055,22 @@
       const c = Number(col.dataset.c) || 0;
       const pl = LANG === 'ko' ? '프롬프트' : 'prompts';
       const cl = LANG === 'ko' ? '글자' : 'chars';
+      // 스택 모드면 에이전트별 내역을 둘째 줄로 (현재 지표 기준)
+      let agLine = '';
+      if (col.dataset.ag) {
+        try {
+          const ag = JSON.parse(col.dataset.ag);
+          const parts = orderedAgents(Object.keys(ag))
+            .filter((a) => (ag[a][uMetric] || 0) > 0)
+            .map((a) => `<span class="ag-dot" style="background:${agColor(a, true)}"></span>${escapeHtml(a)} <span class="v">${fmt(ag[a][uMetric] || 0)}</span>`);
+          if (parts.length) agLine = '<br>' + parts.join('');
+        } catch {}
+      }
       tipEl.innerHTML =
         `<span class="d">${escapeHtml(mmdd(col.dataset.day || ''))}</span>` +
         `<span class="sep">·</span><span class="v">${fmt(p)}</span> ${pl}` +
-        `<span class="sep">·</span><span class="v">${fmt(c)}</span> ${cl}`;
+        `<span class="sep">·</span><span class="v">${fmt(c)}</span> ${cl}` +
+        agLine;
       tipEl.classList.add('on');
       const wrapRect = wrapEl.getBoundingClientRect();
       const half = tipEl.offsetWidth / 2;

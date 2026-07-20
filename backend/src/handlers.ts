@@ -499,18 +499,32 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   const now = Date.now();
   const days = recentDays(now, PROFILE_WINDOW_DAYS); // 오래된 날 → 오늘
   const placeholders = days.map(() => '?').join(',');
-  // daily_stats 는 (user_id, day, agent) 단위 행이므로 일별 시리즈는 agent 를 합산한다.
+  // daily_stats 는 (user_id, day, agent) 단위 행 — 일별 합계와 함께 에이전트별 내역(agents)도 내려준다.
+  // 웹 그래프는 합계로 기존과 동일하게 그리고, 에이전트가 2종 이상일 때만 스택 표시로 전환한다.
   const rows = await env.DB.prepare(
-    `SELECT day, SUM(prompts) AS prompts, SUM(chars) AS chars
-     FROM daily_stats WHERE user_id = ? AND day IN (${placeholders}) GROUP BY day`,
+    `SELECT day, agent, SUM(prompts) AS prompts, SUM(chars) AS chars
+     FROM daily_stats WHERE user_id = ? AND day IN (${placeholders}) GROUP BY day, agent`,
   )
     .bind(user.user_id, ...days)
-    .all<{ day: string; prompts: number; chars: number }>();
+    .all<{ day: string; agent: string; prompts: number; chars: number }>();
 
-  const byDay = new Map(rows.results.map((r) => [r.day, r]));
+  type DayAgg = { prompts: number; chars: number; agents: Record<string, { prompts: number; chars: number }> };
+  const byDay = new Map<string, DayAgg>();
+  for (const r of rows.results) {
+    let d = byDay.get(r.day);
+    if (!d) {
+      d = { prompts: 0, chars: 0, agents: {} };
+      byDay.set(r.day, d);
+    }
+    const p = Number(r.prompts) || 0;
+    const c = Number(r.chars) || 0;
+    d.prompts += p;
+    d.chars += c;
+    d.agents[r.agent] = { prompts: p, chars: c };
+  }
   const series = days.map((day) => {
-    const r = byDay.get(day);
-    return { day, prompts: Number(r?.prompts) || 0, chars: Number(r?.chars) || 0 };
+    const d = byDay.get(day);
+    return { day, prompts: d?.prompts ?? 0, chars: d?.chars ?? 0, agents: d?.agents ?? {} };
   });
   const totals = series.reduce(
     (acc, s) => ({ prompts: acc.prompts + s.prompts, chars: acc.chars + s.chars }),
