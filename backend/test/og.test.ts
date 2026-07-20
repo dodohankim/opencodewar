@@ -1,5 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { buildOgDescription, MAX_OG_DESC, type ProfileMetaRow } from '../src/og';
+import { buildOgDescription, MAX_OG_DESC, nicknameFromPath, profileUrl, type ProfileMetaRow } from '../src/og';
+
+describe('nicknameFromPath', () => {
+  it('/u/<nickname> 에서 닉네임을 꺼낸다', () => {
+    expect(nicknameFromPath('/u/dododo')).toBe('dododo');
+  });
+
+  it('퍼센트 인코딩(한글·공백)을 디코딩한다', () => {
+    expect(nicknameFromPath('/u/%ED%94%84%EB%A1%AC%ED%94%84%ED%8A%B8%EC%9E%A5%EC%9D%B8')).toBe('프롬프트장인');
+    expect(nicknameFromPath('/u/code%20master')).toBe('code master');
+  });
+
+  it('프로필 경로가 아니거나 형식이 어긋나면 null', () => {
+    expect(nicknameFromPath('/')).toBeNull();
+    expect(nicknameFromPath('/leaderboard')).toBeNull();
+    expect(nicknameFromPath('/u/')).toBeNull();
+    expect(nicknameFromPath('/u/a/b')).toBeNull(); // 하위 경로 없음
+    expect(nicknameFromPath('/u/%ZZ')).toBeNull(); // 깨진 인코딩
+  });
+});
+
+describe('profileUrl', () => {
+  it('정식 절대 URL 을 만든다', () => {
+    expect(profileUrl('dododo')).toBe('https://opencodewar.dev/u/dododo');
+  });
+
+  it('한글·공백을 인코딩한다', () => {
+    expect(profileUrl('코드 장인')).toBe('https://opencodewar.dev/u/%EC%BD%94%EB%93%9C%20%EC%9E%A5%EC%9D%B8');
+  });
+});
 
 const row = (overrides: Partial<ProfileMetaRow> = {}): ProfileMetaRow => ({
   nickname: 'dododo',

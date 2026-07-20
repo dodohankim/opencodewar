@@ -11,7 +11,8 @@ import {
   handleZones,
 } from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
-import { handleProfilePage } from './og';
+import { handleProfilePage, nicknameFromPath, profilePath } from './og';
+import { isValidNickname } from './validate';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -23,9 +24,20 @@ export default {
     }
 
     try {
-      // 루트는 run_worker_first 로 Worker가 먼저 받는다. ?user= 면 OG 재작성, 아니면 에셋 그대로.
+      // 루트는 run_worker_first 로 Worker가 먼저 받는다.
+      // 구 공유 링크(/?user=)는 정식 주소(/u/<nick>)로 301 — 이미 뿌려진 링크를 살린다.
       if (pathname === '/') {
-        return await handleProfilePage(request, url, env);
+        const legacy = url.searchParams.get('user');
+        if (isValidNickname(legacy)) {
+          // 같은 오리진으로 보낸다(로컬 dev·프리뷰 URL 에서도 동작).
+          return Response.redirect(new URL(profilePath(legacy.trim()), url).toString(), 301);
+        }
+        return await handleProfilePage(request, url, env, null);
+      }
+      // /u/<nickname> — 프로필 페이지(에셋에 없는 경로라 Worker 폴백으로 도달).
+      const pathNick = nicknameFromPath(pathname);
+      if (pathNick !== null && request.method === 'GET') {
+        return await handleProfilePage(request, url, env, pathNick);
       }
       if (pathname === '/health') {
         return json({ ok: true, service: 'open-code-war-api', ts: Date.now() });

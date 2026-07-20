@@ -75,7 +75,9 @@ async function registerNickname(name) {
     if (res.ok && data.ok) {
       cfg.nickname = data.nickname;
       saveConfig(cfg);
-      return print(`✅ 닉네임 등록 완료: **${data.nickname}**\n리더보드에 이 이름으로 표시됩니다.`);
+      return print(
+        `✅ 닉네임 등록 완료: **${data.nickname}**\n리더보드에 이 이름으로 표시됩니다.\n내 프로필: ${endpoint}/u/${encodeURIComponent(data.nickname)}`,
+      );
     }
     if (res.status === 409 || data.error === 'nickname_taken') {
       return print(`❌ 이미 사용 중인 닉네임입니다: ${nickname}`);

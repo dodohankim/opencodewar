@@ -734,15 +734,26 @@
     if (curUser) { if (uData) renderUser(uData); } else { load(); }
   });
 
-  // ── 라우팅: ?user=<nickname> 이면 상세, 아니면 리더보드 ──
+  // ── 라우팅: /u/<nickname> 이면 상세, 아니면 리더보드 ──
+  // (구 링크 /?user=<nick> 도 계속 받는다 — 서버는 301, 클라이언트는 주소만 조용히 교체)
+  const PROFILE_PREFIX = '/u/';
   function urlFor(nick) {
+    // ?api= 등 기존 파라미터는 유지하고 경로만 바꾼다(로컬 개발용).
     const u = new URL(location.href);
-    if (nick) u.searchParams.set('user', nick);
-    else u.searchParams.delete('user');
+    u.searchParams.delete('user');
+    u.pathname = nick ? PROFILE_PREFIX + encodeURIComponent(nick) : '/';
     return u.pathname + u.search;
   }
+  function nickFromPath() {
+    if (!location.pathname.startsWith(PROFILE_PREFIX)) return null;
+    const raw = location.pathname.slice(PROFILE_PREFIX.length);
+    if (!raw || raw.includes('/')) return null;
+    try { return decodeURIComponent(raw); } catch { return null; }
+  }
   function route() {
-    const nick = new URLSearchParams(location.search).get('user');
+    const legacy = new URLSearchParams(location.search).get('user');
+    if (legacy) { history.replaceState({ user: legacy }, '', urlFor(legacy)); showUser(legacy); return; }
+    const nick = nickFromPath();
     if (nick) showUser(nick);
     else showBoard();
   }
@@ -997,11 +1008,9 @@
   $('backBtn').addEventListener('click', goBoard);
 
   // ── 프로필 공유: 모바일(터치)은 시스템 공유 시트, 데스크톱은 링크 복사 ──
-  // 공유 URL 은 ?user= 만 남긴 정식 주소(api·기타 파라미터 제거).
+  // 공유 URL 은 정식 주소(/u/<nick>) — api·기타 파라미터 제거.
   function profileUrl(nick) {
-    const u = new URL(location.origin + location.pathname);
-    u.searchParams.set('user', nick);
-    return u.toString();
+    return location.origin + PROFILE_PREFIX + encodeURIComponent(nick);
   }
   let shareFlashTimer = null;
   function flashShareBtn(msg) {
@@ -1087,7 +1096,7 @@
   applyLang();
   load();  // 리더보드를 미리 채워둠(상세에서 뒤로가기 시 즉시 표시)
   loadZones(); // 구역 셀렉터 드롭다운 채우기(백그라운드)
-  route(); // 초기 URL(?user=) 에 맞춰 뷰 결정
+  route(); // 초기 URL(/u/<nick>) 에 맞춰 뷰 결정
 </script>
 
 <!-- Cloudflare Web Analytics — 쿠키리스·PII 없음·동의배너 불필요. -->
