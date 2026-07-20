@@ -1,14 +1,30 @@
 {
   "name": "open-code-war",
-  "description": "코딩 에이전트 입력량을 겨루는 리더보드 — pi 확장 매니페스트. 프롬프트 내용은 수집하지 않음.",
-  "keywords": ["pi-package", "leaderboard", "telemetry"],
+  "version": "0.1.0",
+  "description": "코딩 에이전트 입력량을 겨루는 리더보드 — OpenCode 플러그인 + pi 확장. 프롬프트 내용은 수집하지 않음.",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "pi-package",
+    "leaderboard",
+    "telemetry",
+    "coding-agent"
+  ],
   "homepage": "https://opencodewar.dev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dodohankim/opencodewar.git"
   },
   "license": "BUSL-1.1",
-  "private": true,
+  "type": "module",
+  "main": "adapters/opencode/ocw-track.js",
+  "files": [
+    "adapters/opencode/ocw-track.js",
+    "adapters/pi/ocw-track.ts",
+    "adapters/README.md",
+    "plugin/scripts/track.mjs",
+    "plugin/scripts/lib"
+  ],
   "pi": {
     "extensions": ["adapters/pi"]
   }
