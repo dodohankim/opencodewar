@@ -23,8 +23,8 @@ export function buildOgDescription(row: ProfileMetaRow): string {
   const bio = (row.bio ?? '').trim();
   const intro = [who, bio].filter(Boolean).join(' · ');
   const desc = intro
-    ? `${intro} — Claude Code activity on Open Code War.`
-    : 'Claude Code activity — prompts & chars over the last 30 days on Open Code War.';
+    ? `${intro} — coding agent activity on Open Code War.`
+    : 'Coding agent activity — prompts & chars over the last 30 days on Open Code War.';
   if (desc.length <= MAX_OG_DESC) return desc;
   return desc.slice(0, MAX_OG_DESC - 1).trimEnd() + '…';
 }

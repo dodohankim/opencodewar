@@ -2,15 +2,15 @@
 
 # ⚔️ Open Code War
 
-**A leaderboard game where Claude Code users compete on "who types the most."**
+**A leaderboard game where coding agent users compete on "who types the most."**
 
-A plugin hook counts your input activity anonymously → stores it on Cloudflare → shows daily / weekly / weekend rankings and a per-country map on the web.
+An agent hook counts your input activity anonymously → stores it on Cloudflare → shows daily / weekly / weekend rankings and a per-country map on the web.
 
 **English** · [한국어](README.md)
 
 [![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev)
 [![status](https://img.shields.io/badge/status-early%20development-e08a2e?style=for-the-badge)](#-roadmap)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-6c5ce7?style=for-the-badge)](#-install-the-plugin)
+[![agents](https://img.shields.io/badge/Claude%20Code%20·%20Codex%20·%20OpenCode%20·%20pi-supported-6c5ce7?style=for-the-badge)](#-install-the-plugin)
 
 <sub>Codename: <b>OCW</b> · First target 🇰🇷 Korea → eventually a worldwide per-country globe ranking</sub>
 
@@ -30,7 +30,7 @@ Open Code War **never collects prompt content.** It only counts the number of su
 | **Agent type** used (Claude Code·Codex etc., a single label) | Raw IP storage |
 | (server-side) request country `cf.country` | |
 
-> Even though the hook receives the raw prompt, it **computes only the character count and sends that — never the text.** It runs **fail-open** (short timeout + background fire-and-forget) so it never blocks or slows down your use of Claude Code, even if the network fails.
+> Even though the hook receives the raw prompt, it **computes only the character count and sends that — never the text.** It runs **fail-open** (short timeout + background fire-and-forget) so it never blocks or slows down your agent, even if the network fails.
 
 ---
 
@@ -38,8 +38,8 @@ Open Code War **never collects prompt content.** It only counts the number of su
 
 ```
 ┌──────────────────────────────┐   POST /track      ┌───────────────────────────┐
-│  Claude Code plugin           │ userId,chars,agent▶│  Cloudflare Worker         │
-│  · UserPromptSubmit hook      │                    │  · detects cf.country      │
+│  Coding agent hook / adapter  │ userId,chars,agent▶│  Cloudflare Worker         │
+│  · one prompt submit = 1 event│                    │  · detects cf.country      │
 │  · /ocw nickname command      │  ─ POST /register ▶│  · records events + aggreg.│
 │  · ~/.open-code-war/config    │                    │  · Cron snapshot (KV)      │
 └──────────────────────────────┘                    └───────────┬───────────────┘
@@ -62,6 +62,7 @@ Open Code War **never collects prompt content.** It only counts the number of su
 ```
 open-code-war/
 ├── plugin/            # Claude Code plugin (collection hook + /ocw command)
+├── adapters/          # adapters for other agents (Codex·OpenCode·pi)
 │   ├── .claude-plugin/plugin.json
 │   ├── hooks/hooks.json          # UserPromptSubmit → track.mjs (async·non-blocking)
 │   ├── commands/ocw.md           # /ocw slash command
@@ -105,6 +106,28 @@ To update right now manually:
 ```
 
 > ℹ️ The backend is **deployed and live (beta)** with its URL baked into the plugin, so collection works right after install. (The `/plugin marketplace add` command requires this repo to be pushed to GitHub.)
+
+### Other agents (Codex · OpenCode · pi)
+
+Agents other than Claude Code are counted **into the same account** via the adapters in `adapters/`.
+
+```bash
+git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
+
+# Codex — the installer merges a hook into ~/.codex/hooks.json. Then start codex
+#         and pick "Trust all and continue" on the "Hooks need review" screen.
+node ~/.open-code-war/src/adapters/codex/install.mjs
+
+# OpenCode
+mkdir -p ~/.config/opencode/plugin
+ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugin/ocw-track.js
+
+# pi
+mkdir -p ~/.pi/agent/extensions
+ln -sf ~/.open-code-war/src/adapters/pi/ocw-track.ts ~/.pi/agent/extensions/ocw-track.ts
+```
+
+See [`adapters/README.md`](adapters/README.md) for requirements and counting rules.
 
 ### Development (local load)
 
@@ -189,5 +212,5 @@ See [`DESIGN.md`](./DESIGN.md) for detailed design and decisions.
 > BSL is not an OSI-approved open-source license; it is 'source-available'. The name/logo (Open Code War, opencodewar) and the domain trademark are protected independently of the license.
 
 <div align="center">
-<sub>Made for the Claude Code community · <a href="https://opencodewar.dev">opencodewar.dev</a></sub>
+<sub>Made for the coding agent community · <a href="https://opencodewar.dev">opencodewar.dev</a></sub>
 </div>

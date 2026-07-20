@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Open Code War — Leaderboard (live)</title>
-<meta name="description" content="A live leaderboard for who types the most into Claude Code — daily, weekly & weekend. Privacy-first: no prompt content collected, only character counts." />
+<meta name="description" content="A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi. Daily, weekly & weekend. Privacy-first: no prompt content collected, only character counts." />
 <link rel="canonical" href="https://opencodewar.dev/" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F4" />
@@ -13,20 +13,20 @@
 <!-- Open Graph (Facebook, KakaoTalk, Slack, LinkedIn 등) -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Open Code War" />
-<meta property="og:title" content="Open Code War — Claude Code Leaderboard" />
-<meta property="og:description" content="A live leaderboard for who types the most into Claude Code — daily, weekly & weekend. No prompt content collected." />
+<meta property="og:title" content="Open Code War — Coding Agent Leaderboard" />
+<meta property="og:description" content="A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi. No prompt content collected." />
 <meta property="og:url" content="https://opencodewar.dev/" />
 <meta property="og:image" content="https://opencodewar.dev/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="Open Code War — the Claude Code typing leaderboard" />
+<meta property="og:image:alt" content="Open Code War — the coding agent typing leaderboard" />
 <meta property="og:locale" content="en_US" />
 <meta property="og:locale:alternate" content="ko_KR" />
 
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Open Code War — Claude Code Leaderboard" />
-<meta name="twitter:description" content="A live leaderboard for who types the most into Claude Code. Privacy-first: no prompt content, only character counts." />
+<meta name="twitter:title" content="Open Code War — Coding Agent Leaderboard" />
+<meta name="twitter:description" content="A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi. Privacy-first: no prompt content, only character counts." />
 <meta name="twitter:image" content="https://opencodewar.dev/og.png" />
 
 <!-- 구조화 데이터 (검색 리치 결과) -->
@@ -38,7 +38,7 @@
   "url": "https://opencodewar.dev/",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Any",
-  "description": "A live leaderboard for who types the most into Claude Code — daily, weekly and weekend boards. Privacy-first: no prompt content is collected, only character counts.",
+  "description": "A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode and pi. Daily, weekly and weekend boards. Privacy-first: no prompt content is collected, only character counts.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 }
 </script>
@@ -237,14 +237,14 @@
       <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
     </div>
     <div class="screen">
-      <div class="echo"><span class="sig">you@claude-code</span>:~$ <span id="cmdEcho">GET /leaderboard?type=daily&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ <span id="cmdEcho">GET /leaderboard?type=daily&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
 
       <div id="boardView">
       <section class="box banner">
         <span class="legend">ocw · live</span>
         <h1 class="big">OPEN CODE WAR</h1>
         <div class="rule" aria-hidden="true">════════════════════════════════════════════════════════════════</div>
-        <p data-i18n="tagline">The leaderboard for who types the most into Claude Code — updated on a schedule.</p>
+        <p data-i18n="tagline">The leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi.</p>
         <div class="status">
           <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">Connecting…</span></span>
           <span><span data-i18n="joined">joined</span> <b id="countChip">–</b></span>
@@ -400,7 +400,7 @@
   const T = {
     en: {
       langBtn: '한국어',
-      tagline: 'The leaderboard for who types the most into Claude Code — updated on a schedule.',
+      tagline: 'The leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi.',
       live_on: 'Live', live_off: 'Server unreachable',
       joined: 'joined', rank1: '#1', updated: 'Updated',
       sub_daily: 'today', sub_weekly: 'mon–sun', sub_weekend: 'fri·sat·sun',
@@ -430,7 +430,7 @@
     },
     ko: {
       langBtn: 'EN',
-      tagline: '클로드 코드에 가장 많이 입력한 코더를 가리는 리더보드 — 일정 간격으로 갱신.',
+      tagline: '코딩 에이전트에 가장 많이 입력한 코더를 가리는 리더보드 — 클로드 코드·코덱스·오픈코드·파이.',
       live_on: '집계 중', live_off: '서버 연결 실패',
       joined: '참가', rank1: '1위', updated: '집계',
       sub_daily: '일간', sub_weekly: '주간', sub_weekend: '금·토·일',
