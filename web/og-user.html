@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>OCW user OG</title>
+<style>
+  /* 소셜 카드는 단일 다크로 고정(카톡·슬랙·X 미리보기 배경과 무관하게 일관) */
+  :root{
+    --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
+    --ok:#6DA875; --ag-pi:#AC85DC;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;}
+  html,body{width:1200px;height:630px;background:var(--bg);color:var(--fg);font-family:var(--mono);overflow:hidden;}
+  .card{width:1200px;height:630px;padding:54px 60px 48px;display:flex;flex-direction:column;position:relative;}
+
+  .top{display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:22px;}
+  .lights{display:flex;gap:10px;}
+  .lights i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
+  .dom{font-weight:600;color:var(--fg);letter-spacing:.02em;}
+
+  .cmd{margin-top:30px;color:var(--dim);font-size:23px;}
+  .cmd .sig{color:var(--fg);}
+  .cmd .cur{display:inline-block;width:12px;height:22px;background:var(--fg);vertical-align:-3px;margin-left:4px;}
+
+  .idrow{display:flex;align-items:baseline;gap:18px;margin-top:14px;}
+  .nick{font-size:74px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
+  .rank{font-size:26px;font-weight:700;background:var(--fg);color:var(--bg);border-radius:8px;padding:5px 13px;}
+  .loc{color:var(--dim);font-size:24px;}
+
+  /* 오늘 히어로 + 서브 */
+  .body{display:flex;align-items:flex-end;justify-content:space-between;gap:40px;margin-top:auto;}
+  .hero .big{font-size:150px;font-weight:700;line-height:0.82;letter-spacing:-0.04em;font-variant-numeric:tabular-nums;}
+  .hero .unit{font-size:30px;color:var(--dim);margin-top:16px;}
+  .hero .sub{font-size:24px;line-height:1.5;color:var(--faint);margin-top:18px;font-variant-numeric:tabular-nums;}
+  .hero .sub b{color:var(--fg);font-weight:600;}
+
+  /* 최근 30일 미니 막대(우측 하단) */
+  .spark{flex:none;width:520px;}
+  .spark .lbl{font-size:19px;color:var(--faint);text-align:right;margin-bottom:12px;}
+  .bars{display:flex;align-items:flex-end;gap:4px;height:170px;}
+  .bars .b{flex:1;background:var(--fg);border-radius:2px;min-height:3px;}
+  .bars .b.zero{background:var(--line);}
+  .bars .b .cap{display:block;height:6px;background:var(--ag-pi);border-radius:2px 2px 0 0;}
+
+  .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:20px;}
+  .foot .tag{color:var(--dim);}
+  .foot .live{display:flex;align-items:center;gap:10px;}
+  .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--ok);display:block;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="dom">opencodewar.dev</div>
+    </div>
+
+    <div class="cmd"><span class="sig">you@open-code-war</span>:~$ GET /u/<span id="uNick2"></span><span class="cur"></span></div>
+
+    <div class="idrow">
+      <div class="nick" id="nick">–</div>
+      <div class="rank" id="rank">#–</div>
+      <div class="loc" id="loc"></div>
+    </div>
+
+    <div class="body">
+      <div class="hero">
+        <div class="big" id="today">0</div>
+        <div class="unit" id="unit">prompts today</div>
+        <div class="sub" id="sub"></div>
+      </div>
+      <div class="spark">
+        <div class="lbl">last 30 days</div>
+        <div class="bars" id="bars"></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="tag">no prompt content · character counts only</div>
+      <div class="live"><i></i><span id="stamp"></span></div>
+    </div>
+  </div>
+
+<script>
+  // 렌더러(scripts/render-og.mjs)가 이 마커를 실제 JSON 으로 치환한다.
+  var DATA = /*OCW_DATA*/{
+    nick: "dododo", rank: 1, total: 2, country: "KR", flag: "🌇", city: "Seoul",
+    today: { prompts: 26, chars: 62017 },
+    d30: { prompts: 1155, chars: 1224593 },
+    series: [3,2,4,2,3,2,4,3,2,3,4,2,3,2,4,3,2,3,4,3,2,4,3,11,8,25,40,337,26,4],
+    stamp: "2026-07-21 · KST"
+  }/*END*/;
+
+  function comma(n){ return Number(n||0).toLocaleString('en-US'); }
+  function compact(n){ n=Number(n||0); if(n>=1e6) return (n/1e6).toFixed(2).replace(/\.?0+$/,'')+'M'; if(n>=1e4) return Math.round(n/1e3)+'k'; return comma(n); }
+
+  var d=DATA;
+  document.getElementById('nick').textContent=d.nick;
+  document.getElementById('uNick2').textContent=d.nick;
+  document.getElementById('rank').textContent='#'+d.rank;
+  document.getElementById('loc').textContent=(d.country?d.country+' '+(d.flag||''):'')+(d.city?' · '+d.city:'');
+  document.getElementById('today').textContent=comma(d.today.prompts);
+  document.getElementById('sub').innerHTML=
+    '<b>'+comma(d.today.chars)+'</b> chars today<br>30d · <b>'+comma(d.d30.prompts)+'</b> prompts · <b>'+compact(d.d30.chars)+'</b> chars';
+  document.getElementById('stamp').textContent=d.stamp;
+
+  var s=d.series||[], max=Math.max.apply(null,s.concat([1])), peak=s.indexOf(Math.max.apply(null,s));
+  document.getElementById('bars').innerHTML=s.map(function(v,i){
+    var h=Math.max(3,Math.round(v/max*100));
+    var cap=i===peak&&v>0?'<span class="cap"></span>':'';
+    return '<div class="b'+(v<=Math.max(1,max*0.02)?' zero':'')+'" style="height:'+h+'%">'+cap+'</div>';
+  }).join('');
+</script>
+</body>
+</html>

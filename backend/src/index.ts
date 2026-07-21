@@ -11,7 +11,7 @@ import {
   handleZones,
 } from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
-import { handleProfilePage, nicknameFromPath, profilePath } from './og';
+import { handleOgImage, handleProfilePage, nicknameFromPath, ogImageIdFromPath, profilePath } from './og';
 import { isValidNickname } from './validate';
 
 export default {
@@ -33,6 +33,11 @@ export default {
           return Response.redirect(new URL(profilePath(legacy.trim()), url).toString(), 301);
         }
         return await handleProfilePage(request, url, env, null);
+      }
+      // /og/<public_id>.png — 유저별 공유 이미지(R2, 미스 시 공통 og.png 폴백).
+      const ogId = ogImageIdFromPath(pathname);
+      if (ogId !== null && request.method === 'GET') {
+        return await handleOgImage(request, url, env, ogId);
       }
       // /u/<nickname> — 프로필 페이지(에셋에 없는 경로라 Worker 폴백으로 도달).
       const pathNick = nicknameFromPath(pathname);

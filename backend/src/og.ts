@@ -56,6 +56,52 @@ export function profileUrl(nickname: string): string {
   return `${SITE_ORIGIN}${profilePath(nickname)}`;
 }
 
+/** 유저별 OG 이미지 경로/URL·저장 키. 파일명은 public_id 기준(항상 ASCII, 유저마다 존재). */
+export const OG_IMAGE_PREFIX = '/og/';
+/** KV 저장 키(스냅샷 키 lb:… 와 네임스페이스 분리). CI 업로드와 이 서빙이 공유한다. */
+export function ogImageKey(publicId: string): string {
+  return `og:img:${publicId}`;
+}
+export function ogImageUrl(publicId: string): string {
+  return `${SITE_ORIGIN}${OG_IMAGE_PREFIX}${publicId}.png`;
+}
+/** '/og/<public_id>.png' 에서 public_id 를 꺼낸다. 형식이 아니면 null. */
+export function ogImageIdFromPath(pathname: string): string | null {
+  if (!pathname.startsWith(OG_IMAGE_PREFIX) || !pathname.endsWith('.png')) return null;
+  const id = pathname.slice(OG_IMAGE_PREFIX.length, -'.png'.length);
+  return isValidPublicId(id) ? id : null;
+}
+
+/**
+ * GET /og/<public_id>.png — 유저별 공유 이미지.
+ * CI가 미리 렌더해 KV(og:img:<public_id>)에 올려둔 PNG를 서빙하고, 아직 없으면 공통 og.png로 폴백한다.
+ * → og:image URL은 항상 유효하므로 신규 유저도 미리보기가 깨지지 않는다.
+ * 저장소로 KV를 쓰는 이유: 무료 티어에서 R2(카드 등록)를 요구하지 않고 즉시 가능하며,
+ * 이미지(~70KB)가 KV 값 한도(25MB) 안에 충분히 들어가기 때문. 신선도는 max-age=300(5분).
+ */
+export async function handleOgImage(
+  request: Request,
+  url: URL,
+  env: Env,
+  publicId: string,
+): Promise<Response> {
+  const CACHE = 'public, max-age=300, s-maxage=300';
+  try {
+    const png = await env.KV.get(ogImageKey(publicId), 'arrayBuffer');
+    if (png) {
+      return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': CACHE } });
+    }
+  } catch (err) {
+    console.error(JSON.stringify({ level: 'error', msg: 'og_image_kv_failed', err: String(err) }));
+  }
+  // 폴백: 공통 og.png 정적 에셋
+  const fallback = await env.ASSETS.fetch(new Request(new URL('/og.png', url), request));
+  return new Response(fallback.body, {
+    status: 200,
+    headers: { 'Content-Type': 'image/png', 'Cache-Control': CACHE },
+  });
+}
+
 /**
  * GET /u/<nickname> — index.html 의 제목·OG·트위터 메타를 해당 유저로 재작성해 서빙.
  * 등록 유저가 아니거나(404) 조회 실패 시 원본 에셋을 그대로 반환한다(fail open).
@@ -78,13 +124,15 @@ export async function handleProfilePage(
   const contentType = assetRes.headers.get('Content-Type') ?? '';
   if ((!byNick && !byId) || !contentType.includes('text/html')) return assetRes;
 
-  let row: { nickname: string | null; bio: string | null; role: string | null; company: string | null; user_id?: string } | null = null;
+  let row:
+    | { nickname: string | null; bio: string | null; role: string | null; company: string | null; public_id: string | null; user_id?: string }
+    | null = null;
   try {
     row = byNick
-      ? await env.DB.prepare('SELECT nickname, bio, role, company FROM users WHERE nickname = ?')
+      ? await env.DB.prepare('SELECT nickname, bio, role, company, public_id FROM users WHERE nickname = ?')
           .bind((seg as string).trim())
           .first()
-      : await env.DB.prepare('SELECT user_id, nickname, bio, role, company FROM users WHERE public_id = ?')
+      : await env.DB.prepare('SELECT user_id, nickname, bio, role, company, public_id FROM users WHERE public_id = ?')
           .bind(seg as string)
           .first();
   } catch (err) {
@@ -104,6 +152,9 @@ export async function handleProfilePage(
   const title = `${displayName} · Open Code War`;
   const desc = buildOgDescription(metaRow);
   const pageUrl = profileUrl(canonicalSeg);
+  // 유저별 OG 이미지(public_id 기준). public_id 가 없으면(구 데이터) 공통 og.png 유지.
+  const publicId = byId ? (seg as string) : row.public_id;
+  const imageUrl = publicId ? ogImageUrl(publicId) : `${SITE_ORIGIN}/og.png`;
   const setContent = (value: string) => ({
     element(el: Element) {
       el.setAttribute('content', value);
@@ -130,8 +181,10 @@ export async function handleProfilePage(
     .on('meta[property="og:title"]', setContent(title))
     .on('meta[property="og:description"]', setContent(desc))
     .on('meta[property="og:url"]', setContent(pageUrl))
+    .on('meta[property="og:image"]', setContent(imageUrl))
     .on('meta[property="og:image:alt"]', setContent(title))
     .on('meta[name="twitter:title"]', setContent(title))
     .on('meta[name="twitter:description"]', setContent(desc))
+    .on('meta[name="twitter:image"]', setContent(imageUrl))
     .transform(pageRes);
 }
