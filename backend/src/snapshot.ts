@@ -49,11 +49,11 @@ export async function computeRanking(
   const days = boardDays(type, now);
   const placeholders = days.map(() => '?').join(',');
   const result = await env.DB.prepare(
-    `SELECT s.user_id, u.nickname, MAX(s.country) AS country,
+    `SELECT s.user_id, u.nickname, u.public_id, MAX(s.country) AS country,
             SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
      FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
      WHERE s.day IN (${placeholders})
-     GROUP BY s.user_id, u.nickname
+     GROUP BY s.user_id, u.nickname, u.public_id
      ORDER BY ${orderCol} DESC, s.user_id ASC
      LIMIT ?`,
   )
@@ -64,6 +64,7 @@ export async function computeRanking(
     rank: i + 1,
     nickname: displayNickname(r.nickname, r.user_id),
     registered: r.nickname != null,
+    public_id: r.public_id ?? null,
     country: r.country ?? null,
     prompts: Number(r.prompts) || 0,
     chars: Number(r.chars) || 0,
@@ -93,11 +94,11 @@ export async function computeZoneRanking(
   binds.push(limit);
 
   const result = await env.DB.prepare(
-    `SELECT s.user_id, u.nickname, u.country AS country,
+    `SELECT s.user_id, u.nickname, u.public_id, u.country AS country,
             SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
      FROM daily_stats s JOIN users u ON u.user_id = s.user_id
      WHERE s.day IN (${ph}) AND u.country = ? ${cityClause}
-     GROUP BY s.user_id, u.nickname
+     GROUP BY s.user_id, u.nickname, u.public_id
      ORDER BY ${orderCol} DESC, s.user_id ASC
      LIMIT ?`,
   )
@@ -108,6 +109,7 @@ export async function computeZoneRanking(
     rank: i + 1,
     nickname: displayNickname(r.nickname, r.user_id),
     registered: r.nickname != null,
+    public_id: r.public_id ?? null,
     country: r.country ?? null,
     prompts: Number(r.prompts) || 0,
     chars: Number(r.chars) || 0,

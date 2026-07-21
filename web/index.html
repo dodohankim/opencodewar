@@ -578,9 +578,11 @@
     const rows = data.ranking || [];
     $('countChip').textContent = fmt(data.count);
     const champ = rows[0];
-    if (champ && champ.registered) {
+    // 클릭 라우팅 키(ref): 등록 유저는 닉네임, 익명 유저는 공개 slug(public_id).
+    const champRef = champ ? (champ.registered ? champ.nickname : champ.public_id) : null;
+    if (champ && champRef) {
       const cn = escapeHtml(champ.nickname);
-      $('champChip').innerHTML = `<span class="nm link" data-nick="${cn}" role="button" tabindex="0">${cn}</span>`;
+      $('champChip').innerHTML = `<span class="nm link" data-nick="${escapeHtml(champRef)}" role="button" tabindex="0">${cn}</span>`;
     } else {
       $('champChip').textContent = champ ? (champ.nickname || t('anon')) : '–';
     }
@@ -605,8 +607,10 @@
       const isMe = r.nickname && r.nickname.toLowerCase() === meLc && meLc !== '';
       const pRank = r.nickname != null ? prev[r.nickname] : null;
       const nm = escapeHtml(r.nickname || t('anon'));
-      const nmCell = r.registered
-        ? `<span class="nm link" data-nick="${nm}" role="button" tabindex="0">${nm}</span>`
+      // 등록 유저는 닉네임으로, 익명 유저는 공개 slug(public_id)로 상세 진입 → 모든 행 클릭 가능.
+      const ref = r.registered ? r.nickname : r.public_id;
+      const nmCell = ref
+        ? `<span class="nm link" data-nick="${escapeHtml(ref)}" role="button" tabindex="0">${nm}</span>`
         : `<span class="nm">${nm}</span>`;
       return `<tr class="${isMe ? 'me' : ''}">
         <td><span class="${rankCls}">${r.rank}</span></td>
@@ -753,6 +757,9 @@
   // ── 라우팅: /u/<nickname> 이면 상세, 아니면 리더보드 ──
   // (구 링크 /?user=<nick> 도 계속 받는다 — 서버는 301, 클라이언트는 주소만 조용히 교체)
   const PROFILE_PREFIX = '/u/';
+  // 공개 slug(public_id) 형식. 하이픈 포함이라 닉네임과 구분된다 → 상세 조회를 ?id= 로 보낸다.
+  const PID_RE = /^u-[0-9a-z]{10}$/;
+  const isPid = (s) => typeof s === 'string' && PID_RE.test(s);
   function urlFor(nick) {
     // ?api= 등 기존 파라미터는 유지하고 경로만 바꾼다(로컬 개발용).
     const u = new URL(location.href);
@@ -786,7 +793,8 @@
     curUser = nick;
     $('boardView').hidden = true;
     $('userView').hidden = false;
-    document.title = `${nick} · Open Code War`;
+    // slug 는 표시명이 아니므로 응답(자동 닉네임) 도착 후 renderUser 가 제목을 채운다.
+    document.title = isPid(nick) ? BASE_TITLE : `${nick} · Open Code War`;
     window.scrollTo(0, 0);
     loadUser(nick);
   }
@@ -826,8 +834,10 @@
     uMetric = 'prompts';
     uData = null;
     syncUsortButtons();
-    $('cmdEcho').textContent = `GET /user?nickname=${nick}`;
-    $('uNick').textContent = nick;
+    const byId = isPid(nick);
+    const q = byId ? `id=${encodeURIComponent(nick)}` : `nickname=${encodeURIComponent(nick)}`;
+    $('cmdEcho').textContent = `GET /user?${q}`;
+    $('uNick').textContent = byId ? '' : nick; // slug 는 표시명이 아님 → 응답 도착 후 채움
     $('shareBtn').hidden = true;
     $('uCountry').textContent = '';
     $('uRole').hidden = true;
@@ -845,7 +855,7 @@
     $('uMsg').classList.remove('err');
     $('uMsg').textContent = t('loading');
     try {
-      const res = await fetch(`${API}/user?nickname=${encodeURIComponent(nick)}`, { cache: 'no-store' });
+      const res = await fetch(`${API}/user?${q}`, { cache: 'no-store' });
       if (res.status === 404) { if (curUser === nick) showUserError(t('user_notfound')); return; }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -910,6 +920,7 @@
   }
   function renderUser(data) {
     $('uNick').textContent = data.nickname;
+    document.title = `${data.nickname} · Open Code War`; // slug 진입 시 자동 닉네임으로 제목 확정
     $('shareBtn').hidden = false;
     $('uCountry').textContent = [
       data.country ? `${data.country} ${flagOf(data.country)}` : '',
@@ -1063,8 +1074,9 @@
   $('shareBtn').addEventListener('click', async () => {
     if (!curUser) return;
     const url = profileUrl(curUser);
+    const shareName = (uData && uData.nickname) || curUser; // slug 대신 표시 닉네임으로 공유 제목
     if (navigator.share && matchMedia('(pointer: coarse)').matches) {
-      try { await navigator.share({ title: `${curUser} · Open Code War`, url }); return; }
+      try { await navigator.share({ title: `${shareName} · Open Code War`, url }); return; }
       catch (e) { if (e && e.name === 'AbortError') return; } // 사용자가 시트를 닫음 → 무시. 그 외 실패는 복사로 폴백.
     }
     flashShareBtn((await copyText(url)) ? t('copied') : t('copy_fail'));

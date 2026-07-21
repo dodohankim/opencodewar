@@ -1,5 +1,7 @@
 import type { Env } from './types';
 import { isValidNickname } from './validate';
+import { isValidPublicId } from './publicid';
+import { autoNickname } from './nickname';
 
 /** 공유 링크가 가리키는 정식 오리진(카톡·슬랙·X 미리보기의 og:url·canonical). */
 const SITE_ORIGIN = 'https://opencodewar.dev';
@@ -58,26 +60,33 @@ export function profileUrl(nickname: string): string {
  * GET /u/<nickname> — index.html 의 제목·OG·트위터 메타를 해당 유저로 재작성해 서빙.
  * 등록 유저가 아니거나(404) 조회 실패 시 원본 에셋을 그대로 반환한다(fail open).
  * SPA 라우팅·데이터 로딩은 기존처럼 클라이언트가 담당하고, 여긴 크롤러용 메타만 바꾼다.
- * @param nick 경로에서 뽑은 닉네임. null 이면 루트 요청(메타 재작성 없이 에셋 그대로).
+ * @param seg 경로에서 뽑은 식별자(등록 닉네임 또는 공개 slug). null 이면 루트 요청(에셋 그대로).
  */
 export async function handleProfilePage(
   request: Request,
   url: URL,
   env: Env,
-  nick: string | null,
+  seg: string | null,
 ): Promise<Response> {
-  // /u/<nick> 은 정적 에셋이 아니므로 루트(index.html)를 대신 가져온다.
+  // /u/<seg> 는 정적 에셋이 아니므로 루트(index.html)를 대신 가져온다.
   const assetReq = url.pathname === '/' ? request : new Request(new URL('/', url), request);
   const assetRes = await env.ASSETS.fetch(assetReq);
-  if (!isValidNickname(nick)) return assetRes;
-  const contentType = assetRes.headers.get('Content-Type') ?? '';
-  if (!contentType.includes('text/html')) return assetRes;
 
-  let row: ProfileMetaRow | null = null;
+  // seg 는 등록 닉네임이거나 공개 slug(public_id). 둘 다 아니면 재작성 없이 에셋 그대로(fail open).
+  const byNick = isValidNickname(seg);
+  const byId = !byNick && isValidPublicId(seg);
+  const contentType = assetRes.headers.get('Content-Type') ?? '';
+  if ((!byNick && !byId) || !contentType.includes('text/html')) return assetRes;
+
+  let row: { nickname: string | null; bio: string | null; role: string | null; company: string | null; user_id?: string } | null = null;
   try {
-    row = await env.DB.prepare('SELECT nickname, bio, role, company FROM users WHERE nickname = ?')
-      .bind(nick.trim())
-      .first<ProfileMetaRow>();
+    row = byNick
+      ? await env.DB.prepare('SELECT nickname, bio, role, company FROM users WHERE nickname = ?')
+          .bind((seg as string).trim())
+          .first()
+      : await env.DB.prepare('SELECT user_id, nickname, bio, role, company FROM users WHERE public_id = ?')
+          .bind(seg as string)
+          .first();
   } catch (err) {
     console.error(JSON.stringify({ level: 'error', msg: 'og_lookup_failed', err: String(err) }));
     return assetRes;
@@ -86,9 +95,15 @@ export async function handleProfilePage(
   // 크롤러가 존재하지 않는 유저 주소를 색인하지 않도록(soft 404 방지).
   if (!row) return new Response(assetRes.body, { status: 404, headers: assetRes.headers });
 
-  const title = `${row.nickname} · Open Code War`;
-  const desc = buildOgDescription(row);
-  const pageUrl = profileUrl(row.nickname);
+  // 표시 이름: 등록 닉네임이 있으면 그대로, 없으면(익명·slug 조회) userId 파생 자동 닉네임.
+  const displayName = row.nickname ?? (row.user_id ? autoNickname(row.user_id) : '');
+  // canonical: 등록 유저는 닉네임 정식 URL로 통일(중복 색인 방지), 익명 유저는 slug URL.
+  const canonicalSeg = row.nickname ?? (seg as string);
+  const metaRow: ProfileMetaRow = { nickname: displayName, bio: row.bio, role: row.role, company: row.company };
+
+  const title = `${displayName} · Open Code War`;
+  const desc = buildOgDescription(metaRow);
+  const pageUrl = profileUrl(canonicalSeg);
   const setContent = (value: string) => ({
     element(el: Element) {
       el.setAttribute('content', value);

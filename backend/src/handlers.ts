@@ -22,6 +22,7 @@ import {
 } from './validate';
 import { METRIC_COL, SNAPSHOT_KEY, boardDays, computeZoneRanking, getSnapshot, periodOf } from './snapshot';
 import { displayNickname } from './nickname';
+import { isValidPublicId, newPublicId } from './publicid';
 import { cityKey, cleanCity, countryFlag } from './zones';
 
 /** 유저 상세 페이지가 보여주는 최근 사용량 구간(일). */
@@ -80,10 +81,10 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
       now,
     ),
     env.DB.prepare(
-      `INSERT INTO users (user_id, country, created_at, last_seen_at)
-       VALUES (?, ?, ?, ?)
+      `INSERT INTO users (user_id, public_id, country, created_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(user_id) DO NOTHING`,
-    ).bind(userId, country, now, now),
+    ).bind(userId, newPublicId(), country, now, now),
     env.DB.prepare(
       `INSERT INTO daily_stats (user_id, day, agent, prompts, chars, country)
        VALUES (?, ?, ?, 1, ?, ?)
@@ -464,33 +465,43 @@ export async function handleDelete(request: Request, env: Env): Promise<Response
 }
 
 /**
- * GET /user?nickname=... — 유저 상세(프로필 + 최근 30일 일별 사용량).
- * 공개 페이지이므로 등록 닉네임(유니크)으로만 조회한다. user_id(비밀키)는 반환하지 않는다.
+ * GET /user?nickname=<등록닉> | ?id=<public_id> — 유저 상세(프로필 + 최근 30일 일별 사용량).
+ * 공개 페이지다. 등록 유저는 닉네임으로, 닉네임 미등록(익명) 유저는 공개 slug(public_id)로 조회한다.
+ * user_id(비밀키)는 어느 경우에도 반환하지 않는다.
  */
 export async function handleUser(url: URL, env: Env): Promise<Response> {
+  const idParam = url.searchParams.get('id');
   const nicknameParam = url.searchParams.get('nickname');
-  if (!isValidNickname(nicknameParam)) {
-    return json({ error: 'invalid_nickname' }, 400);
-  }
-  const nickname = (nicknameParam as string).trim();
 
-  const user = await env.DB.prepare(
-    'SELECT user_id, nickname, bio, role, company, links, projects, email, country, city, created_at FROM users WHERE nickname = ?',
-  )
-    .bind(nickname)
-    .first<{
-      user_id: string;
-      nickname: string;
-      bio: string | null;
-      role: string | null;
-      company: string | null;
-      links: string | null;
-      projects: string | null;
-      email: string | null;
-      country: string | null;
-      city: string | null;
-      created_at: number;
-    }>();
+  const cols =
+    'SELECT user_id, nickname, bio, role, company, links, projects, email, country, city, created_at FROM users';
+  let query: D1PreparedStatement;
+  if (idParam != null) {
+    // 공개 slug 조회(익명 유저 진입 경로). id 우선.
+    if (!isValidPublicId(idParam)) {
+      return json({ error: 'invalid_id' }, 400);
+    }
+    query = env.DB.prepare(`${cols} WHERE public_id = ?`).bind(idParam);
+  } else {
+    if (!isValidNickname(nicknameParam)) {
+      return json({ error: 'invalid_nickname' }, 400);
+    }
+    query = env.DB.prepare(`${cols} WHERE nickname = ?`).bind((nicknameParam as string).trim());
+  }
+
+  const user = await query.first<{
+    user_id: string;
+    nickname: string | null;
+    bio: string | null;
+    role: string | null;
+    company: string | null;
+    links: string | null;
+    projects: string | null;
+    email: string | null;
+    country: string | null;
+    city: string | null;
+    created_at: number;
+  }>();
 
   if (!user) {
     return json({ error: 'user_not_found' }, 404);
@@ -532,7 +543,8 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   );
 
   return json({
-    nickname: user.nickname,
+    // 익명 유저는 저장된 닉네임이 없으므로 userId 파생 자동 닉네임으로 표시한다.
+    nickname: displayNickname(user.nickname, user.user_id),
     bio: user.bio ?? null,
     role: user.role ?? null,
     company: user.company ?? null,

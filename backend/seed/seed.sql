@@ -11,17 +11,17 @@ DELETE FROM users WHERE user_id LIKE 'seed_user_%';
 
 -- country(IP 자동)·city(자기선언)를 다양화해 구역 리더보드 테스트가 되게 한다.
 --   KR/Seoul: 01,02,03,10 · KR/Busan: 04,05 · KR/(미설정): 06 · US/San Francisco: 07,08 · JP/Tokyo: 09
-INSERT INTO users (user_id, nickname, bio, country, city, created_at, last_seen_at) VALUES
-  ('seed_user_01', '코드깎는노인',   '20년째 손맛으로 코드를 깎습니다. vim + claude 조합.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_02', 'vim_귀신',       'hjkl로 산다. 마우스는 장식.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_03', '새벽5시개발자',  '해 뜨기 전이 제일 집중 잘 됨.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_04', '반포자이코더',   NULL, 'KR', 'Busan',         unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_05', '프롬프트장인',   '좋은 프롬프트가 좋은 코드를 만든다.', 'KR', 'Busan',         unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_06', '리팩터_고양이',  NULL, 'KR', NULL,            unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_07', '세미콜론수집가', ';', 'US', 'San Francisco', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_08', '버그사냥꾼',     '오늘도 한 마리 잡았다.', 'US', 'San Francisco', unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_09', '토큰_수도꼭지',  NULL, 'JP', 'Tokyo',         unixepoch() * 1000, unixepoch() * 1000),
-  ('seed_user_10', NULL,             NULL, 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000);
+INSERT INTO users (user_id, public_id, nickname, bio, country, city, created_at, last_seen_at) VALUES
+  ('seed_user_01', 'u-seeduser01', '코드깎는노인',   '20년째 손맛으로 코드를 깎습니다. vim + claude 조합.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_02', 'u-seeduser02', 'vim_귀신',       'hjkl로 산다. 마우스는 장식.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_03', 'u-seeduser03', '새벽5시개발자',  '해 뜨기 전이 제일 집중 잘 됨.', 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_04', 'u-seeduser04', '반포자이코더',   NULL, 'KR', 'Busan',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_05', 'u-seeduser05', '프롬프트장인',   '좋은 프롬프트가 좋은 코드를 만든다.', 'KR', 'Busan',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_06', 'u-seeduser06', '리팩터_고양이',  NULL, 'KR', NULL,            unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_07', 'u-seeduser07', '세미콜론수집가', ';', 'US', 'San Francisco', unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_08', 'u-seeduser08', '버그사냥꾼',     '오늘도 한 마리 잡았다.', 'US', 'San Francisco', unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_09', 'u-seeduser09', '토큰_수도꼭지',  NULL, 'JP', 'Tokyo',         unixepoch() * 1000, unixepoch() * 1000),
+  ('seed_user_10', 'u-seeduser10', NULL,             NULL, 'KR', 'Seoul',         unixepoch() * 1000, unixepoch() * 1000);
 
 INSERT INTO daily_stats (user_id, day, prompts, chars, country) VALUES
   -- 오늘 (daily 보드)
@@ -127,6 +127,8 @@ INSERT INTO daily_stats (user_id, day, prompts, chars, country) VALUES
   ('seed_user_01', date(date('now','+9 hours','-'||((CAST(strftime('%w',date('now','+9 hours')) AS INTEGER)+6)%7)||' days'),'+1 days'), 200, 16000, 'KR'),
   ('seed_user_03', date(date('now','+9 hours','-'||((CAST(strftime('%w',date('now','+9 hours')) AS INTEGER)+6)%7)||' days'),'+2 days'), 180, 20000, 'KR'),
   ('seed_user_05', date(date('now','+9 hours','-'||((CAST(strftime('%w',date('now','+9 hours')) AS INTEGER)+6)%7)||' days'),'+0 days'), 150, 18000, 'KR')
-ON CONFLICT(user_id, day) DO UPDATE SET
+-- daily_stats PK 는 0006 에서 (user_id, day, agent) 로 바뀌었다. agent 를 생략한 위 INSERT 는
+-- DEFAULT 'claude-code' 로 들어가므로, 충돌 타깃도 실제 PK 3개 컬럼을 그대로 명시한다.
+ON CONFLICT(user_id, day, agent) DO UPDATE SET
   prompts = daily_stats.prompts + excluded.prompts,
   chars   = daily_stats.chars   + excluded.chars;

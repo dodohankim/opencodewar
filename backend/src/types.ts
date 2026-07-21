@@ -25,6 +25,7 @@ export type Metric = 'prompts' | 'chars';
 export interface LeaderboardRow {
   user_id: string;
   nickname: string | null;
+  public_id: string | null;
   country: string | null;
   prompts: number;
   chars: number;
@@ -34,8 +35,10 @@ export interface LeaderboardRow {
 export interface RankEntry {
   rank: number;
   nickname: string | null;
-  /** 유저가 직접 등록한 닉네임인지 여부. false면 userId 파생 자동 닉네임(상세 페이지 없음). */
+  /** 유저가 직접 등록한 닉네임인지 여부. false면 userId 파생 자동 닉네임(표시 전용). */
   registered: boolean;
+  /** 공개 프로필 slug. 라우팅용 — 등록 유저는 닉네임으로, 익명 유저는 이 값으로 상세 진입. */
+  public_id: string | null;
   country: string | null;
   prompts: number;
   chars: number;
