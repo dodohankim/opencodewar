@@ -35,13 +35,16 @@
   .hero .sub{font-size:22px;line-height:1.5;color:var(--faint);margin-top:12px;font-variant-numeric:tabular-nums;}
   .hero .sub b{color:var(--fg);font-weight:600;}
 
-  /* 최근 30일 막대 — 전체 폭으로 숫자 아래 */
+  /* 최근 7일 막대 — 전체 폭으로 숫자 아래, 굵게. 오늘(마지막) 강조 + 요일 축 */
   .spark{width:100%;}
   .spark .lbl{font-size:19px;color:var(--faint);text-align:left;margin-bottom:10px;}
-  .bars{display:flex;align-items:flex-end;gap:5px;height:84px;}
-  .bars .b{flex:1;background:var(--fg);border-radius:2px;min-height:3px;}
-  .bars .b.zero{background:var(--line);}
-  .bars .b .cap{display:block;height:6px;background:var(--ag-pi);border-radius:2px 2px 0 0;}
+  .bars{display:flex;align-items:flex-end;gap:16px;height:104px;}
+  .bars .b{flex:1;background:var(--fg);border-radius:3px;min-height:5px;}
+  .bars .b.tdy{background:var(--ag-pi);}
+  .bars .b .cap{display:block;height:6px;background:var(--ag-pi);border-radius:3px 3px 0 0;}
+  .axis{display:flex;gap:16px;margin-top:12px;}
+  .axis .al{flex:1;text-align:center;font-size:18px;color:var(--faint);}
+  .axis .al.tdyl{color:var(--ag-pi);font-weight:600;}
 
   .foot{margin-top:auto;padding-top:20px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:20px;}
   .foot .tag{color:var(--dim);}
@@ -71,8 +74,9 @@
         <div class="sub" id="sub"></div>
       </div>
       <div class="spark">
-        <div class="lbl">last 30 days</div>
+        <div class="lbl">last 7 days</div>
         <div class="bars" id="bars"></div>
+        <div class="axis" id="axis"></div>
       </div>
     </div>
 
@@ -101,16 +105,23 @@
   document.getElementById('rank').textContent='#'+d.rank;
   document.getElementById('loc').textContent=(d.country?d.country+' '+(d.flag||''):'')+(d.city?' · '+d.city:'');
   document.getElementById('today').textContent=comma(d.today.prompts);
+  // "prompts today" 의 today 를 오늘 날짜(MM-DD)로. chars 뒤에는 날짜 표기 없음.
+  document.getElementById('unit').textContent='prompts · '+d.stamp.slice(5,10);
   document.getElementById('sub').innerHTML=
-    '<b>'+comma(d.today.chars)+'</b> chars today<br>30d · <b>'+comma(d.d30.prompts)+'</b> prompts · <b>'+compact(d.d30.chars)+'</b> chars';
+    '<b>'+comma(d.today.chars)+'</b> chars<br>30d · <b>'+comma(d.d30.prompts)+'</b> prompts · <b>'+compact(d.d30.chars)+'</b> chars';
   document.getElementById('stamp').textContent=d.stamp;
 
-  var s=d.series||[], max=Math.max.apply(null,s.concat([1])), peak=s.indexOf(Math.max.apply(null,s));
+  // 최근 7일 막대(오늘=마지막 강조) + 요일 축
+  var s=(d.series||[]).slice(-7), max=Math.max.apply(null,s.concat([1])), peak=s.indexOf(Math.max.apply(null,s));
   document.getElementById('bars').innerHTML=s.map(function(v,i){
-    var h=Math.max(3,Math.round(v/max*100));
+    var h=Math.max(5,Math.round(v/max*104));
     var cap=i===peak&&v>0?'<span class="cap"></span>':'';
-    return '<div class="b'+(v<=Math.max(1,max*0.02)?' zero':'')+'" style="height:'+h+'%">'+cap+'</div>';
+    return '<div class="b'+(i===s.length-1?' tdy':'')+'" style="height:'+h+'px">'+cap+'</div>';
   }).join('');
+  var dow=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var pt=d.stamp.slice(0,10).split('-').map(Number), bd=Date.UTC(pt[0],pt[1]-1,pt[2]);
+  var wk=[];for(var i=0;i<7;i++){wk.push(dow[new Date(bd-(6-i)*86400000).getUTCDay()]);}
+  document.getElementById('axis').innerHTML=wk.map(function(w,i){return '<div class="al'+(i===6?' tdyl':'')+'">'+w+'</div>';}).join('');
 </script>
 </body>
 </html>
