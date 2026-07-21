@@ -94,7 +94,6 @@
   .tab:hover, .sort:hover { color:var(--fg); }
   .tab[aria-selected="true"], .sort[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
   .tab[aria-selected="true"] .k { color:var(--rev-fg); opacity:0.7; }
-  .sorts .lbl { color:var(--faint); font-size:12px; align-self:center; }
 
   .toolbar { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; margin-top:14px; font-size:12px; color:var(--dim); }
   .toolbar input[type=text] { font:inherit; font-size:12px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 9px; width:170px; }
@@ -264,13 +263,12 @@
 
       <div class="controls">
         <div class="tabs" role="tablist" aria-label="period">
-          <button class="tab" role="tab" aria-selected="true"  data-board="daily">daily <span class="k" data-i18n="sub_daily">today</span></button>
+          <button class="tab" role="tab" aria-selected="true"  data-board="daily">daily</button>
           <button class="tab" role="tab" aria-selected="false" data-board="weekly">weekly <span class="k" data-i18n="sub_weekly">mon–sun</span></button>
           <button class="tab" role="tab" aria-selected="false" data-board="weekend">weekend <span class="k" data-i18n="sub_weekend">fri·sat·sun</span></button>
-          <button class="tab" role="tab" aria-selected="false" data-board="monthly">monthly <span class="k" data-i18n="sub_monthly">this month</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-board="monthly">monthly</button>
         </div>
         <div class="sorts">
-          <span class="lbl">sort:</span>
           <button class="sort" data-metric="prompts" aria-pressed="true">prompts</button>
           <button class="sort" data-metric="chars" aria-pressed="false">chars</button>
         </div>
@@ -373,7 +371,6 @@
           <div class="utop">
             <span class="ag-legend" id="uAgentLegend"></span>
             <div class="sorts">
-              <span class="lbl">sort:</span>
               <button class="usort" data-metric="prompts" aria-pressed="true">prompts</button>
               <button class="usort" data-metric="chars" aria-pressed="false">chars</button>
             </div>
@@ -412,7 +409,7 @@
       tagline: 'The leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi.',
       live_on: 'Live', live_off: 'Server unreachable',
       joined: 'joined', rank1: '#1', updated: 'Updated',
-      sub_daily: 'today', sub_weekly: 'mon–sun', sub_weekend: 'fri·sat·sun', sub_monthly: 'this month',
+      sub_weekly: 'mon–sun', sub_weekend: 'fri·sat·sun',
       me_ph: 'your nickname (highlight)', refresh: '↻ Refresh',
       rules1: '<b>Input = a prompt submit.</b> +1 each Enter; characters counted too.',
       rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
@@ -442,7 +439,7 @@
       tagline: '코딩 에이전트에 가장 많이 입력한 코더를 가리는 리더보드 — 클로드 코드·코덱스·오픈코드·파이.',
       live_on: '집계 중', live_off: '서버 연결 실패',
       joined: '참가', rank1: '1위', updated: '집계',
-      sub_daily: '일간', sub_weekly: '주간', sub_weekend: '금·토·일', sub_monthly: '이번 달',
+      sub_weekly: '주간', sub_weekend: '금·토·일',
       me_ph: '내 닉네임 (하이라이트)', refresh: '↻ 새로고침',
       rules1: '<b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.',
       rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
