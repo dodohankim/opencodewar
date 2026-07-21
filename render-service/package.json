@@ -1,0 +1,13 @@
+{
+  "name": "ocw-render-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open Code War — on-demand OG image render service (VPS)",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

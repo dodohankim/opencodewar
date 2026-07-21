@@ -16,6 +16,10 @@ export interface Env {
   TRACK_RATE_LIMITER: RateLimit;
   /** 리더보드 스냅샷 신선도(ms). 미설정 시 30분. 로컬 테스트는 .dev.vars로 낮춤. */
   SNAPSHOT_TTL_MS?: string;
+  /** 온디맨드 OG 렌더 서비스(VPS) 오리진. 예: https://og.example.com. 미설정 시 공통 og.png 만 씀. */
+  RENDER_ORIGIN?: string;
+  /** 렌더 서비스 인증 키(X-OCW-Render-Key). wrangler secret 으로 주입. */
+  RENDER_KEY?: string;
 }
 
 export type BoardType = 'daily' | 'weekly' | 'weekend' | 'monthly';

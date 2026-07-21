@@ -37,7 +37,7 @@ export default {
       // /og/<public_id>.png — 유저별 공유 이미지(R2, 미스 시 공통 og.png 폴백).
       const ogId = ogImageIdFromPath(pathname);
       if (ogId !== null && request.method === 'GET') {
-        return await handleOgImage(request, url, env, ogId);
+        return await handleOgImage(request, url, env, ogId, ctx);
       }
       // /u/<nickname> — 프로필 페이지(에셋에 없는 경로라 Worker 폴백으로 도달).
       const pathNick = nicknameFromPath(pathname);

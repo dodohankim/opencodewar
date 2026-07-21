@@ -72,29 +72,58 @@ export function ogImageIdFromPath(pathname: string): string | null {
   return isValidPublicId(id) ? id : null;
 }
 
+/** KV 이미지 신선도(TTL). 만료되면 다음 접근 시 재렌더 → "몇 분 전" 신선도. */
+const OG_KV_TTL_S = 1800; // 30분
+
 /**
- * GET /og/<public_id>.png — 유저별 공유 이미지.
- * CI가 미리 렌더해 KV(og:img:<public_id>)에 올려둔 PNG를 서빙하고, 아직 없으면 공통 og.png로 폴백한다.
- * → og:image URL은 항상 유효하므로 신규 유저도 미리보기가 깨지지 않는다.
- * 저장소로 KV를 쓰는 이유: 무료 티어에서 R2(카드 등록)를 요구하지 않고 즉시 가능하며,
- * 이미지(~70KB)가 KV 값 한도(25MB) 안에 충분히 들어가기 때문. 신선도는 max-age=300(5분).
+ * GET /og/<public_id>.png — 유저별 공유 이미지(온디맨드).
+ *  1) KV(og:img:<public_id>) 히트 → 즉시 서빙(30분 내 재접근은 캐시)
+ *  2) 미스 → 렌더 서비스(VPS)에 요청해 그 자리에서 만들고, KV 에 TTL 로 캐시한 뒤 서빙
+ *  3) 렌더 서비스가 없거나 실패 → 공통 og.png 폴백
+ * → og:image URL 은 항상 유효하고, 아무도 안 보는 유저는 렌더되지 않는다(낭비 0).
+ * 저장소로 KV 를 쓰는 이유: 무료 티어에서 R2(카드 등록)를 요구하지 않고, 이미지가 값 한도(25MB) 안.
  */
 export async function handleOgImage(
   request: Request,
   url: URL,
   env: Env,
   publicId: string,
+  ctx?: ExecutionContext,
 ): Promise<Response> {
   const CACHE = 'public, max-age=300, s-maxage=300';
+  const key = ogImageKey(publicId);
+
+  // 1) KV 히트
   try {
-    const png = await env.KV.get(ogImageKey(publicId), 'arrayBuffer');
+    const png = await env.KV.get(key, 'arrayBuffer');
     if (png) {
       return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': CACHE } });
     }
   } catch (err) {
     console.error(JSON.stringify({ level: 'error', msg: 'og_image_kv_failed', err: String(err) }));
   }
-  // 폴백: 공통 og.png 정적 에셋
+
+  // 2) 미스 → 렌더 서비스(VPS) 온디맨드
+  if (env.RENDER_ORIGIN) {
+    try {
+      const rendered = await fetch(`${env.RENDER_ORIGIN}/og/${publicId}.png`, {
+        headers: env.RENDER_KEY ? { 'X-OCW-Render-Key': env.RENDER_KEY } : {},
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (rendered.ok) {
+        const buf = await rendered.arrayBuffer();
+        const put = env.KV.put(key, buf, { expirationTtl: OG_KV_TTL_S });
+        if (ctx) ctx.waitUntil(put);
+        else await put;
+        return new Response(buf, { headers: { 'Content-Type': 'image/png', 'Cache-Control': CACHE } });
+      }
+      console.error(JSON.stringify({ level: 'warn', msg: 'og_render_bad_status', status: rendered.status }));
+    } catch (err) {
+      console.error(JSON.stringify({ level: 'error', msg: 'og_render_failed', err: String(err) }));
+    }
+  }
+
+  // 3) 폴백: 공통 og.png 정적 에셋
   const fallback = await env.ASSETS.fetch(new Request(new URL('/og.png', url), request));
   return new Response(fallback.body, {
     status: 200,
