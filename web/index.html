@@ -192,8 +192,16 @@
   .field input:disabled { color:var(--faint); background:var(--hover); cursor:not-allowed; }
   .field .val { font-size:13px; color:var(--fg); font-variant-numeric:tabular-nums; padding:7px 0; }
 
-  .ustats { display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
-  .ustats b { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
+  /* 프로필 통계: 지표별 스탯 타일 4칸(큰 숫자 + 라벨 + 서브) */
+  .utop { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:6px; }
+  .ustats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+  .tile { border:1px solid var(--line); border-radius:8px; padding:11px 12px; background:var(--hover); }
+  .tile.sel { border-color:var(--fg); }
+  .tnum { font-size:26px; font-weight:600; line-height:1.05; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
+  .tnum .den { font-size:15px; color:var(--dim); font-weight:400; }
+  .tlab { font-size:12px; color:var(--dim); margin-top:5px; }
+  .tsub { font-size:11px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
+  @media (max-width:560px) { .ustats { grid-template-columns:repeat(2,1fr); } .tnum { font-size:23px; } }
   .chart-wrap { margin-top:16px; position:relative; }
   .chart-tip { position:absolute; z-index:5; pointer-events:none; transform:translate(-50%,-100%);
     background:var(--rev-bg); color:var(--rev-fg); border-radius:5px; padding:6px 9px; font-size:11.5px;
@@ -362,15 +370,15 @@
 
         <section class="box">
           <span class="legend" id="uChartLegend">last 30 days · prompts</span>
-          <span class="ag-legend" id="uAgentLegend"></span>
-          <div class="controls" style="margin-top:6px">
-            <div class="ustats" id="uStats"></div>
+          <div class="utop">
+            <span class="ag-legend" id="uAgentLegend"></span>
             <div class="sorts">
               <span class="lbl">sort:</span>
               <button class="usort" data-metric="prompts" aria-pressed="true">prompts</button>
               <button class="usort" data-metric="chars" aria-pressed="false">chars</button>
             </div>
           </div>
+          <div class="ustats" id="uStats"></div>
           <div class="chart-wrap" id="uChartWrap">
             <div class="chart" id="uChart" aria-hidden="true"></div>
             <div class="chart-tip" id="uTip"></div>
@@ -422,7 +430,7 @@
       back: '← Leaderboard', profile_legend: 'profile',
       email_label: 'email', email_ph: 'Available after sign-in', member_since: 'member since',
       bio_empty: 'No bio yet.', chart_30d: 'last 30 days',
-      u_sum: 'sum', u_avg: 'avg/day', u_active: 'active days', u_peak: 'peak',
+      u_active: 'active days', u_peak: 'peak', u_total_sub: '30-day total',
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed',
@@ -452,7 +460,7 @@
       back: '← 리더보드', profile_legend: '프로필',
       email_label: '이메일', email_ph: '로그인 도입 후 연동 예정', member_since: '가입일',
       bio_empty: '아직 자기소개가 없습니다.', chart_30d: '최근 30일',
-      u_sum: '합계', u_avg: '일평균', u_active: '활동일', u_peak: '최고',
+      u_active: '활동일', u_peak: '최고', u_total_sub: '30일 합계',
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패',
@@ -490,6 +498,13 @@
 
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+  // 타일 표시용 축약: 1.21M · 263k. 1만 미만은 콤마 그대로.
+  const fmtCompact = (n) => {
+    n = Number(n || 0);
+    if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1e4) return Math.round(n / 1e3) + 'k';
+    return fmt(n);
+  };
   $('meInput').value = myNick;
 
   function applyLang() {
@@ -944,16 +959,25 @@
 
     const vals = days.map((d) => d[metric] || 0);
     const total = vals.reduce((a, b) => a + b, 0);
+    const sumP = days.reduce((s, d) => s + (d.prompts || 0), 0);
+    const sumC = days.reduce((s, d) => s + (d.chars || 0), 0);
     const activeDays = vals.filter((v) => v > 0).length;
-    const max = Math.max(...vals, 1);
-    const peakIdx = vals.indexOf(Math.max(...vals));
-    const avg = days.length ? Math.round(total / days.length) : 0;
+    const peakVal = Math.max(0, ...vals);
+    const peakIdx = peakVal > 0 ? vals.indexOf(peakVal) : -1;
+    const max = Math.max(peakVal, 1); // 막대 높이 스케일용(0 나눗셈 방지)
+    const pct = days.length ? Math.round((activeDays / days.length) * 100) : 0;
 
-    $('uStats').innerHTML = [
-      `${t('u_sum')} <b>${fmt(total)}</b>`,
-      `${t('u_avg')} <b>${fmt(avg)}</b>`,
-      `${t('u_active')} <b>${activeDays}/${days.length}</b>`,
-    ].join('');
+    // 지표 타일 4칸: prompts·chars(현재 정렬 metric 강조) · active days · peak
+    const statTile = (m, sum) => {
+      const on = m === metric;
+      const sub = on ? t('u_total_sub') : fmt(sum);
+      return `<div class="tile${on ? ' sel' : ''}"><div class="tnum">${fmtCompact(sum)}</div><div class="tlab">${m}</div><div class="tsub">${sub}</div></div>`;
+    };
+    $('uStats').innerHTML =
+      statTile('prompts', sumP) +
+      statTile('chars', sumC) +
+      `<div class="tile"><div class="tnum">${activeDays}<span class="den">/${days.length}</span></div><div class="tlab">${t('u_active')}</div><div class="tsub">${pct}%</div></div>` +
+      `<div class="tile"><div class="tnum">${peakVal > 0 ? fmtCompact(peakVal) : '–'}</div><div class="tlab">${t('u_peak')}</div><div class="tsub">${peakIdx >= 0 ? mmdd(days[peakIdx].day) : '–'}</div></div>`;
 
     if (total === 0) {
       $('uChartWrap').hidden = true;
