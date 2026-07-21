@@ -11,6 +11,7 @@ An agent hook counts your input activity anonymously → stores it on Cloudflare
 [![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev)
 [![status](https://img.shields.io/badge/status-early%20development-e08a2e?style=for-the-badge)](#-roadmap)
 [![agents](https://img.shields.io/badge/Claude%20Code%20·%20Codex%20·%20OpenCode%20·%20pi-supported-6c5ce7?style=for-the-badge)](#-install-the-plugin)
+[![npm](https://img.shields.io/npm/v/open-code-war?style=for-the-badge&color=cb3837&logo=npm)](https://www.npmjs.com/package/open-code-war)
 
 <sub>Codename: <b>OCW</b> · First target 🇰🇷 Korea → eventually a worldwide per-country globe ranking</sub>
 

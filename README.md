@@ -11,6 +11,7 @@
 [![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev)
 [![status](https://img.shields.io/badge/status-early%20development-e08a2e?style=for-the-badge)](#-로드맵)
 [![agents](https://img.shields.io/badge/Claude%20Code%20·%20Codex%20·%20OpenCode%20·%20pi-supported-6c5ce7?style=for-the-badge)](#-플러그인-설치)
+[![npm](https://img.shields.io/npm/v/open-code-war?style=for-the-badge&color=cb3837&logo=npm)](https://www.npmjs.com/package/open-code-war)
 
 <sub>코드네임: <b>OCW</b> · 1차 타겟 🇰🇷 대한민국 → 최종: 전 세계 국가별 지구본 랭킹</sub>
 
