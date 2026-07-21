@@ -19,31 +19,31 @@
   .lights i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
   .dom{font-weight:600;color:var(--fg);letter-spacing:.02em;}
 
-  .cmd{margin-top:30px;color:var(--dim);font-size:23px;}
+  .cmd{margin-top:24px;color:var(--dim);font-size:22px;}
   .cmd .sig{color:var(--fg);}
   .cmd .cur{display:inline-block;width:12px;height:22px;background:var(--fg);vertical-align:-3px;margin-left:4px;}
 
-  .idrow{display:flex;align-items:baseline;gap:18px;margin-top:14px;}
-  .nick{font-size:74px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
+  .idrow{display:flex;align-items:baseline;gap:18px;margin-top:14px;margin-bottom:6px;}
+  .nick{font-size:64px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
   .rank{font-size:26px;font-weight:700;background:var(--fg);color:var(--bg);border-radius:8px;padding:5px 13px;}
   .loc{color:var(--dim);font-size:24px;}
 
-  /* 오늘 히어로 + 서브 */
-  .body{display:flex;align-items:flex-end;justify-content:space-between;gap:40px;margin-top:auto;}
-  .hero .big{font-size:150px;font-weight:700;line-height:0.82;letter-spacing:-0.04em;font-variant-numeric:tabular-nums;}
-  .hero .unit{font-size:30px;color:var(--dim);margin-top:16px;}
-  .hero .sub{font-size:24px;line-height:1.5;color:var(--faint);margin-top:18px;font-variant-numeric:tabular-nums;}
+  /* 오늘 히어로(숫자) 위 · 그래프 아래 — 세로 배치로 후킹 강화 */
+  .body{display:flex;flex-direction:column;gap:16px;margin-top:20px;}
+  .hero .big{font-size:94px;font-weight:700;line-height:0.86;letter-spacing:-0.04em;font-variant-numeric:tabular-nums;}
+  .hero .unit{font-size:27px;color:var(--dim);margin-top:12px;}
+  .hero .sub{font-size:22px;line-height:1.5;color:var(--faint);margin-top:12px;font-variant-numeric:tabular-nums;}
   .hero .sub b{color:var(--fg);font-weight:600;}
 
-  /* 최근 30일 미니 막대(우측 하단) */
-  .spark{flex:none;width:520px;}
-  .spark .lbl{font-size:19px;color:var(--faint);text-align:right;margin-bottom:12px;}
-  .bars{display:flex;align-items:flex-end;gap:4px;height:170px;}
+  /* 최근 30일 막대 — 전체 폭으로 숫자 아래 */
+  .spark{width:100%;}
+  .spark .lbl{font-size:19px;color:var(--faint);text-align:left;margin-bottom:10px;}
+  .bars{display:flex;align-items:flex-end;gap:5px;height:84px;}
   .bars .b{flex:1;background:var(--fg);border-radius:2px;min-height:3px;}
   .bars .b.zero{background:var(--line);}
   .bars .b .cap{display:block;height:6px;background:var(--ag-pi);border-radius:2px 2px 0 0;}
 
-  .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:20px;}
+  .foot{margin-top:auto;padding-top:20px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:20px;}
   .foot .tag{color:var(--dim);}
   .foot .live{display:flex;align-items:center;gap:10px;}
   .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--ok);display:block;}
