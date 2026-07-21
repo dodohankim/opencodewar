@@ -4,20 +4,34 @@
 // - 신선도: SNAPSHOT_TTL_MS 초과 시 읽기 시점에 자동 재빌드(cron이 없거나 트래픽만 있어도 동작)
 
 import type { BoardSnapshot, BoardType, Env, LeaderboardRow, Metric, Period, RankEntry, Snapshot } from './types';
-import { kstToday, weekDays, weekendDays } from './time';
+import { kstToday, monthDays, weekDays, weekendDays } from './time';
 import { displayNickname } from './nickname';
 
 export const SNAPSHOT_KEY = 'lb:snapshot:v1';
 const SNAPSHOT_LIMIT = 100;
 const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30분
-const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend'];
+const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend', 'monthly'];
 
 // metric 이름 → 실제 컬럼(화이트리스트, SQL 인젝션 방지)
 export const METRIC_COL: Record<Metric, string> = { prompts: 'prompts', chars: 'chars' };
 
+/** 보드가 집계하는 'YYYY-MM-DD' 날짜 목록. 랭킹 쿼리의 `day IN (...)` 에 쓴다. */
+export function boardDays(type: BoardType, now: number): string[] {
+  switch (type) {
+    case 'daily':
+      return [kstToday(now)];
+    case 'weekly':
+      return weekDays(now);
+    case 'weekend':
+      return weekendDays(now);
+    case 'monthly':
+      return monthDays(now);
+  }
+}
+
 export function periodOf(type: BoardType, now: number): Period {
   if (type === 'daily') return { day: kstToday(now) };
-  const days = type === 'weekly' ? weekDays(now) : weekendDays(now);
+  const days = boardDays(type, now);
   return { from: days[0], to: days[days.length - 1], days };
 }
 
@@ -32,7 +46,7 @@ export async function computeRanking(
   const now = Date.now();
 
   // daily_stats 는 (user_id, day, agent) 단위 행 — daily 도 유저별 합산이 필요해 전 보드 동일 쿼리.
-  const days = type === 'daily' ? [kstToday(now)] : type === 'weekly' ? weekDays(now) : weekendDays(now);
+  const days = boardDays(type, now);
   const placeholders = days.map(() => '?').join(',');
   const result = await env.DB.prepare(
     `SELECT s.user_id, u.nickname, MAX(s.country) AS country,
@@ -71,7 +85,7 @@ export async function computeZoneRanking(
 ): Promise<RankEntry[]> {
   const orderCol = METRIC_COL[metric];
   const now = Date.now();
-  const days = type === 'daily' ? [kstToday(now)] : type === 'weekly' ? weekDays(now) : weekendDays(now);
+  const days = boardDays(type, now);
   const ph = days.map(() => '?').join(',');
   const cityClause = cityLower != null ? 'AND LOWER(u.city) = ?' : '';
   const binds: (string | number)[] = [...days, country];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kstToday, mondayOf, kstDayNum, weekDays, weekendDays, dowOf, recentDays } from '../src/time';
+import { kstToday, mondayOf, kstDayNum, weekDays, weekendDays, dowOf, recentDays, monthDays } from '../src/time';
 
 // 기준: 2026-07-08T03:00:00Z = 2026-07-08 12:00 KST (수요일)
 const WED_NOON_KST = Date.UTC(2026, 6, 8, 3, 0, 0);
@@ -55,5 +55,30 @@ describe('KST 날짜 계산', () => {
 
   it('recentDays: n=1이면 오늘 하루만', () => {
     expect(recentDays(WED_NOON_KST, 1)).toEqual(['2026-07-08']);
+  });
+
+  it('monthDays: 해당 달의 1일~말일 (31일 달)', () => {
+    const days = monthDays(WED_NOON_KST); // 2026-07
+    expect(days).toHaveLength(31);
+    expect(days[0]).toBe('2026-07-01');
+    expect(days[30]).toBe('2026-07-31');
+  });
+
+  it('monthDays: 말일 경계에서도 그 달 전체', () => {
+    // 2026-07-31 23:00 KST → 여전히 7월
+    const lastDay = Date.UTC(2026, 6, 31, 14, 0, 0);
+    expect(monthDays(lastDay)[0]).toBe('2026-07-01');
+    expect(monthDays(lastDay).at(-1)).toBe('2026-07-31');
+  });
+
+  it('monthDays: 2월(윤년/평년) 일수', () => {
+    expect(monthDays(Date.UTC(2026, 1, 15, 3, 0, 0))).toHaveLength(28); // 2026 평년
+    expect(monthDays(Date.UTC(2028, 1, 15, 3, 0, 0))).toHaveLength(29); // 2028 윤년
+  });
+
+  it('monthDays: 30일 달', () => {
+    const days = monthDays(Date.UTC(2026, 3, 10, 3, 0, 0)); // 2026-04
+    expect(days).toHaveLength(30);
+    expect(days.at(-1)).toBe('2026-04-30');
   });
 });

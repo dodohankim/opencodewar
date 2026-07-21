@@ -1,6 +1,6 @@
 import type { Env } from './types';
 import { json, readJson } from './http';
-import { kstToday, recentDays, weekDays, weekendDays } from './time';
+import { kstToday, recentDays } from './time';
 import {
   clampChars,
   clampLimit,
@@ -20,7 +20,7 @@ import {
   type Links,
   type Project,
 } from './validate';
-import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, getSnapshot, periodOf } from './snapshot';
+import { METRIC_COL, SNAPSHOT_KEY, boardDays, computeZoneRanking, getSnapshot, periodOf } from './snapshot';
 import { displayNickname } from './nickname';
 import { cityKey, cleanCity, countryFlag } from './zones';
 
@@ -134,7 +134,7 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
 }
 
 /**
- * GET /leaderboard?type=daily|weekly|weekend&metric=prompts|chars&limit=100
+ * GET /leaderboard?type=daily|weekly|weekend|monthly&metric=prompts|chars&limit=100
  *   &scope=global|country|city [&country=KR] [&city=Seoul]
  * - scope=global(기본): KV 스냅샷에서 서빙(D1 미접근).
  * - scope=country|city: 구역 필터 랭킹을 D1에서 실시간 계산("이 구역 코드워리어").
@@ -249,7 +249,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
   const orderCol = METRIC_COL[metric];
   const now = Date.now();
 
-  const days = type === 'daily' ? [kstToday(now)] : type === 'weekly' ? weekDays(now) : weekendDays(now);
+  const days = boardDays(type, now);
   const ph = days.map(() => '?').join(',');
 
   // 한 번의 쿼리로 프로필 + 글로벌/국가/도시 구역의 순위·인원을 계산한다.

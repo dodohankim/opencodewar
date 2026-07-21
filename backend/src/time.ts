@@ -41,6 +41,18 @@ export function weekendDays(ts: number): string[] {
   return [dayStr(mon + 4), dayStr(mon + 5), dayStr(mon + 6)];
 }
 
+/** epoch ms가 속한 KST 달의 1일~말일 'YYYY-MM-DD' 배열. */
+export function monthDays(ts: number): string[] {
+  const today = kstDayNum(ts);
+  // dayNum * DAY_MS 는 해당 KST 날짜의 UTC 자정이라 getUTC* 가 곧 KST 달력값이다.
+  const d = new Date(today * DAY_MS);
+  const year = d.getUTCFullYear();
+  const month = d.getUTCMonth();
+  const firstDayNum = today - (d.getUTCDate() - 1);
+  const count = new Date(Date.UTC(year, month + 1, 0)).getUTCDate(); // 다음달 0일 = 이번달 말일
+  return Array.from({ length: count }, (_, i) => dayStr(firstDayNum + i));
+}
+
 /** epoch ms 기준 최근 n일(KST)의 'YYYY-MM-DD' 배열. 오래된 날 → 오늘 순. */
 export function recentDays(ts: number, n: number): string[] {
   const today = kstDayNum(ts);

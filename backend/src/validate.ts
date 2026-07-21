@@ -145,7 +145,7 @@ export function parseMetric(v: string | null): Metric {
 }
 
 export function parseType(v: string | null): BoardType {
-  return v === 'weekly' || v === 'weekend' ? v : 'daily';
+  return v === 'weekly' || v === 'weekend' || v === 'monthly' ? v : 'daily';
 }
 
 export const DEFAULT_LIMIT = 100;

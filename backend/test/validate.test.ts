@@ -8,6 +8,7 @@ import {
   normalizeAgent,
   normalizeLinks,
   normalizeProjects,
+  parseType,
 } from '../src/validate';
 
 describe('normalizeAgent', () => {
@@ -25,6 +26,22 @@ describe('normalizeAgent', () => {
     expect(normalizeAgent('cursor')).toBe('claude-code');
     expect(normalizeAgent('CLAUDE-CODE')).toBe('claude-code'); // 대소문자 변형도 기본값
     expect(normalizeAgent(123)).toBe('claude-code');
+  });
+});
+
+describe('parseType', () => {
+  it('유효한 보드 타입을 그대로 반환한다', () => {
+    expect(parseType('daily')).toBe('daily');
+    expect(parseType('weekly')).toBe('weekly');
+    expect(parseType('weekend')).toBe('weekend');
+    expect(parseType('monthly')).toBe('monthly');
+  });
+
+  it('미지정·미지원 값은 daily 로 폴백한다', () => {
+    expect(parseType(null)).toBe('daily');
+    expect(parseType('')).toBe('daily');
+    expect(parseType('yearly')).toBe('daily');
+    expect(parseType('MONTHLY')).toBe('daily'); // 대소문자 구분
   });
 });
 

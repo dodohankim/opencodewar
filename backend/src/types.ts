@@ -18,7 +18,7 @@ export interface Env {
   SNAPSHOT_TTL_MS?: string;
 }
 
-export type BoardType = 'daily' | 'weekly' | 'weekend';
+export type BoardType = 'daily' | 'weekly' | 'weekend' | 'monthly';
 export type Metric = 'prompts' | 'chars';
 
 /** D1 리더보드 쿼리 원시 행 */
