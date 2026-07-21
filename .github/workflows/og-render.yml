@@ -1,0 +1,62 @@
+name: Render user OG images
+
+# 유저별 공유 이미지를 미리 렌더해 KV(og:img:<public_id>)에 올린다.
+# Cloudflare 무료 티어 워커 CPU(10ms)로는 요청 시점 PNG 생성이 불가능하므로,
+# 생성을 요청 경로 밖(여기)으로 뺀다. Worker 는 KV 에서 서빙만 한다(og.ts).
+#
+# 주기: 매시 정각(무료 Actions 2,000분/월 안. "오늘 누적"이라 1시간 지연은 무방).
+#       더 자주/덜 자주는 아래 cron 을 조정. 수동 실행은 Actions 탭의 "Run workflow".
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: og-render
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OCW_API: https://opencodewar.dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      # wrangler(KV 업로드용) 설치
+      - run: npm ci
+        working-directory: backend
+
+      - name: Render active users and upload to KV
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          # 오늘 활동 유저(daily 리더보드)의 public_id 목록
+          PIDS=$(curl -sf "$OCW_API/leaderboard?type=daily&metric=prompts&limit=100" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log((j.ranking||[]).map(r=>r.public_id).filter(Boolean).join('\n'))})")
+          if [ -z "$PIDS" ]; then
+            echo "no active users today — nothing to render"
+            exit 0
+          fi
+          # 한 유저 실패가 나머지를 막지 않도록 유저 단위로 실패를 허용한다.
+          echo "$PIDS" | while read -r pid; do
+            [ -z "$pid" ] && continue
+            echo "→ $pid"
+            if ! node scripts/render-og.mjs "$pid" --api "$OCW_API" --out "/tmp/$pid.png"; then
+              echo "  render failed: $pid"; continue
+            fi
+            (cd backend && npx wrangler kv key put --binding KV "og:img:$pid" --path "/tmp/$pid.png" --remote) \
+              || echo "  upload failed: $pid"
+          done
