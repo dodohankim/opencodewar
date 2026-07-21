@@ -411,8 +411,8 @@
       install_legend: 'join · install',
       install_note_claude: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
       install_note_codex: 'Same plugin as Claude Code — Codex shares the plugin/marketplace system. Then start Codex and pick <b>Trust all and continue</b> on the “Hooks need review” screen; until you do, Codex silently skips the hook. Needs Node.js on your PATH.',
-      install_note_opencode: 'Restart OpenCode and type prompts to start counting. Set a display name with <code>node ~/.open-code-war/src/plugin/scripts/ocw-cli.mjs nickname &lt;name&gt;</code>. Needs Node.js on your PATH.',
-      install_note_pi: 'pi installs the repo as a package (git source, no npm publish). Restart pi and type prompts to start counting. Needs Node.js on your PATH.',
+      install_note_opencode: 'Add <code>open-code-war</code> to the <code>plugin</code> array in your <code>opencode.json</code>; OpenCode installs it on startup. Then type prompts to start counting. Needs Node.js on your PATH.',
+      install_note_pi: 'Installs the <code>open-code-war</code> npm package. Restart pi and type prompts to start counting. Needs Node.js on your PATH.',
       privacy: '[privacy] no prompt content · character count only',
       loading: 'Loading…', empty: 'No records for this period yet.', anon: '(anon)',
       scope_global: 'Global', scope_country: 'Country', scope_city: 'City',
@@ -441,8 +441,8 @@
       install_legend: '참가 · 설치',
       install_note_claude: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
       install_note_codex: 'Claude Code와 <b>같은 플러그인</b>입니다 — 코덱스도 동일한 플러그인·마켓플레이스 체계를 씁니다. 설치 후 Codex를 실행해 “Hooks need review” 화면에서 <b>Trust all and continue</b>를 선택하세요. 선택 전에는 훅이 조용히 무시됩니다. PATH에 Node.js가 있어야 합니다.',
-      install_note_opencode: 'OpenCode를 재시작하고 프롬프트를 입력하면 집계가 시작됩니다. <code>node ~/.open-code-war/src/plugin/scripts/ocw-cli.mjs nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요. PATH에 Node.js가 있어야 합니다.',
-      install_note_pi: 'pi의 패키지 체계로 레포를 그대로 설치합니다(git 소스, npm 발행 불필요). pi를 재시작하고 프롬프트를 입력하면 집계가 시작됩니다. PATH에 Node.js가 있어야 합니다.',
+      install_note_opencode: '<code>opencode.json</code> 의 <code>plugin</code> 배열에 <code>open-code-war</code> 를 추가하면 시작 시 자동 설치됩니다. 이후 프롬프트를 입력하면 집계가 시작됩니다. PATH에 Node.js가 있어야 합니다.',
+      install_note_pi: '<code>open-code-war</code> npm 패키지를 설치합니다. pi를 재시작하고 프롬프트를 입력하면 집계가 시작됩니다. PATH에 Node.js가 있어야 합니다.',
       privacy: '[privacy] 프롬프트 내용 미수집 · 글자 수만',
       loading: '불러오는 중…', empty: '아직 이 기간의 기록이 없습니다.', anon: '(익명)',
       scope_global: '글로벌', scope_country: '국가', scope_city: '도시',
@@ -632,12 +632,8 @@
       'codex plugin marketplace add dodohankim/opencodewar',
       'codex plugin add open-code-war@opencodewar',
     ],
-    opencode: [
-      'git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src',
-      'mkdir -p ~/.config/opencode/plugins',
-      'ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugins/ocw-track.js',
-    ],
-    pi: ['pi install git:github.com/dodohankim/opencodewar'],
+    opencode: ['# opencode.json 의 plugin 배열에 추가', '{ "plugin": ["open-code-war"] }'],
+    pi: ['pi install npm:open-code-war'],
   };
   document.querySelectorAll('.agent').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.agent').forEach((x) => x.setAttribute('aria-pressed', x === b));

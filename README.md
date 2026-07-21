@@ -120,26 +120,22 @@ codex plugin add open-code-war@opencodewar
 여기서 **Trust all and continue** 를 선택해야 훅이 동작합니다 — 선택 전에는 아무 경고 없이
 조용히 집계되지 않습니다. 최신화는 `codex plugin marketplace upgrade`.
 
-### pi
+### OpenCode · pi
 
-pi 도 자체 패키지 체계가 있어 **한 줄이면 됩니다** (npm 발행 없이 git 소스를 받습니다).
-
-```bash
-pi install git:github.com/dodohankim/opencodewar
-```
-
-### OpenCode
-
-OpenCode 설정의 `plugin` 배열은 npm 패키지명만 받습니다. 아직 npm 에 올리지 않았으므로
-플러그인 디렉토리에 심볼릭 링크로 설치합니다.
+둘 다 npm 패키지 `open-code-war` 하나로 설치합니다.
 
 ```bash
-git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
-mkdir -p ~/.config/opencode/plugins
-ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugins/ocw-track.js
+# pi
+pi install npm:open-code-war
 ```
 
-셋 다 같은 `userId` 로 합산되며, 에이전트별 내역은 프로필 그래프에서 따로 볼 수 있습니다.
+OpenCode 는 `opencode.json` 의 `plugin` 배열에 추가하면 시작 시 자동 설치됩니다.
+
+```json
+{ "plugin": ["open-code-war"] }
+```
+
+넷 다 같은 `userId` 로 합산되며, 에이전트별 내역은 프로필 그래프에서 따로 볼 수 있습니다.
 자세한 동작 요건과 집계 기준은 [`adapters/README.md`](adapters/README.md) 참고.
 
 ### 개발용 (로컬 로드)

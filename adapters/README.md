@@ -6,8 +6,9 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 > `plugin/` 을 그대로 설치한다 (`codex plugin marketplace add` → `codex plugin add`).
 > 설치 방법은 루트 [README](../README.md#-플러그인-설치) 참고.
 >
-> pi 는 여기 있는 확장을 쓰지만 설치는 pi 의 패키지 체계(`pi install git:…`)로 한다.
-> 레포 루트 `package.json` 의 `pi.extensions` 가 `adapters/pi` 를 가리킨다.
+> OpenCode·pi 는 여기 있는 어댑터를 쓰지만, **npm 패키지 `open-code-war`** 로 발행돼 있어
+> 설치는 각 에이전트의 네이티브 방식으로 한다. 레포 루트 `package.json` 이 그 패키지 매니페스트다
+> (`main` → OpenCode 플러그인, `pi.extensions` → pi 확장). 설치 방법은 루트 README 참고.
 
 각 어댑터는 해당 에이전트의 "사용자 입력" 훅에 붙어서, Claude Code 훅과 **동일한**
 `plugin/scripts/track.mjs` 를 실행한다. 따라서 userId(`~/.open-code-war/config.json`),
@@ -17,32 +18,26 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 | 에이전트 | 훅 | 어댑터 | 설치 위치 |
 |---|---|---|---|
 | Claude Code | `UserPromptSubmit` | `plugin/hooks/hooks.json` | 플러그인 마켓플레이스 |
-| OpenCode | `chat.message` | `adapters/opencode/ocw-track.js` | `~/.config/opencode/plugins/` |
-| pi | `input` | `adapters/pi/ocw-track.ts` | `pi install git:…` (패키지) |
+| OpenCode | `chat.message` | `adapters/opencode/ocw-track.js` | npm (`open-code-war`) |
+| pi | `input` | `adapters/pi/ocw-track.ts` | `pi install npm:open-code-war` |
 
 ## 설치
 
-**pi** 는 자체 패키지 체계로 레포를 그대로 설치한다. npm 발행 없이 git 소스를 받는다.
+둘 다 npm 패키지 `open-code-war` 하나로 설치한다.
 
 ```bash
-pi install git:github.com/dodohankim/opencodewar     # 설치
-pi update  git:github.com/dodohankim/opencodewar     # 최신화
-pi remove  git:github.com/dodohankim/opencodewar     # 제거
-```
+# pi
+pi install npm:open-code-war
 
-설치본은 `~/.pi/agent/git/github.com/dodohankim/opencodewar` 에 스냅샷으로 들어간다.
-
-**OpenCode** 는 npm 패키지 또는 로컬 플러그인 디렉토리만 지원한다(설정의 `plugin` 배열은
-npm 패키지명만 받는다). 아직 npm 에 올리지 않았으므로 심볼릭 링크로 설치한다.
-링크를 쓰면 레포를 `git pull` 할 때 어댑터도 같이 갱신된다.
-
-```bash
-git clone https://github.com/dodohankim/opencodewar.git ~/.open-code-war/src
-mkdir -p ~/.config/opencode/plugins
-ln -sf ~/.open-code-war/src/adapters/opencode/ocw-track.js ~/.config/opencode/plugins/ocw-track.js
+# OpenCode — opencode.json 의 plugin 배열에 추가(시작 시 자동 설치)
+#   { "plugin": ["open-code-war"] }
 ```
 
 설치 후 각 에이전트를 재시작하면 다음 프롬프트부터 집계된다.
+
+> npm 패키지에는 어댑터와 함께 `plugin/scripts/track.mjs` 가 포함돼 있어 레포 없이도 자립 동작한다.
+> 발행 절차: 루트에서 `npm pack` → tarball 의 `README.md` 를 `adapters/npm-README.md` 로 교체 →
+> `npm publish <tarball>`. (루트 README 는 프로젝트 전체 설명이라 패키지 페이지엔 전용 README 를 쓴다.)
 표시명은 Claude Code 와 동일하게 `/ocw nickname <이름>` 으로 등록한다.
 
 ## 동작 요건
