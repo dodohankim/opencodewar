@@ -22,8 +22,11 @@
     "head_sampling_rate": 1
   },
   // 리더보드 스냅샷 신선도(ms). 운영 30분. 로컬 테스트는 .dev.vars로 낮춘다(예: 60000=1분).
+  // RENDER_ORIGIN: 유저 OG 이미지를 온디맨드로 만드는 렌더 서비스(VPS) 오리진.
+  //   미설정이면 /og/<pid>.png 는 KV 히트 or 공통 og.png 폴백만 한다. RENDER_KEY 는 secret.
   "vars": {
-    "SNAPSHOT_TTL_MS": "1800000"
+    "SNAPSHOT_TTL_MS": "1800000",
+    "RENDER_ORIGIN": "https://k1vw46e7a437td46o8wwibvi.185.143.228.89.sslip.io"
   },
   // 운영: 30분마다 스냅샷 재빌드. (로컬 dev는 자동 실행 안 됨 → 읽기 시 TTL 재빌드 또는 --test-scheduled)
   "triggers": {
