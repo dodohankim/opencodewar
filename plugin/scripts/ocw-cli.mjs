@@ -349,6 +349,7 @@ async function status() {
     if (zones.city) rankParts.push(`${zones.city.label} ${fmt(zones.city)}`);
     lines.push(`- 순위(일간): ${rankParts.join(' · ')}`);
   }
+  lines.push('\n전체 명령 보기 → `/ocw help`');
   return print(lines.join('\n'));
 }
 
