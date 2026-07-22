@@ -7,47 +7,52 @@
   /* 소셜 카드는 단일 다크로 고정(카톡·슬랙·X 미리보기 배경과 무관하게 일관) */
   :root{
     --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
-    --ok:#6DA875; --ag-pi:#AC85DC;
+    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441;
     --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box;margin:0;}
   html,body{width:1200px;height:630px;background:var(--bg);color:var(--fg);font-family:var(--mono);overflow:hidden;}
-  .card{width:1200px;height:630px;padding:54px 60px 48px;display:flex;flex-direction:column;position:relative;}
+  .card{width:1200px;height:630px;padding:52px 60px 46px;display:flex;flex-direction:column;position:relative;}
 
   .top{display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:22px;}
   .lights{display:flex;gap:10px;}
   .lights i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
   .dom{font-weight:600;color:var(--fg);letter-spacing:.02em;}
 
-  .cmd{margin-top:24px;color:var(--dim);font-size:22px;}
+  .cmd{margin-top:20px;color:var(--dim);font-size:22px;}
   .cmd .sig{color:var(--fg);}
   .cmd .cur{display:inline-block;width:12px;height:22px;background:var(--fg);vertical-align:-3px;margin-left:4px;}
 
-  .idrow{display:flex;align-items:baseline;gap:18px;margin-top:14px;margin-bottom:6px;}
-  .nick{font-size:64px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
-  .rank{font-size:26px;font-weight:700;background:var(--fg);color:var(--bg);border-radius:8px;padding:5px 13px;}
-  .loc{color:var(--dim);font-size:24px;}
+  .idrow{display:flex;align-items:baseline;gap:16px;margin-top:12px;}
+  .nick{font-size:52px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
+  .loc{color:var(--dim);font-size:22px;}
+  .date{margin-left:auto;font-size:25px;color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+  .date .dow{color:var(--dim);font-weight:400;}
 
-  /* 오늘 히어로(숫자) 위 · 그래프 아래 — 세로 배치로 후킹 강화 */
-  .body{display:flex;flex-direction:column;gap:16px;margin-top:20px;}
-  .hero .big{font-size:94px;font-weight:700;line-height:0.86;letter-spacing:-0.04em;font-variant-numeric:tabular-nums;}
-  .hero .unit{font-size:27px;color:var(--dim);margin-top:12px;}
-  .hero .sub{font-size:22px;line-height:1.5;color:var(--faint);margin-top:12px;font-variant-numeric:tabular-nums;}
-  .hero .sub b{color:var(--fg);font-weight:600;}
+  /* 히어로: 오늘(최근 활동일) 글자수를 제일 크게 */
+  .hero{margin-top:18px;}
+  .hero .num{font-size:112px;font-weight:800;line-height:.8;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;}
+  .hero .lab{font-size:30px;color:var(--dim);margin-top:12px;}
+  .hero .lab b{color:var(--fg);}
+  .hero .lab .sep{color:var(--faint);margin:0 4px;}
 
-  /* 최근 7일 막대 — 전체 폭으로 숫자 아래, 굵게. 오늘(마지막) 강조 + 요일 축 */
-  .spark{width:100%;}
-  .spark .lbl{font-size:19px;color:var(--faint);text-align:left;margin-bottom:10px;}
-  .bars{display:flex;align-items:flex-end;gap:16px;height:104px;}
-  .bars .b{flex:1;background:var(--fg);border-radius:3px;min-height:5px;}
-  .bars .b.tdy{background:var(--ag-pi);}
-  .bars .b .cap{display:block;height:6px;background:var(--ag-pi);border-radius:3px 3px 0 0;}
-  .axis{display:flex;gap:16px;margin-top:12px;}
-  .axis .al{flex:1;text-align:center;font-size:18px;color:var(--faint);}
-  .axis .al.tdyl{color:var(--ag-pi);font-weight:600;}
+  /* 스트릭 뱃지 */
+  .badge{margin-top:16px;font-size:24px;color:var(--amber);display:inline-flex;align-items:center;gap:8px;}
+  .badge b{color:var(--fg);font-weight:700;}
+  .badge .since{color:var(--faint);}
 
-  .foot{margin-top:auto;padding-top:20px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:20px;}
-  .foot .tag{color:var(--dim);}
+  /* 최근 14일 막대(높이=글자수). 스트릭 구간 초록, 오늘 보라, 그 외 활동일 흰색, 미활동 회색. */
+  .graph{margin-top:auto;}
+  .bars{display:flex;align-items:flex-end;gap:9px;height:120px;}
+  .bars .b{flex:1;background:var(--line);border-radius:2px;min-height:4px;}
+  .bars .b.on{background:var(--fg);}
+  .bars .b.streak{background:var(--ok);}
+  .bars .b.today{background:var(--pi);}
+  .axis{display:flex;justify-content:space-between;margin-top:11px;font-size:18px;color:var(--faint);font-variant-numeric:tabular-nums;}
+  .axis .mid{opacity:.7;}
+
+  .foot{margin-top:20px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:19px;}
+  .foot .tagf{color:var(--dim);}
   .foot .live{display:flex;align-items:center;gap:10px;}
   .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--ok);display:block;}
 </style>
@@ -63,65 +68,86 @@
 
     <div class="idrow">
       <div class="nick" id="nick">–</div>
-      <div class="rank" id="rank">#–</div>
       <div class="loc" id="loc"></div>
+      <div class="date" id="date"></div>
     </div>
 
-    <div class="body">
-      <div class="hero">
-        <div class="big" id="today">0</div>
-        <div class="unit" id="unit">prompts today</div>
-        <div class="sub" id="sub"></div>
-      </div>
-      <div class="spark">
-        <div class="lbl">last 7 days</div>
-        <div class="bars" id="bars"></div>
-        <div class="axis" id="axis"></div>
-      </div>
+    <div class="hero">
+      <div class="num" id="heroNum">0</div>
+      <div class="lab" id="heroLab"></div>
+    </div>
+    <div class="badge" id="badge"></div>
+
+    <div class="graph">
+      <div class="bars" id="bars"></div>
+      <div class="axis"><span id="axL"></span><span class="mid" id="axM"></span><span id="axR"></span></div>
     </div>
 
     <div class="foot">
-      <div class="tag">no prompt content · character counts only</div>
-      <div class="live"><i></i><span id="stamp"></span></div>
+      <div class="tagf">no prompt content · character counts only</div>
+      <div class="live"><i></i><span>live</span></div>
     </div>
   </div>
 
 <script>
-  // 렌더러(scripts/render-og.mjs)가 이 마커를 실제 JSON 으로 치환한다.
+  // 렌더러(scripts/render-og.mjs · render-service)가 이 마커를 buildData() 결과 JSON 으로 치환한다.
   var DATA = /*OCW_DATA*/{
-    nick: "dododo", rank: 1, total: 2, country: "KR", flag: "🌇", city: "Seoul",
-    today: { prompts: 26, chars: 62017 },
-    d30: { prompts: 1155, chars: 1224593 },
-    series: [3,2,4,2,3,2,4,3,2,3,4,2,3,2,4,3,2,3,4,3,2,4,3,11,8,25,40,337,26,4],
-    stamp: "2026-07-21 · KST"
+    nick: "dododo", country: "KR", flag: "🇰🇷", city: "Seoul",
+    date: "2026-07-22", dow: "Wed",
+    heroChars: 24197, heroPrompts: 178, heroIsToday: true, heroDayLabel: "",
+    streak: 12, since: "Jul 11",
+    series: [
+      {chars:3200,active:true,streak:false,today:false},
+      {chars:0,active:false,streak:false,today:false},
+      {chars:5400,active:true,streak:true,today:false},
+      {chars:8100,active:true,streak:true,today:false},
+      {chars:12600,active:true,streak:true,today:false},
+      {chars:6300,active:true,streak:true,today:false},
+      {chars:9200,active:true,streak:true,today:false},
+      {chars:7100,active:true,streak:true,today:false},
+      {chars:11800,active:true,streak:true,today:false},
+      {chars:8400,active:true,streak:true,today:false},
+      {chars:15200,active:true,streak:true,today:false},
+      {chars:9600,active:true,streak:true,today:false},
+      {chars:7400,active:true,streak:true,today:false},
+      {chars:24197,active:true,streak:true,today:true}
+    ],
+    axis: { l: "7/09", m: "7/16", r: "7/22" },
+    stamp: "2026-07-22 · KST"
   }/*END*/;
 
   function comma(n){ return Number(n||0).toLocaleString('en-US'); }
-  function compact(n){ n=Number(n||0); if(n>=1e6) return (n/1e6).toFixed(2).replace(/\.?0+$/,'')+'M'; if(n>=1e4) return Math.round(n/1e3)+'k'; return comma(n); }
 
-  var d=DATA;
-  document.getElementById('nick').textContent=d.nick;
-  document.getElementById('uNick2').textContent=d.nick;
-  document.getElementById('rank').textContent='#'+d.rank;
-  document.getElementById('loc').textContent=(d.country?d.country+' '+(d.flag||''):'')+(d.city?' · '+d.city:'');
-  document.getElementById('today').textContent=comma(d.today.prompts);
-  // "prompts today" 의 today 를 오늘 날짜(MM-DD)로. chars 뒤에는 날짜 표기 없음.
-  document.getElementById('unit').textContent='prompts · '+d.stamp.slice(5,10);
-  document.getElementById('sub').innerHTML=
-    '<b>'+comma(d.today.chars)+'</b> chars<br>30d · <b>'+comma(d.d30.prompts)+'</b> prompts · <b>'+compact(d.d30.chars)+'</b> chars';
-  document.getElementById('stamp').textContent=d.stamp;
+  var d = DATA;
+  document.getElementById('nick').textContent = d.nick;
+  document.getElementById('uNick2').textContent = d.nick;
+  document.getElementById('loc').textContent =
+    (d.country ? d.country + ' ' + (d.flag || '') : '') + (d.city ? ' · ' + d.city : '');
+  document.getElementById('date').innerHTML = d.date + ' <span class="dow">' + d.dow + '</span>';
 
-  // 최근 7일 막대(오늘=마지막 강조) + 요일 축
-  var s=(d.series||[]).slice(-7), max=Math.max.apply(null,s.concat([1])), peak=s.indexOf(Math.max.apply(null,s));
-  document.getElementById('bars').innerHTML=s.map(function(v,i){
-    var h=Math.max(5,Math.round(v/max*104));
-    var cap=i===peak&&v>0?'<span class="cap"></span>':'';
-    return '<div class="b'+(i===s.length-1?' tdy':'')+'" style="height:'+h+'px">'+cap+'</div>';
+  document.getElementById('heroNum').textContent = comma(d.heroChars);
+  var when = d.heroIsToday ? 'today' : '· ' + d.heroDayLabel;
+  document.getElementById('heroLab').innerHTML =
+    '<b>chars</b> ' + when + ' <span class="sep">·</span> ' + comma(d.heroPrompts) + ' prompts';
+
+  var badge = document.getElementById('badge');
+  if (d.streak > 0) {
+    badge.innerHTML = '🔥 <b>' + d.streak + '-day streak</b>' + (d.since ? ' <span class="since">· since ' + d.since + '</span>' : '');
+  } else {
+    badge.style.display = 'none';
+  }
+
+  // 최근 14일 막대(높이=글자수, 스트릭/오늘 강조)
+  var s = d.series || [];
+  var maxC = s.reduce(function(m, x){ return Math.max(m, x.chars || 0); }, 1);
+  document.getElementById('bars').innerHTML = s.map(function(x){
+    var h = Math.max(4, Math.round((x.chars || 0) / maxC * 120));
+    var cls = !x.active ? '' : (x.today ? 'today' : (x.streak ? 'streak' : 'on'));
+    return '<div class="b ' + cls + '" style="height:' + h + 'px"></div>';
   }).join('');
-  var dow=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var pt=d.stamp.slice(0,10).split('-').map(Number), bd=Date.UTC(pt[0],pt[1]-1,pt[2]);
-  var wk=[];for(var i=0;i<7;i++){wk.push(dow[new Date(bd-(6-i)*86400000).getUTCDay()]);}
-  document.getElementById('axis').innerHTML=wk.map(function(w,i){return '<div class="al'+(i===6?' tdyl':'')+'">'+w+'</div>';}).join('');
+  document.getElementById('axL').textContent = d.axis.l;
+  document.getElementById('axM').textContent = d.axis.m;
+  document.getElementById('axR').textContent = d.axis.r;
 </script>
 </body>
 </html>

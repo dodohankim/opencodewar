@@ -69,4 +69,6 @@ execFileSync(
 );
 
 console.log(`rendered: ${OUT}`);
-console.log(`  ${data.nick} · today ${data.today.prompts}p/${data.today.chars}c · #${data.rank}/${data.total} · 30d ${data.d30.prompts}p`);
+console.log(
+  `  ${data.nick} · ${data.heroChars}c/${data.heroPrompts}p ${data.heroIsToday ? 'today' : data.heroDayLabel} · 🔥${data.streak}${data.since ? ' since ' + data.since : ''}`,
+);

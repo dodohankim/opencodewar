@@ -17,9 +17,32 @@ export function kstStamp() {
   return `${d.toISOString().slice(0, 10)} · KST`;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** 'YYYY-MM-DD' → 'M/DD' (그래프 축용). */
+function mdLabel(iso) {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${m}/${String(d).padStart(2, '0')}`;
+}
+/** 'YYYY-MM-DD' → 'Mon D' (스트릭 since·히어로 날짜용). */
+function monthDayLabel(iso) {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${d}`;
+}
+/** 'YYYY-MM-DD' → 요일 약어. */
+function dowLabel(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+/** 최근 14일 그래프에서 한 칸이 차지할 지분(막대 개수). */
+const GRAPH_DAYS = 14;
+
 /**
- * 식별자(닉네임 또는 public_id)로 카드 데이터 조립.
- * 순위·프로필·오늘/30일 집계·30일 시리즈를 API에서 모아 템플릿이 읽는 형태로 만든다.
+ * 식별자(닉네임 또는 public_id)로 V2 카드 데이터 조립.
+ * 히어로 = 가장 최근 '활동한 날'의 글자수(자정에 0으로 안 비게), 뱃지 = 연속 스트릭,
+ * 그래프 = 최근 14일(막대 높이=글자수, 스트릭 구간 강조). 순위는 쓰지 않는다(Phase 2).
+ * 참고: 스트릭은 /user 가 주는 30일 창에서 계산 → 30일 초과 연속은 30으로 캡(런치 시엔 무의미).
  */
 export async function buildData(api, seg) {
   const API = api.replace(/\/+$/, '');
@@ -27,32 +50,67 @@ export async function buildData(api, seg) {
   const query = isPid ? `id=${encodeURIComponent(seg)}` : `nickname=${encodeURIComponent(seg)}`;
   const profile = await fetchJson(`${API}/user?${query}`);
   const days = profile.days || [];
-  const last = days[days.length - 1] || { prompts: 0, chars: 0 };
-  const totals = profile.totals || { prompts: 0, chars: 0 };
+  const n = days.length;
   const nick = profile.nickname || seg; // 익명 유저는 응답의 자동 닉네임을 표시명으로
 
-  // 오늘 순위: daily 리더보드에서 식별자 매칭. 실패해도 이미지는 만든다.
-  let rank = 0;
-  let total = 0;
-  try {
-    const lb = await fetchJson(`${API}/leaderboard?type=daily&metric=prompts&limit=100`);
-    total = lb.count || (lb.ranking || []).length;
-    const row = (lb.ranking || []).find((r) => (isPid ? r.public_id === seg : r.nickname === seg));
-    if (row) rank = row.rank;
-  } catch {
-    // 순위 조회 실패는 무시
+  const isActive = (d) => (d?.prompts || 0) > 0; // 프롬프트 1개 이상 = 그날 활동함
+  const todayIso = n ? days[n - 1].day : kstStamp().slice(0, 10);
+
+  // 현재 스트릭: 최근 활동일에서 뒤로 연속 카운트. 오늘이 아직 비어도 어제까지의 연속을 인정(자정 유예).
+  let end = n - 1;
+  if (n && !isActive(days[end])) end -= 1;
+  let streak = 0;
+  let startIdx = -1;
+  for (let j = end; j >= 0; j--) {
+    if (isActive(days[j])) {
+      streak += 1;
+      startIdx = j;
+    } else break;
   }
+  const sinceIso = startIdx >= 0 ? days[startIdx].day : '';
+
+  // 히어로 = 가장 최근 활동일의 글자수(보통 오늘, 자정 직후엔 어제) → 큰 숫자가 0으로 안 비게.
+  let heroIdx = -1;
+  for (let j = n - 1; j >= 0; j--) {
+    if (isActive(days[j])) {
+      heroIdx = j;
+      break;
+    }
+  }
+  const hero = heroIdx >= 0 ? days[heroIdx] : { day: todayIso, prompts: 0, chars: 0 };
+  const heroIsToday = heroIdx === n - 1;
+
+  // 최근 14일: 막대 높이=글자수, 활동/스트릭/오늘 플래그.
+  const win = days.slice(-GRAPH_DAYS);
+  const offset = n - win.length;
+  const series = win.map((d, i) => {
+    const gi = offset + i;
+    return {
+      chars: d.chars || 0,
+      active: isActive(d),
+      streak: startIdx >= 0 && gi >= startIdx && gi <= end,
+      today: gi === n - 1,
+    };
+  });
+  const axis = win.length
+    ? { l: mdLabel(win[0].day), m: mdLabel(win[Math.floor((win.length - 1) / 2)].day), r: mdLabel(win[win.length - 1].day) }
+    : { l: '', m: '', r: '' };
 
   return {
     nick,
-    rank,
-    total,
     country: profile.country || '',
     flag: profile.flag || '',
     city: profile.city || '',
-    today: { prompts: last.prompts || 0, chars: last.chars || 0 },
-    d30: { prompts: totals.prompts || 0, chars: totals.chars || 0 },
-    series: days.map((d) => d.prompts || 0),
+    date: todayIso,
+    dow: dowLabel(todayIso),
+    heroChars: hero.chars || 0,
+    heroPrompts: hero.prompts || 0,
+    heroIsToday,
+    heroDayLabel: heroIsToday ? '' : monthDayLabel(hero.day),
+    streak,
+    since: sinceIso ? monthDayLabel(sinceIso) : '',
+    series,
+    axis,
     stamp: kstStamp(),
   };
 }
