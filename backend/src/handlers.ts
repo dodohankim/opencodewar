@@ -1,11 +1,12 @@
 import type { Env } from './types';
 import { json, readJson } from './http';
-import { kstToday, recentDays } from './time';
+import { HOUR_MS, KST_OFFSET_MS, kstDayRange, kstToday, recentDays } from './time';
 import {
   clampChars,
   clampLimit,
   isValidBio,
   isValidCountryCode,
+  isValidDay,
   isValidNickname,
   isValidShortText,
   isValidUserId,
@@ -465,31 +466,37 @@ export async function handleDelete(request: Request, env: Env): Promise<Response
 }
 
 /**
+ * ?id=<public_id> | ?nickname=<등록닉> 로 유저를 찾는 준비된 쿼리를 만든다(cols는 SELECT ~ FROM users).
+ * id 우선(익명 유저 slug 진입 경로), 없으면 nickname. 파라미터가 유효하지 않으면 그대로 반환할
+ * 에러 Response 를 준다 — 호출부는 { query } | { error } 로 분기한다. (/user 와 /user/hours 공용)
+ */
+function buildUserQuery(
+  env: Env,
+  url: URL,
+  cols: string,
+): { query: D1PreparedStatement } | { error: Response } {
+  const idParam = url.searchParams.get('id');
+  const nicknameParam = url.searchParams.get('nickname');
+  if (idParam != null) {
+    if (!isValidPublicId(idParam)) return { error: json({ error: 'invalid_id' }, 400) };
+    return { query: env.DB.prepare(`${cols} WHERE public_id = ?`).bind(idParam) };
+  }
+  if (!isValidNickname(nicknameParam)) return { error: json({ error: 'invalid_nickname' }, 400) };
+  return { query: env.DB.prepare(`${cols} WHERE nickname = ?`).bind((nicknameParam as string).trim()) };
+}
+
+/**
  * GET /user?nickname=<등록닉> | ?id=<public_id> — 유저 상세(프로필 + 최근 30일 일별 사용량).
  * 공개 페이지다. 등록 유저는 닉네임으로, 닉네임 미등록(익명) 유저는 공개 slug(public_id)로 조회한다.
  * user_id(비밀키)는 어느 경우에도 반환하지 않는다.
  */
 export async function handleUser(url: URL, env: Env): Promise<Response> {
-  const idParam = url.searchParams.get('id');
-  const nicknameParam = url.searchParams.get('nickname');
-
   const cols =
     'SELECT user_id, nickname, bio, role, company, links, projects, email, country, city, created_at FROM users';
-  let query: D1PreparedStatement;
-  if (idParam != null) {
-    // 공개 slug 조회(익명 유저 진입 경로). id 우선.
-    if (!isValidPublicId(idParam)) {
-      return json({ error: 'invalid_id' }, 400);
-    }
-    query = env.DB.prepare(`${cols} WHERE public_id = ?`).bind(idParam);
-  } else {
-    if (!isValidNickname(nicknameParam)) {
-      return json({ error: 'invalid_nickname' }, 400);
-    }
-    query = env.DB.prepare(`${cols} WHERE nickname = ?`).bind((nicknameParam as string).trim());
-  }
+  const built = buildUserQuery(env, url, cols);
+  if ('error' in built) return built.error;
 
-  const user = await query.first<{
+  const user = await built.query.first<{
     user_id: string;
     nickname: string | null;
     bio: string | null;
@@ -559,4 +566,69 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     days: series,
     totals,
   });
+}
+
+/**
+ * GET /user/hours?id=<public_id> | ?nickname=<등록닉> [&day=YYYY-MM-DD]
+ *   — 특정 KST 하루의 시간대별(0~23시) 사용량. day 미지정 시 오늘(KST).
+ * 일별 집계(daily_stats)엔 시(hour) 정보가 없으므로 원시 이벤트(events.created_at=UTC ms)를
+ * KST 시로 그룹핑한다. 상세 페이지의 "하루(시간별)" 뷰 전용 — 열람 시에만 온디맨드로 호출된다.
+ * 응답은 항상 24칸(활동 없는 시각은 0)으로 채워, 웹은 일별 차트와 같은 렌더 경로를 재사용한다.
+ */
+export async function handleUserHours(url: URL, env: Env): Promise<Response> {
+  const built = buildUserQuery(env, url, 'SELECT user_id FROM users');
+  if ('error' in built) return built.error;
+  const user = await built.query.first<{ user_id: string }>();
+  if (!user) {
+    return json({ error: 'user_not_found' }, 404);
+  }
+
+  const now = Date.now();
+  const dayParam = url.searchParams.get('day');
+  const day = dayParam ?? kstToday(now);
+  if (!isValidDay(day)) {
+    return json({ error: 'invalid_day' }, 400);
+  }
+  const range = kstDayRange(day);
+  if (!range) {
+    return json({ error: 'invalid_day' }, 400); // isValidDay 통과 시 도달 불가(방어적)
+  }
+
+  // KST 시 = floor((created_at + 9h) / 1h) % 24. 상수는 우리 값이라 리터럴로 인라인해
+  // 정수/정수 나눗셈(=floor)을 보장한다. time.ts.kstHour 와 동일 공식(상수 공유).
+  const hourExpr = `((created_at + ${KST_OFFSET_MS}) / ${HOUR_MS}) % 24`;
+  const rows = await env.DB.prepare(
+    `SELECT ${hourExpr} AS hour, agent, COUNT(*) AS prompts, SUM(chars) AS chars
+     FROM events
+     WHERE user_id = ? AND created_at >= ? AND created_at < ?
+     GROUP BY hour, agent`,
+  )
+    .bind(user.user_id, range.start, range.end)
+    .all<{ hour: number; agent: string; prompts: number; chars: number }>();
+
+  type HourAgg = { prompts: number; chars: number; agents: Record<string, { prompts: number; chars: number }> };
+  const byHour = new Map<number, HourAgg>();
+  for (const r of rows.results) {
+    const h = Number(r.hour) || 0;
+    let b = byHour.get(h);
+    if (!b) {
+      b = { prompts: 0, chars: 0, agents: {} };
+      byHour.set(h, b);
+    }
+    const p = Number(r.prompts) || 0;
+    const c = Number(r.chars) || 0;
+    b.prompts += p;
+    b.chars += c;
+    b.agents[r.agent] = { prompts: p, chars: c };
+  }
+  const hours = Array.from({ length: 24 }, (_, h) => {
+    const b = byHour.get(h);
+    return { hour: h, prompts: b?.prompts ?? 0, chars: b?.chars ?? 0, agents: b?.agents ?? {} };
+  });
+  const totals = hours.reduce(
+    (acc, s) => ({ prompts: acc.prompts + s.prompts, chars: acc.chars + s.chars }),
+    { prompts: 0, chars: 0 },
+  );
+
+  return json({ day, hours, totals });
 }

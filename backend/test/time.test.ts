@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { kstToday, mondayOf, kstDayNum, weekDays, weekendDays, dowOf, recentDays, monthDays } from '../src/time';
+import {
+  kstToday,
+  mondayOf,
+  kstDayNum,
+  weekDays,
+  weekendDays,
+  dowOf,
+  recentDays,
+  monthDays,
+  kstHour,
+  kstDayRange,
+} from '../src/time';
 
 // 기준: 2026-07-08T03:00:00Z = 2026-07-08 12:00 KST (수요일)
 const WED_NOON_KST = Date.UTC(2026, 6, 8, 3, 0, 0);
@@ -80,5 +91,36 @@ describe('KST 날짜 계산', () => {
     const days = monthDays(Date.UTC(2026, 3, 10, 3, 0, 0)); // 2026-04
     expect(days).toHaveLength(30);
     expect(days.at(-1)).toBe('2026-04-30');
+  });
+});
+
+describe('KST 시간(hour) 계산', () => {
+  it('kstHour: UTC ts를 KST 시(0~23)로 환산한다', () => {
+    expect(kstHour(WED_NOON_KST)).toBe(12); // 12:00 KST
+    expect(kstHour(Date.UTC(2026, 6, 8, 0, 0, 0))).toBe(9); // 00:00 UTC = 09:00 KST
+    expect(kstHour(Date.UTC(2026, 6, 8, 15, 30, 0))).toBe(0); // 15:30 UTC = 익일 00:30 KST
+    expect(kstHour(Date.UTC(2026, 6, 8, 14, 59, 59))).toBe(23); // 23:59 KST
+  });
+
+  it('kstDayRange: KST 하루의 UTC ms 범위 [start, end)', () => {
+    const r = kstDayRange('2026-07-08')!;
+    // KST 자정 = 전날 15:00 UTC
+    expect(r.start).toBe(Date.UTC(2026, 6, 7, 15, 0, 0));
+    expect(r.end).toBe(Date.UTC(2026, 6, 8, 15, 0, 0));
+    expect(r.end - r.start).toBe(86_400_000);
+  });
+
+  it('kstDayRange: 범위·시(hour) 공식이 서로 정합한다', () => {
+    const r = kstDayRange('2026-07-08')!;
+    // 범위 시작은 그 날 KST 0시, 끝 직전은 23시.
+    expect(kstHour(r.start)).toBe(0);
+    expect(kstHour(r.end - 1)).toBe(23);
+    // 범위 안의 모든 이벤트는 같은 KST 날짜로 환산된다.
+    expect(kstToday(r.start)).toBe('2026-07-08');
+    expect(kstToday(r.end - 1)).toBe('2026-07-08');
+  });
+
+  it('kstDayRange: 형식 오류면 null', () => {
+    expect(kstDayRange('not-a-date')).toBeNull();
   });
 });

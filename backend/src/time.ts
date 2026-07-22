@@ -2,11 +2,29 @@
 // Worker는 UTC로 동작하므로 offset을 더해 정수 day-number로 환산해 다룬다.
 
 const DAY_MS = 86_400_000;
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+export const HOUR_MS = 3_600_000;
+export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 /** epoch ms → KST 기준 "1970-01-01부터의 일수". */
 export function kstDayNum(ts: number): number {
   return Math.floor((ts + KST_OFFSET_MS) / DAY_MS);
+}
+
+/** epoch ms → KST 기준 시(0~23). handleUserHours 의 SQL 시(hour) 식과 동일 공식(상수 공유). */
+export function kstHour(ts: number): number {
+  return Math.floor((ts + KST_OFFSET_MS) / HOUR_MS) % 24;
+}
+
+/**
+ * 'YYYY-MM-DD'(KST) 하루에 해당하는 UTC epoch ms 범위 [start, end). 형식 오류면 null.
+ * dayStr(dayNum) = ISO(dayNum*DAY_MS) 이므로 dayNum = t/DAY_MS이고, 그 KST 자정의 UTC 시각은 -9h.
+ */
+export function kstDayRange(day: string): { start: number; end: number } | null {
+  const t = Date.parse(`${day}T00:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  const dayNum = Math.round(t / DAY_MS);
+  const start = dayNum * DAY_MS - KST_OFFSET_MS;
+  return { start, end: start + DAY_MS };
 }
 
 /** day-number → 'YYYY-MM-DD'. (day-number * DAY_MS는 해당 KST 날짜의 UTC 자정) */

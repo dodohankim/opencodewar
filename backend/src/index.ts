@@ -8,6 +8,7 @@ import {
   handleRegister,
   handleTrack,
   handleUser,
+  handleUserHours,
   handleZones,
 } from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
@@ -67,6 +68,9 @@ export default {
       }
       if (pathname === '/me' && request.method === 'GET') {
         return await handleMe(url, env);
+      }
+      if (pathname === '/user/hours' && request.method === 'GET') {
+        return await handleUserHours(url, env);
       }
       if (pathname === '/user' && request.method === 'GET') {
         return await handleUser(url, env);

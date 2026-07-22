@@ -201,6 +201,18 @@
   .tlab { font-size:12px; color:var(--dim); margin-top:5px; }
   .tsub { font-size:11px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
   @media (max-width:560px) { .ustats { grid-template-columns:repeat(2,1fr); } .tnum { font-size:23px; } }
+  /* 차트 뷰 토글(30d/day) · 지표 토글(prompts/chars) — 반전 배경으로 선택 표시 */
+  .uviews { display:inline-flex; gap:6px; }
+  .uview, .usort { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .uview:hover, .usort:hover { color:var(--fg); }
+  .uview[aria-pressed="true"], .usort[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  /* 하루(시간별) 뷰 날짜 이동 */
+  .udaynav { display:flex; align-items:center; justify-content:center; gap:14px; margin-top:12px; }
+  .udaynav[hidden] { display:none; }  /* display:flex 가 UA의 [hidden]{display:none}를 덮어써서 명시 필요 */
+  .udaystep { font:inherit; font-size:12px; line-height:1; border:1px solid var(--line); background:var(--bg); color:var(--dim); width:30px; height:27px; border-radius:5px; cursor:pointer; }
+  .udaystep:hover:not(:disabled) { color:var(--fg); border-color:var(--fg); }
+  .udaystep:disabled { opacity:0.3; cursor:default; }
+  .udaylabel { font-size:13px; color:var(--fg); font-variant-numeric:tabular-nums; min-width:118px; text-align:center; }
   .chart-wrap { margin-top:16px; position:relative; }
   .chart-tip { position:absolute; z-index:5; pointer-events:none; transform:translate(-50%,-100%);
     background:var(--rev-bg); color:var(--rev-fg); border-radius:5px; padding:6px 9px; font-size:11.5px;
@@ -215,12 +227,16 @@
   .chart .col.zero .barv { background:var(--line); }
   .chart .col.wknd .barv { background:var(--dim); }
   .chart .col.today .barv { background:var(--ok); }
+  .chart .col.peak .barv { background:var(--ok); }  /* 하루 뷰: 가장 많이 입력한 시각 강조 */
   .chart .col:hover .barv { opacity:0.6; }
+  .chart.drill .col { cursor:pointer; }  /* 30일 막대 클릭 → 그 날 시간별 드릴다운 */
   /* 에이전트 2종 이상일 때: 막대를 에이전트별 세그먼트로 스택(아래→위) */
   .chart .col .barv.stack { background:transparent; display:flex; flex-direction:column-reverse; overflow:hidden; }
   .chart .col .barv.stack .seg { width:100%; min-height:1px; }
-  .ag-legend { font-size:11px; color:var(--dim); }
+  .ag-legend { display:block; margin-top:10px; font-size:11px; color:var(--dim); }
+  .ag-legend:empty { display:none; }  /* 단일 에이전트면 비어 있으니 여백도 없앤다 */
   .ag-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin:0 4px 0 10px; vertical-align:-1px; }
+  .ag-legend .ag-dot:first-child { margin-left:0; }
   .chart-x { display:flex; justify-content:space-between; margin-top:7px; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
   .chart-peak { font-size:11px; color:var(--faint); }
   .umsg { padding:20px 4px; text-align:center; color:var(--dim); font-size:13px; }
@@ -369,12 +385,21 @@
         <section class="box">
           <span class="legend" id="uChartLegend">last 30 days · prompts</span>
           <div class="utop">
-            <span class="ag-legend" id="uAgentLegend"></span>
+            <div class="uviews">
+              <button class="uview" data-view="30d" aria-pressed="true" data-i18n="view_30d">30d</button>
+              <button class="uview" data-view="day" aria-pressed="false" data-i18n="view_day">day</button>
+            </div>
             <div class="sorts">
               <button class="usort" data-metric="prompts" aria-pressed="true">prompts</button>
               <button class="usort" data-metric="chars" aria-pressed="false">chars</button>
             </div>
           </div>
+          <div class="udaynav" id="uDayNav" hidden>
+            <button class="udaystep" id="uDayPrev" type="button" aria-label="previous day">◀</button>
+            <span class="udaylabel" id="uDayLabel"></span>
+            <button class="udaystep" id="uDayNext" type="button" aria-label="next day">▶</button>
+          </div>
+          <span class="ag-legend" id="uAgentLegend"></span>
           <div class="ustats" id="uStats"></div>
           <div class="chart-wrap" id="uChartWrap">
             <div class="chart" id="uChart" aria-hidden="true"></div>
@@ -428,8 +453,10 @@
       email_label: 'email', email_ph: 'Available after sign-in', member_since: 'member since',
       bio_empty: 'No bio yet.', chart_30d: 'last 30 days',
       u_active: 'active days', u_peak: 'peak', u_total_sub: '30-day total',
+      view_30d: '30d', view_day: 'day', u_hours: 'active hours', u_day_sub: 'day total',
+      dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
-      no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗',
+      no_activity: 'No activity in the last 30 days.', no_activity_day: 'No activity on this day.', visit: 'Visit ↗',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
       ago_s: (n) => `${n}s ago`, ago_m: (n) => `${n}m ago`, ago_h: (n) => `${n}h ago`,
@@ -458,8 +485,10 @@
       email_label: '이메일', email_ph: '로그인 도입 후 연동 예정', member_since: '가입일',
       bio_empty: '아직 자기소개가 없습니다.', chart_30d: '최근 30일',
       u_active: '활동일', u_peak: '최고', u_total_sub: '30일 합계',
+      view_30d: '30일', view_day: '하루', u_hours: '활동시간', u_day_sub: '하루 합계',
+      dow: ['일', '월', '화', '수', '목', '금', '토'],
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
-      no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗',
+      no_activity: '최근 30일 활동이 없습니다.', no_activity_day: '이 날은 활동이 없습니다.', visit: '방문 ↗',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
       ago_s: (n) => `${n}초 전`, ago_m: (n) => `${n}분 전`, ago_h: (n) => `${n}시간 전`,
@@ -492,6 +521,9 @@
   let curUser = null;   // 현재 열람 중인 닉네임(없으면 리더보드)
   let uMetric = 'prompts';
   let uData = null;     // 마지막으로 받은 /user 응답
+  let uView = '30d';    // 차트 뷰: '30d'(일별) | 'day'(시간별)
+  let uDay = null;      // day 뷰에서 보고 있는 'YYYY-MM-DD'
+  const uHoursCache = new Map(); // day -> /user/hours 응답 (재요청 방지)
 
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
@@ -809,6 +841,28 @@
   function syncUsortButtons() {
     document.querySelectorAll('.usort').forEach((b) => b.setAttribute('aria-pressed', b.dataset.metric === uMetric));
   }
+  function syncViewButtons() {
+    document.querySelectorAll('.uview').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === uView));
+  }
+  // 'YYYY-MM-DD' → 'MM-DD (요일)'. 하루 뷰 네비/레전드 라벨.
+  const dayLabel = (s) => {
+    if (typeof s !== 'string' || s.length < 10) return '';
+    const dow = t('dow')[new Date(s + 'T00:00:00Z').getUTCDay()] || '';
+    return `${mmdd(s)} (${dow})`;
+  };
+  const hhLabel = (h) => `${String(h).padStart(2, '0')}:00`;
+  // items(각 원소에 .agents) 안에 등장하는 에이전트를 고정 순서로. 2종 이상이면 스택 렌더.
+  function agentsIn(items) {
+    const seen = new Set();
+    for (const it of items) for (const a in it.agents || {}) seen.add(a);
+    return orderedAgents([...seen]);
+  }
+  // 스탯 타일 1칸(prompts/chars). 선택된 지표는 강조(sel)하고 서브를 합계 라벨로.
+  function statTileHtml(m, sum, selMetric, totalSub) {
+    const on = m === selMetric;
+    const sub = on ? totalSub : fmt(sum);
+    return `<div class="tile${on ? ' sel' : ''}"><div class="tnum">${fmtCompact(sum)}</div><div class="tlab">${m}</div><div class="tsub">${sub}</div></div>`;
+  }
   function showUserError(msg) {
     $('shareBtn').hidden = true;
     $('uChartWrap').hidden = true;
@@ -830,7 +884,12 @@
   async function loadUser(nick) {
     uMetric = 'prompts';
     uData = null;
+    uView = '30d';
+    uDay = null;
+    uHoursCache.clear();
+    $('uDayNav').hidden = true;
     syncUsortButtons();
+    syncViewButtons();
     const byId = isPid(nick);
     const q = byId ? `id=${encodeURIComponent(nick)}` : `nickname=${encodeURIComponent(nick)}`;
     $('cmdEcho').textContent = `GET /user?${q}`;
@@ -949,17 +1008,41 @@
     return [...AGENT_ORDER.filter((a) => keys.includes(a)), ...keys.filter((a) => !AGENT_ORDER.includes(a))];
   }
 
+  // 스택 세그먼트 HTML(에이전트 2종 이상 & 값>0일 때만). 아래부터 고정 순서로 쌓는다.
+  function barSegs(multi, v, agentsMap, agents, metric) {
+    if (!multi || v <= 0) return '';
+    return agents
+      .map((a) => ({ a, val: (agentsMap && agentsMap[a] && agentsMap[a][metric]) || 0 }))
+      .filter((s) => s.val > 0)
+      .map((s) => `<div class="seg" style="height:${(s.val / v) * 100}%;background:${agColor(s.a)}"></div>`)
+      .join('');
+  }
+
+  // 뷰(30d/day)에 맞춰 차트를 그린다. 공통 상단(토글·날짜 네비·드릴 커서)만 여기서 처리하고
+  // 실제 렌더는 각 뷰 함수에 위임한다.
   function renderUserChart() {
     if (!uData) return;
+    // day 뷰 기본 날짜 = 오늘(30일 창의 마지막). 데이터 로드 전 토글을 눌러도 여기서 확정된다.
+    if (uView === 'day' && !uDay) {
+      const list = dayList();
+      uDay = list.length ? list[list.length - 1] : null;
+    }
+    syncUsortButtons();
+    syncViewButtons();
+    $('uDayNav').hidden = uView !== 'day';
+    $('uChart').classList.toggle('drill', uView === '30d'); // 30일 막대만 클릭 드릴다운
+    if (uView === 'day') renderHourChart();
+    else render30dChart();
+  }
+
+  // ── 뷰 1: 최근 30일 · 일별 막대 ──
+  function render30dChart() {
     const days = uData.days || [];
     const metric = uMetric;
     $('uChartLegend').textContent = `${t('chart_30d')} · ${metric}`;
-    syncUsortButtons();
 
-    // 30일 내 활동이 있는 에이전트 — 2종 이상일 때만 스택 표시(1종이면 기존 그래프 그대로)
-    const seen = new Set();
-    for (const d of days) for (const a in d.agents || {}) seen.add(a);
-    const agents = orderedAgents([...seen]);
+    // 30일 내 활동이 있는 에이전트 — 2종 이상일 때만 스택 표시(1종이면 단색 막대)
+    const agents = agentsIn(days);
     const multi = agents.length >= 2;
     $('uAgentLegend').innerHTML = multi
       ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
@@ -976,14 +1059,9 @@
     const pct = days.length ? Math.round((activeDays / days.length) * 100) : 0;
 
     // 지표 타일 4칸: prompts·chars(현재 정렬 metric 강조) · active days · peak
-    const statTile = (m, sum) => {
-      const on = m === metric;
-      const sub = on ? t('u_total_sub') : fmt(sum);
-      return `<div class="tile${on ? ' sel' : ''}"><div class="tnum">${fmtCompact(sum)}</div><div class="tlab">${m}</div><div class="tsub">${sub}</div></div>`;
-    };
     $('uStats').innerHTML =
-      statTile('prompts', sumP) +
-      statTile('chars', sumC) +
+      statTileHtml('prompts', sumP, metric, t('u_total_sub')) +
+      statTileHtml('chars', sumC, metric, t('u_total_sub')) +
       `<div class="tile"><div class="tnum">${activeDays}<span class="den">/${days.length}</span></div><div class="tlab">${t('u_active')}</div><div class="tsub">${pct}%</div></div>` +
       `<div class="tile"><div class="tnum">${peakVal > 0 ? fmtCompact(peakVal) : '–'}</div><div class="tlab">${t('u_peak')}</div><div class="tsub">${peakIdx >= 0 ? mmdd(days[peakIdx].day) : '–'}</div></div>`;
 
@@ -1006,24 +1084,132 @@
         const isWknd = dow === 0 || dow === 6;
         const isToday = d.day === todayStr;
         const cls = v === 0 ? 'zero' : isToday ? 'today' : isWknd ? 'wknd' : '';
-        // 에이전트 2종 이상이면 막대를 에이전트별 세그먼트로 쌓는다(아래부터 고정 순서)
-        const segs =
-          multi && v > 0
-            ? agents
-                .map((a) => ({ a, val: (d.agents && d.agents[a] && d.agents[a][metric]) || 0 }))
-                .filter((s) => s.val > 0)
-                .map((s) => `<div class="seg" style="height:${(s.val / v) * 100}%;background:${agColor(s.a)}"></div>`)
-                .join('')
-            : '';
+        const segs = barSegs(multi, v, d.agents, agents, metric);
         const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(d.agents || {}))}"` : '';
-        // 커스텀 툴팁(#uTip)이 읽을 값. day 는 'YYYY-MM-DD' 안전 문자열.
-        return `<div class="col ${cls}" data-day="${d.day}" data-p="${d.prompts}" data-c="${d.chars}"${ag}><div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        // data-day 는 드릴다운(그 날 시간별)용, data-lbl 은 툴팁 표시 라벨.
+        return `<div class="col ${cls}" data-day="${d.day}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}><div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
     $('uXfrom').textContent = mmdd(days[0] ? days[0].day : '');
     $('uXto').textContent = mmdd(todayStr);
     $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${mmdd(days[peakIdx].day)} · ${fmt(max)}` : '';
+  }
+
+  // ── 뷰 2: 하루 · 시간별(0~23시) 막대 ── (데이터는 /user/hours 온디맨드 로드·캐시)
+  async function renderHourChart() {
+    const day = uDay;
+    if (!day) return;
+    updateDayNav();
+
+    let data = uHoursCache.get(day);
+    if (!data) {
+      // 로딩 상태로 전환하고, 요청 컨텍스트(유저·뷰·날짜)를 잡아 레이스를 가드한다.
+      $('uChartLegend').textContent = `${dayLabel(day)} · ${uMetric}`;
+      $('uStats').innerHTML = '';
+      $('uAgentLegend').innerHTML = '';
+      $('uChartWrap').hidden = true;
+      $('uMsg').hidden = false;
+      $('uMsg').classList.remove('err');
+      $('uMsg').textContent = t('loading');
+      const reqUser = curUser;
+      try {
+        data = await ensureHours(day);
+      } catch {
+        if (curUser === reqUser && uView === 'day' && uDay === day) {
+          $('uMsg').hidden = false;
+          $('uMsg').classList.add('err');
+          $('uMsg').textContent = t('user_error');
+        }
+        return;
+      }
+      // 응답 대기 사이 다른 유저/뷰/날짜로 이동했으면 폐기(오래된 응답 무시).
+      if (curUser !== reqUser || uView !== 'day' || uDay !== day) return;
+    }
+    paintHours(day, data);
+  }
+
+  async function ensureHours(day) {
+    if (uHoursCache.has(day)) return uHoursCache.get(day);
+    const ref = curUser;
+    const base = isPid(ref) ? `id=${encodeURIComponent(ref)}` : `nickname=${encodeURIComponent(ref)}`;
+    const res = await fetch(`${API}/user/hours?${base}&day=${encodeURIComponent(day)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    uHoursCache.set(day, data);
+    return data;
+  }
+
+  function paintHours(day, data) {
+    const metric = uMetric;
+    const hours = (data && data.hours) || [];
+    $('uChartLegend').textContent = `${dayLabel(day)} · ${metric}`;
+
+    const agents = agentsIn(hours);
+    const multi = agents.length >= 2;
+    $('uAgentLegend').innerHTML = multi
+      ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
+      : '';
+
+    const vals = hours.map((hh) => hh[metric] || 0);
+    const total = vals.reduce((a, b) => a + b, 0);
+    const sumP = hours.reduce((s, hh) => s + (hh.prompts || 0), 0);
+    const sumC = hours.reduce((s, hh) => s + (hh.chars || 0), 0);
+    const activeHours = vals.filter((v) => v > 0).length;
+    const peakVal = Math.max(0, ...vals);
+    const peakIdx = peakVal > 0 ? vals.indexOf(peakVal) : -1;
+    const max = Math.max(peakVal, 1);
+    const pct = Math.round((activeHours / 24) * 100);
+
+    // 지표 타일 4칸: prompts·chars(현재 metric 강조) · active hours · peak(시각)
+    $('uStats').innerHTML =
+      statTileHtml('prompts', sumP, metric, t('u_day_sub')) +
+      statTileHtml('chars', sumC, metric, t('u_day_sub')) +
+      `<div class="tile"><div class="tnum">${activeHours}<span class="den">/24</span></div><div class="tlab">${t('u_hours')}</div><div class="tsub">${pct}%</div></div>` +
+      `<div class="tile"><div class="tnum">${peakVal > 0 ? fmtCompact(peakVal) : '–'}</div><div class="tlab">${t('u_peak')}</div><div class="tsub">${peakIdx >= 0 ? hhLabel(peakIdx) : '–'}</div></div>`;
+
+    if (total === 0) {
+      $('uChartWrap').hidden = true;
+      $('uMsg').hidden = false;
+      $('uMsg').classList.remove('err');
+      $('uMsg').textContent = t('no_activity_day');
+      return;
+    }
+    $('uMsg').hidden = true;
+    $('uChartWrap').hidden = false;
+
+    $('uChart').innerHTML = hours
+      .map((hh, i) => {
+        const v = hh[metric] || 0;
+        const h = Math.max(2, Math.round((v / max) * 100));
+        const cls = v === 0 ? 'zero' : i === peakIdx ? 'peak' : '';
+        const segs = barSegs(multi, v, hh.agents, agents, metric);
+        const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(hh.agents || {}))}"` : '';
+        return `<div class="col ${cls}" data-lbl="${hhLabel(i)}" data-p="${hh.prompts}" data-c="${hh.chars}"${ag}><div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+      })
+      .join('');
+
+    $('uXfrom').textContent = hhLabel(0);
+    $('uXto').textContent = hhLabel(23);
+    $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${hhLabel(peakIdx)} · ${fmt(peakVal)}` : '';
+  }
+
+  // 하루 뷰 날짜 이동(◀ ▶) — 30일 창(uData.days) 안에서만.
+  const dayList = () => (uData && uData.days ? uData.days : []).map((d) => d.day);
+  function updateDayNav() {
+    const list = dayList();
+    const i = list.indexOf(uDay);
+    $('uDayPrev').disabled = i <= 0;
+    $('uDayNext').disabled = i < 0 || i >= list.length - 1;
+    $('uDayLabel').textContent = dayLabel(uDay);
+  }
+  function stepDay(delta) {
+    const list = dayList();
+    const i = list.indexOf(uDay);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    uDay = list[j];
+    renderUserChart();
   }
 
   // 코더 이름 클릭 → 상세 (리더보드 행 + 챔피언 칩 모두 위임 처리)
@@ -1085,7 +1271,29 @@
     }),
   );
 
-  // 차트 바 호버 → 커스텀 툴팁(날짜 · 프롬프트 · 글자수). #uChart 에 위임해 리렌더에도 유지.
+  // 뷰 토글(30d / day). day 기본 날짜(오늘)는 renderUserChart 가 확정한다.
+  document.querySelectorAll('.uview').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (b.dataset.view === uView) return;
+      uView = b.dataset.view;
+      renderUserChart();
+    }),
+  );
+  // 하루 뷰 날짜 이동(◀ ▶).
+  $('uDayPrev').addEventListener('click', () => stepDay(-1));
+  $('uDayNext').addEventListener('click', () => stepDay(1));
+  // 30일 막대 클릭 → 그 날 시간별로 드릴다운.
+  $('uChart').addEventListener('click', (e) => {
+    if (uView !== '30d') return;
+    const col = e.target.closest && e.target.closest('.col');
+    if (!col || !col.dataset.day) return;
+    uDay = col.dataset.day;
+    uView = 'day';
+    $('uTip').classList.remove('on'); // 클릭 재렌더 시 남는 이전(일별) 툴팁 제거 — 다음 mousemove까지 대기 안 함
+    renderUserChart();
+  });
+
+  // 차트 바 호버 → 커스텀 툴팁(날짜/시각 · 프롬프트 · 글자수). #uChart 에 위임해 리렌더에도 유지.
   (function setupChartTip() {
     const chartEl = $('uChart');
     const wrapEl = $('uChartWrap');
@@ -1109,8 +1317,9 @@
           if (parts.length) agLine = '<br>' + parts.join('');
         } catch {}
       }
+      // data-lbl: 30일 뷰는 'MM-DD', 하루 뷰는 'HH:00'.
       tipEl.innerHTML =
-        `<span class="d">${escapeHtml(mmdd(col.dataset.day || ''))}</span>` +
+        `<span class="d">${escapeHtml(col.dataset.lbl || '')}</span>` +
         `<span class="sep">·</span><span class="v">${fmt(p)}</span> ${pl}` +
         `<span class="sep">·</span><span class="v">${fmt(c)}</span> ${cl}` +
         agLine;

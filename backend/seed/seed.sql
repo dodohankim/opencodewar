@@ -6,6 +6,7 @@
 --   이번주 월  = date('now','+9 hours','-'||((CAST(strftime('%w',date('now','+9 hours')) AS INTEGER)+6)%7)||' days')
 --   금/토/일   = 위 월요일에 +4 / +5 / +6 days
 
+DELETE FROM events WHERE user_id LIKE 'seed_user_%';
 DELETE FROM daily_stats WHERE user_id LIKE 'seed_user_%';
 DELETE FROM users WHERE user_id LIKE 'seed_user_%';
 
@@ -132,3 +133,40 @@ INSERT INTO daily_stats (user_id, day, prompts, chars, country) VALUES
 ON CONFLICT(user_id, day, agent) DO UPDATE SET
   prompts = daily_stats.prompts + excluded.prompts,
   chars   = daily_stats.chars   + excluded.chars;
+
+-- ── 시간별(하루) 뷰 데모용 원시 이벤트 ──
+-- 상세 페이지의 "day" 뷰는 daily_stats 가 아니라 events(created_at=UTC ms)를 KST 시로 집계한다.
+-- 위 daily_stats 총합과는 독립적인 예시 분포이며(재현용 데모), 두 명에게 서로 다른 하루 리듬을 심는다.
+--   seed_user_01(코드깎는노인): 낮~밤 근무형(22시 피크)  ·  seed_user_03(새벽5시개발자): 이른 아침형(6시 피크)
+-- created_at = (오늘 KST 자정의 UTC 초 - 9h)*1000 + 시*3600000 + 시간 내 균등 분산.
+--   KST 자정의 UTC 초 = unixepoch(오늘 KST 날짜) - 32400  → +시(hour) 하면 그 시각의 UTC.
+-- 시(hour)별 이벤트 수(n)를 재귀 CTE 로 펼쳐 n건씩 만든다. chars 는 대충 변주.
+INSERT INTO events (user_id, chars, country, agent, created_at)
+WITH RECURSIVE
+  kst_mid(ms) AS (VALUES ((unixepoch(date('now','+9 hours')) - 32400) * 1000)),
+  -- (유저, 시, 그 시각 이벤트 수) 분포표
+  dist(uid, cc, h, n) AS (
+    VALUES
+      ('seed_user_01','KR', 7, 2),('seed_user_01','KR', 8, 5),('seed_user_01','KR', 9, 9),
+      ('seed_user_01','KR',10,14),('seed_user_01','KR',11,12),('seed_user_01','KR',12, 6),
+      ('seed_user_01','KR',13,10),('seed_user_01','KR',14,16),('seed_user_01','KR',15,18),
+      ('seed_user_01','KR',16,15),('seed_user_01','KR',17,11),('seed_user_01','KR',18, 7),
+      ('seed_user_01','KR',19, 4),('seed_user_01','KR',20, 9),('seed_user_01','KR',21,13),
+      ('seed_user_01','KR',22,20),('seed_user_01','KR',23, 8),
+      ('seed_user_03','KR', 4, 6),('seed_user_03','KR', 5,17),('seed_user_03','KR', 6,21),
+      ('seed_user_03','KR', 7,15),('seed_user_03','KR', 8, 9),('seed_user_03','KR', 9,11),
+      ('seed_user_03','KR',10, 7),('seed_user_03','KR',11, 5),('seed_user_03','KR',13, 4),
+      ('seed_user_03','KR',14, 3),('seed_user_03','KR',22, 2)
+  ),
+  -- 각 (uid,h) 를 i=1..n 으로 펼친다.
+  seq(uid, cc, h, n, i) AS (
+    SELECT uid, cc, h, n, 1 FROM dist
+    UNION ALL SELECT uid, cc, h, n, i + 1 FROM seq WHERE i < n
+  )
+SELECT
+  uid,
+  90 + (i * 53 + h * 7) % 260,                                      -- chars 변주(대략 90~350)
+  cc,
+  'claude-code',
+  (SELECT ms FROM kst_mid) + h * 3600000 + (i * 3600000) / (n + 1)  -- 시간 내 균등 분산
+FROM seq;

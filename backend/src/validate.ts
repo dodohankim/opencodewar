@@ -63,6 +63,15 @@ export function isValidCountryCode(v: unknown): v is string {
   return typeof v === 'string' && COUNTRY_RE.test(v);
 }
 
+/** 시간별(hours) 조회 day 파라미터: 실재하는 'YYYY-MM-DD'인지(형식 + 왕복 검증). */
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+export function isValidDay(v: unknown): v is string {
+  if (typeof v !== 'string' || !DAY_RE.test(v)) return false;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  // 2026-13-40 처럼 형식은 맞지만 존재하지 않는 날짜를 배제(파싱 후 다시 문자열화해 대조).
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === v;
+}
+
 /** 링크/프로젝트 URL: http(s) 절대 URL, 최대 200자. (웹에서 rel=nofollow 로 렌더) */
 export const MAX_URL_LEN = 200;
 export function isValidUrl(v: unknown): v is string {

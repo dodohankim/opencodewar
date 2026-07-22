@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isValidDay,
   isValidShortText,
   isValidUrl,
   MAX_PROJECT_NAME_LEN,
@@ -10,6 +11,24 @@ import {
   normalizeProjects,
   parseType,
 } from '../src/validate';
+
+describe('isValidDay', () => {
+  it('실재하는 YYYY-MM-DD 를 통과시킨다', () => {
+    expect(isValidDay('2026-07-08')).toBe(true);
+    expect(isValidDay('2028-02-29')).toBe(true); // 윤년
+  });
+
+  it('형식 오류·존재하지 않는 날짜·비문자열을 거른다', () => {
+    expect(isValidDay('2026-7-8')).toBe(false); // 0 패딩 없음
+    expect(isValidDay('2026-13-01')).toBe(false); // 13월
+    expect(isValidDay('2026-07-40')).toBe(false); // 40일
+    expect(isValidDay('2026-02-29')).toBe(false); // 평년 2/29
+    expect(isValidDay('2026/07/08')).toBe(false);
+    expect(isValidDay('')).toBe(false);
+    expect(isValidDay(20260708 as unknown)).toBe(false);
+    expect(isValidDay(null)).toBe(false);
+  });
+});
 
 describe('normalizeAgent', () => {
   it('화이트리스트 에이전트를 그대로 반환한다', () => {
