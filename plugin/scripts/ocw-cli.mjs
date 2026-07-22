@@ -18,7 +18,7 @@ const rest = firstSpace === -1 ? '' : argStr.slice(firstSpace + 1).trim();
 const cfg = ensureConfig();
 const endpoint = endpointOf(cfg);
 
-const LINK_KEYS = ['website', 'github', 'x', 'linkedin'];
+const LINK_KEYS = ['website', 'blog', 'github', 'x', 'linkedin'];
 const MAX_PROJECTS = 5;
 
 // 직함/회사/자기소개/도시 공통 텍스트 필드 메타.
@@ -361,7 +361,7 @@ function help() {
       '- `/ocw role <직함>` — 직함 (예: Frontend Engineer)',
       '- `/ocw company <회사>` — 소속/회사',
       '- `/ocw city <도시>` — 내 도시 (도시 구역 랭킹 "이 구역 코드워리어")',
-      '- `/ocw link <종류> <url>` — 링크 (종류: website/github/x/linkedin)',
+      '- `/ocw link <종류> <url>` — 링크 (종류: website/blog/github/x/linkedin · website·blog는 주소 표시, SNS는 아이콘)',
       '- `/ocw project add <이름> :: <설명> :: <url>` — 사이드프로젝트 (최대 5개)',
       '- `/ocw project list | remove <번호> | clear` — 프로젝트 관리',
       '- `/ocw status` — 내 정보 및 오늘 순위',

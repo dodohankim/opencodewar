@@ -109,6 +109,13 @@ describe('normalizeLinks', () => {
     });
   });
 
+  it('blog 키(개인 블로그)를 허용한다', () => {
+    expect(normalizeLinks({ website: 'https://me.dev', blog: 'https://blog.me.dev' })).toEqual({
+      website: 'https://me.dev',
+      blog: 'https://blog.me.dev',
+    });
+  });
+
   it('빈 값은 해당 링크를 제외한다', () => {
     expect(normalizeLinks({ github: 'https://github.com/dohan', x: '' })).toEqual({
       github: 'https://github.com/dohan',

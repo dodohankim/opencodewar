@@ -169,7 +169,8 @@
   .profile .p-bio.empty { color:var(--faint); font-style:italic; }
   .p-role { margin:10px 0 0; color:var(--fg); font-size:13.5px; }
   .p-role .at { color:var(--faint); }
-  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .chips { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+  .chip-row { display:flex; flex-wrap:wrap; gap:8px; }
   .chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); border:1px solid var(--line); border-radius:5px; padding:4px 10px; text-decoration:none; }
   .chip:hover { color:var(--fg); border-color:var(--fg); }
   .chip .arr { color:var(--faint); }
@@ -955,7 +956,7 @@
     el.hidden = false;
   }
   // 링크 종류별 메타. group:'site'(website/blog)는 host 텍스트 칩, group:'social'은 브랜드 아이콘만.
-  // icon 은 24x24 viewBox 안쪽 마크업(fill:currentColor). 순서대로 site 먼저, social 뒤에 렌더된다.
+  // icon 은 24x24 viewBox 안쪽 마크업(fill:currentColor). 렌더는 소셜 줄(아이콘) 먼저, 개인 사이트/블로그 줄(텍스트)이 그 아래.
   const LINK_META = {
     website:  { group: 'site',   label: 'Website' },
     blog:     { group: 'site',   label: 'Blog' },
@@ -963,22 +964,26 @@
     x:        { group: 'social', label: 'X',        icon: '<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>' },
     linkedin: { group: 'social', label: 'LinkedIn', icon: '<path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/>' },
   };
-  const LINK_ORDER = ['website', 'blog', 'github', 'x', 'linkedin'];
   function renderLinks(links) {
     const el = $('uLinks');
     if (!links || typeof links !== 'object') { el.innerHTML = ''; return; }
-    el.innerHTML = LINK_ORDER
-      .map((k) => {
-        const url = safeUrl(links[k]);
-        if (!url) return '';
-        const meta = LINK_META[k];
-        // SNS: 아이콘만 (title/aria-label 로 플랫폼명 노출).
-        if (meta && meta.group === 'social') {
-          return `<a class="chip icon" href="${escapeHtml(url)}" target="_blank" rel="nofollow noopener" title="${escapeHtml(meta.label)}" aria-label="${escapeHtml(meta.label)}"><svg viewBox="0 0 24 24" aria-hidden="true">${meta.icon}</svg></a>`;
-        }
-        // 개인 사이트/블로그: host 텍스트 표시.
-        return `<a class="chip" href="${escapeHtml(url)}" target="_blank" rel="nofollow noopener">${escapeHtml(linkLabel(url))} <span class="arr">↗</span></a>`;
-      })
+    const chipFor = (k) => {
+      const url = safeUrl(links[k]);
+      if (!url) return '';
+      const meta = LINK_META[k];
+      // SNS: 아이콘만 (title/aria-label 로 플랫폼명 노출).
+      if (meta && meta.group === 'social') {
+        return `<a class="chip icon" href="${escapeHtml(url)}" target="_blank" rel="nofollow noopener" title="${escapeHtml(meta.label)}" aria-label="${escapeHtml(meta.label)}"><svg viewBox="0 0 24 24" aria-hidden="true">${meta.icon}</svg></a>`;
+      }
+      // 개인 사이트/블로그: host 텍스트 표시.
+      return `<a class="chip" href="${escapeHtml(url)}" target="_blank" rel="nofollow noopener">${escapeHtml(linkLabel(url))} <span class="arr">↗</span></a>`;
+    };
+    // 소셜(아이콘) 줄 먼저, 개인 사이트/블로그(텍스트) 줄이 아래. 내용 없는 줄은 렌더하지 않는다.
+    const social = ['github', 'x', 'linkedin'].map(chipFor).join('');
+    const site = ['website', 'blog'].map(chipFor).join('');
+    el.innerHTML = [social, site]
+      .filter((row) => row)
+      .map((row) => `<div class="chip-row">${row}</div>`)
       .join('');
   }
   function renderProjects(projects) {

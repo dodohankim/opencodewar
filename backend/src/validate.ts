@@ -86,8 +86,8 @@ export function isValidUrl(v: unknown): v is string {
   }
 }
 
-/** 허용되는 소셜/개인 링크 키. */
-export const LINK_KEYS = ['website', 'github', 'x', 'linkedin'] as const;
+/** 허용되는 링크 키. website·blog 는 개인 사이트(웹에서 host 텍스트로 표시), 나머지는 SNS(아이콘 표시). */
+export const LINK_KEYS = ['website', 'blog', 'github', 'x', 'linkedin'] as const;
 export type LinkKey = (typeof LINK_KEYS)[number];
 export type Links = Partial<Record<LinkKey, string>>;
 
