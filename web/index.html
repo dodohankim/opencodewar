@@ -7,6 +7,10 @@
 <meta name="description" content="A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi. Daily, weekly & weekend. Privacy-first: no prompt content collected, only character counts." />
 <link rel="canonical" href="https://opencodewar.dev/" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<script>
+  // 저장된 수동 테마를 첫 페인트 전에 적용해 깜빡임(FOUC)을 막는다.
+  try { var _t = localStorage.getItem('ocw_theme'); if (_t === 'dark' || _t === 'light') document.documentElement.setAttribute('data-theme', _t); } catch (e) {}
+</script>
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F4" />
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0E0D" />
 
@@ -52,14 +56,23 @@
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
     color-scheme: light;
   }
+  /* 다크 변수 묶음. OS 자동(prefers-color-scheme)과 수동 토글([data-theme]) 두 경로가 공유한다.
+     수동 지정이 없으면 OS 설정을 따르고, data-theme 이 있으면 그것이 OS 설정을 덮어쓴다. */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
       --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
       --ok:#6DA875; --err:#E0785C; color-scheme: dark;
       --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
     }
   }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px; line-height:1.5;
     padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased; }
@@ -148,7 +161,11 @@
   ul.list li { display:flex; gap:10px; font-size:13px; color:var(--dim); }
   ul.list .k { color:var(--faint); flex:none; }
   ul.list b { color:var(--fg); font-weight:600; }
-  .install .cmd { font-family:var(--mono); font-size:12.5px; color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:5px; padding:6px 9px; margin-bottom:6px; word-break:break-all; }
+  .install .cmd { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:5px; padding:6px 9px; margin-bottom:6px; }
+  .install .cmd .cmd-t { flex:1; word-break:break-all; }
+  .install .cmd-copy { flex:none; font:inherit; font-size:12px; line-height:1; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:4px 7px; border-radius:4px; cursor:pointer; }
+  .install .cmd-copy:hover { color:var(--fg); }
+  .install .cmd-copy.ok { color:var(--ok); border-color:var(--ok); }
   .install p { font-size:12.5px; color:var(--dim); margin:8px 0 0; }
   .install code { color:var(--fg); background:var(--hover); padding:1px 4px; border-radius:3px; }
   .install .agents { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px; }
@@ -464,7 +481,7 @@
       dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', no_activity_day: 'No activity on this day.', visit: 'Visit ↗',
-      share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed',
+      share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
       ago_s: (n) => `${n}s ago`, ago_m: (n) => `${n}m ago`, ago_h: (n) => `${n}h ago`,
     },
@@ -497,7 +514,7 @@
       dow: ['일', '월', '화', '수', '목', '금', '토'],
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', no_activity_day: '이 날은 활동이 없습니다.', visit: '방문 ↗',
-      share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패',
+      share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
       ago_s: (n) => `${n}초 전`, ago_m: (n) => `${n}분 전`, ago_h: (n) => `${n}시간 전`,
     },
@@ -692,20 +709,45 @@
     opencode: ['# opencode.json 의 plugin 배열에 추가', '{ "plugin": ["open-code-war"] }'],
     pi: ['pi install npm:open-code-war'],
   };
-  document.querySelectorAll('.agent').forEach((b) => b.addEventListener('click', () => {
-    document.querySelectorAll('.agent').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  // 명령 한 줄 = 텍스트 + 복사 버튼. 주석(#로 시작)은 복사 버튼 없이 안내만 표시한다.
+  function makeCmdRow(text) {
+    const d = document.createElement('div');
+    d.className = 'cmd';
+    const span = document.createElement('span');
+    span.className = 'cmd-t';
+    span.textContent = text;
+    d.appendChild(span);
+    if (!text.trim().startsWith('#')) {
+      const btn = document.createElement('button');
+      btn.className = 'cmd-copy';
+      btn.type = 'button';
+      btn.textContent = '⧉';
+      btn.title = t('copy_cmd');
+      btn.setAttribute('aria-label', t('copy_cmd'));
+      btn.addEventListener('click', async () => {
+        const ok = await copyText(text);
+        btn.textContent = ok ? '✓' : '✗';
+        btn.classList.toggle('ok', ok);
+        clearTimeout(btn._t);
+        btn._t = setTimeout(() => { btn.textContent = '⧉'; btn.classList.remove('ok'); }, 1200);
+      });
+      d.appendChild(btn);
+    }
+    return d;
+  }
+  function renderInstallCmds(agent) {
     const wrap = $('installCmds');
     wrap.textContent = '';
-    INSTALL_CMDS[b.dataset.agent].forEach((c) => {
-      const d = document.createElement('div');
-      d.className = 'cmd';
-      d.textContent = c;
-      wrap.appendChild(d);
-    });
+    INSTALL_CMDS[agent].forEach((c) => wrap.appendChild(makeCmdRow(c)));
+  }
+  document.querySelectorAll('.agent').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.agent').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    renderInstallCmds(b.dataset.agent);
     const note = $('installNote');
     note.dataset.i18nHtml = 'install_note_' + b.dataset.agent;
     note.innerHTML = t(note.dataset.i18nHtml);
   }));
+  renderInstallCmds('claude'); // 초기 상태(정적 마크업)를 복사 버튼 포함 버전으로 교체
   document.querySelectorAll('.sort').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.sort').forEach((x) => x.setAttribute('aria-pressed', x === b));
     curMetric = b.dataset.metric; load();
@@ -784,6 +826,7 @@
     const cur = document.documentElement.getAttribute('data-theme');
     const next = cur === 'dark' ? 'light' : (cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark'));
     document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('ocw_theme', next); } catch (e) {}
   });
   $('langBtn').addEventListener('click', () => {
     LANG = LANG === 'en' ? 'ko' : 'en';
