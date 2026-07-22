@@ -4,7 +4,7 @@
 // - 신선도: SNAPSHOT_TTL_MS 초과 시 읽기 시점에 자동 재빌드(cron이 없거나 트래픽만 있어도 동작)
 
 import type { BoardSnapshot, BoardType, Env, LeaderboardRow, Metric, Period, RankEntry, Snapshot } from './types';
-import { kstToday, monthDays, weekDays, weekendDays } from './time';
+import { utcToday, monthDays, weekDays, weekendDays } from './time';
 import { displayNickname } from './nickname';
 
 export const SNAPSHOT_KEY = 'lb:snapshot:v1';
@@ -19,7 +19,7 @@ export const METRIC_COL: Record<Metric, string> = { prompts: 'prompts', chars: '
 export function boardDays(type: BoardType, now: number): string[] {
   switch (type) {
     case 'daily':
-      return [kstToday(now)];
+      return [utcToday(now)];
     case 'weekly':
       return weekDays(now);
     case 'weekend':
@@ -30,7 +30,7 @@ export function boardDays(type: BoardType, now: number): string[] {
 }
 
 export function periodOf(type: BoardType, now: number): Period {
-  if (type === 'daily') return { day: kstToday(now) };
+  if (type === 'daily') return { day: utcToday(now) };
   const days = boardDays(type, now);
   return { from: days[0], to: days[days.length - 1], days };
 }

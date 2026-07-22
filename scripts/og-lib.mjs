@@ -56,18 +56,21 @@ export async function buildData(api, seg) {
   const isActive = (d) => (d?.prompts || 0) > 0; // 프롬프트 1개 이상 = 그날 활동함
   const todayIso = n ? days[n - 1].day : kstStamp().slice(0, 10);
 
-  // 현재 스트릭: 최근 활동일에서 뒤로 연속 카운트. 오늘이 아직 비어도 어제까지의 연속을 인정(자정 유예).
+  // 그래프 초록 구간(현재 스트릭 범위)을 days 창에서 찾는다. 오늘이 비어도 어제까지 인정(자정 유예).
   let end = n - 1;
   if (n && !isActive(days[end])) end -= 1;
-  let streak = 0;
+  let streakLocal = 0;
   let startIdx = -1;
   for (let j = end; j >= 0; j--) {
     if (isActive(days[j])) {
-      streak += 1;
+      streakLocal += 1;
       startIdx = j;
     } else break;
   }
-  const sinceIso = startIdx >= 0 ? days[startIdx].day : '';
+  const sinceLocal = startIdx >= 0 ? days[startIdx].day : '';
+  // 표시용 스트릭 수/시작일은 /user 값(60일 창, 더 정확) 우선. days 가 없으면 위 로컬 계산으로 폴백.
+  const streak = typeof profile.streak === 'number' ? profile.streak : streakLocal;
+  const sinceIso = profile.streakSince || sinceLocal;
 
   // 히어로 = 가장 최근 활동일의 글자수(보통 오늘, 자정 직후엔 어제) → 큰 숫자가 0으로 안 비게.
   let heroIdx = -1;
