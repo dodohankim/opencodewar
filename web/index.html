@@ -149,10 +149,6 @@
   .bar { letter-spacing:-1px; white-space:nowrap; }
   .bar .on { color:var(--fg); }
   .bar .off { color:var(--faint); }
-  .mv { font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .mv.up { color:var(--fg); font-weight:600; }
-  .mv.down { color:var(--faint); }
-  .mv.same { color:var(--faint); }
   .msg { padding:24px 15px; text-align:center; color:var(--dim); font-size:13px; }
   .msg.err { color:var(--err); }
 
@@ -326,7 +322,6 @@
 
       <div class="toolbar">
         <input type="text" id="meInput" data-i18n-ph="me_ph" placeholder="your nickname (highlight)" />
-        <button id="refreshBtn" type="button" data-i18n="refresh">↻ Refresh</button>
       </div>
 
       <section class="box">
@@ -338,10 +333,10 @@
                 <th>#</th><th>coder</th>
                 <th class="num" id="thPrimary">prompts</th>
                 <th class="num" id="thSecond">chars</th>
-                <th>activity</th><th class="num">Δ</th><th>cc</th>
+                <th>activity</th><th>cc</th>
               </tr>
             </thead>
-            <tbody id="tbody"><tr><td colspan="7"><div class="msg" id="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
+            <tbody id="tbody"><tr><td colspan="6"><div class="msg" id="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
           </table>
         </div>
       </section>
@@ -458,7 +453,7 @@
       live_on: 'Live', live_off: 'Server unreachable',
       joined: 'joined', rank1: '#1', updated: 'Updated',
       sub_weekend: 'fri·sat·sun',
-      me_ph: 'your nickname (highlight)', refresh: '↻ Refresh',
+      me_ph: 'your nickname (highlight)',
       rules1: '<b>Input = a prompt submit.</b> +1 each Enter; characters counted too.',
       rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
       rules3: '<b>Four boards.</b> Daily, weekly, weekend (<b>Fri·Sat·Sun</b>) &amp; monthly.',
@@ -491,7 +486,7 @@
       live_on: '집계 중', live_off: '서버 연결 실패',
       joined: '참가', rank1: '1위', updated: '집계',
       sub_weekend: '금·토·일',
-      me_ph: '내 닉네임 (하이라이트)', refresh: '↻ 새로고침',
+      me_ph: '내 닉네임 (하이라이트)',
       rules1: '<b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.',
       rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
       rules3: '<b>네 개의 판.</b> 일간·주간·월간, 주말은 <b>금·토·일</b>.',
@@ -539,7 +534,6 @@
     }
     return q;
   }
-  const prevRanks = {};
   let myNick = localStorage.getItem('ocw_me') || '';
 
   // 유저 상세 페이지 상태
@@ -574,13 +568,6 @@
     const on = Math.max(0, Math.min(BARW, Math.round((pct / 100) * BARW)));
     return `<span class="on">${'█'.repeat(on)}</span><span class="off">${'░'.repeat(BARW - on)}</span>`;
   }
-  function move(rank, prev) {
-    if (prev == null) return '<span class="mv same">·</span>';
-    const d = prev - rank;
-    if (d > 0) return `<span class="mv up">▲${d}</span>`;
-    if (d < 0) return `<span class="mv down">▼${-d}</span>`;
-    return '<span class="mv same">·</span>';
-  }
   function kstClock(ms) {
     const k = new Date(ms + new Date(ms).getTimezoneOffset() * 60000 + 9 * 3600000);
     const p = (n) => String(n).padStart(2, '0');
@@ -604,31 +591,30 @@
   async function load() {
     const q = boardQuery();
     const scopeTag = curScope === 'global' ? '' : ` · ${curScope === 'city' ? (curCity || '?') : curCountry}`;
-    const key = `${curScope}:${curCountry || ''}:${curCity || ''}:${curBoard}:${curMetric}`;
     $('cmdEcho').textContent = `GET /leaderboard?${q}`;
     $('boardLegend').textContent = `leaderboard · ${curBoard} · ${curMetric}${scopeTag}`;
     $('thPrimary').textContent = curMetric;
     $('thSecond').textContent = curMetric === 'prompts' ? 'chars' : 'prompts';
     // city 스코프인데 고를 도시가 없으면(해당 국가에 등록 도시 없음) 빈 상태 안내.
     if (curScope === 'city' && !curCity) {
-      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('zone_nocity')}</div></td></tr>`;
+      $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('zone_nocity')}</div></td></tr>`;
       return;
     }
     try {
       const res = await fetch(`${API}/leaderboard?${q}&limit=50`, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      render(data, key);
+      render(data);
       $('liveDot').classList.remove('off');
       $('liveText').textContent = t('live_on');
     } catch (e) {
       $('liveDot').classList.add('off');
       $('liveText').textContent = t('live_off');
-      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div></td></tr>`;
+      $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div></td></tr>`;
     }
   }
 
-  function render(data, key) {
+  function render(data) {
     const rows = data.ranking || [];
     $('countChip').textContent = fmt(data.count);
     const champ = rows[0];
@@ -645,12 +631,10 @@
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
 
     if (!rows.length) {
-      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('empty')}</div></td></tr>`;
-      prevRanks[key] = {};
+      $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('empty')}</div></td></tr>`;
       return;
     }
     const max = Math.max(...rows.map((r) => r[curMetric] || 0), 1);
-    const prev = prevRanks[key] || {};
     const meLc = myNick.trim().toLowerCase();
 
     $('tbody').innerHTML = rows.map((r) => {
@@ -659,7 +643,6 @@
       const pct = (primary / max) * 100;
       const rankCls = r.rank === 1 ? 'rank one' : (r.rank <= 3 ? 'rank b' : 'rank');
       const isMe = r.nickname && r.nickname.toLowerCase() === meLc && meLc !== '';
-      const pRank = r.nickname != null ? prev[r.nickname] : null;
       const nm = escapeHtml(r.nickname || t('anon'));
       // 등록 유저는 닉네임으로, 익명 유저는 공개 slug(public_id)로 상세 진입 → 모든 행 클릭 가능.
       const ref = r.registered ? r.nickname : r.public_id;
@@ -672,14 +655,9 @@
         <td class="num"><span class="pnum">${fmt(primary)}</span></td>
         <td class="num"><span class="snum">${fmt(second)}</span></td>
         <td><span class="bar">${bar(pct)}</span></td>
-        <td class="num">${move(r.rank, pRank)}</td>
         <td><span class="cc">${r.country ? escapeHtml(r.country) + ' ' + flagOf(r.country) : '–'}</span></td>
       </tr>`;
     }).join('');
-
-    const snap = {};
-    rows.forEach((r) => { if (r.nickname != null) snap[r.nickname] = r.rank; });
-    prevRanks[key] = snap;
   }
 
   function escapeHtml(s) {
@@ -818,7 +796,6 @@
     updateZonePick();
     load();
   });
-  $('refreshBtn').addEventListener('click', load);
   $('meInput').addEventListener('input', (e) => {
     myNick = e.target.value; localStorage.setItem('ocw_me', myNick); load();
   });
