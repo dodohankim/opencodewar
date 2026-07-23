@@ -471,7 +471,7 @@
       no_activity: 'No activity in the last 30 days.', no_activity_day: 'No activity on this day.', visit: 'Visit ↗',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
-      ago_s: (n) => `${n}s ago`, ago_m: (n) => `${n}m ago`, ago_h: (n) => `${n}h ago`,
+      every_5m: 'every 5m',
     },
     ko: {
       langBtn: 'EN',
@@ -503,7 +503,7 @@
       no_activity: '최근 30일 활동이 없습니다.', no_activity_day: '이 날은 활동이 없습니다.', visit: '방문 ↗',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
-      ago_s: (n) => `${n}초 전`, ago_m: (n) => `${n}분 전`, ago_h: (n) => `${n}시간 전`,
+      every_5m: '5분마다',
     },
   };
   const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
@@ -565,13 +565,6 @@
     const p = (n) => String(n).padStart(2, '0');
     return `KST ${p(k.getHours())}:${p(k.getMinutes())}:${p(k.getSeconds())}`;
   }
-  function ago(ms) {
-    const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
-    if (s < 60) return t('ago_s')(s);
-    const m = Math.round(s / 60);
-    if (m < 60) return t('ago_m')(m);
-    return t('ago_h')(Math.round(m / 60));
-  }
   // epoch ms → KST 'YYYY-MM-DD'
   function fmtDate(ms) {
     const k = new Date(ms + new Date(ms).getTimezoneOffset() * 60000 + 9 * 3600000);
@@ -620,7 +613,8 @@
     }
     lastChampCountry = champ && champ.country ? champ.country : null;
     $('regionChip').textContent = champ && champ.country ? `${champ.country} ${flagOf(champ.country)}` : '–';
-    $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} (${ago(data.builtAt)})` : '';
+    // 경과시간 대신 집계 주기를 고정 표기 — 백엔드 cron(*/5)·SNAPSHOT_TTL_MS와 맞춘 값.
+    $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} · ${t('every_5m')}` : '';
 
     if (!rows.length) {
       $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('empty')}</div></td></tr>`;
