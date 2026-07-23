@@ -7,15 +7,18 @@ import type { BoardSnapshot, BoardType, Env, LeaderboardRow, Metric, Period, Ran
 import { utcToday, monthDays, weekDays, weekendDays } from './time';
 import { displayNickname } from './nickname';
 
-export const SNAPSHOT_KEY = 'lb:snapshot:v1';
+export const SNAPSHOT_KEY = 'lb:snapshot:v2'; // v2: 'all'(전체 기간) 보드 추가 — 배포 즉시 재빌드 유도
 const SNAPSHOT_LIMIT = 100;
 const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30분
-const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend', 'monthly'];
+const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend', 'monthly', 'all'];
 
 // metric 이름 → 실제 컬럼(화이트리스트, SQL 인젝션 방지)
 export const METRIC_COL: Record<Metric, string> = { prompts: 'prompts', chars: 'chars' };
 
-/** 보드가 집계하는 'YYYY-MM-DD' 날짜 목록. 랭킹 쿼리의 `day IN (...)` 에 쓴다. */
+/**
+ * 보드가 집계하는 'YYYY-MM-DD' 날짜 목록. 랭킹 쿼리의 `day IN (...)` 에 쓴다.
+ * 'all'(전체 기간)은 고정 날짜 목록이 없다 — 빈 배열을 주고, 실제 쿼리는 dayFilter 가 필터를 생략한다.
+ */
 export function boardDays(type: BoardType, now: number): string[] {
   switch (type) {
     case 'daily':
@@ -26,10 +29,23 @@ export function boardDays(type: BoardType, now: number): string[] {
       return weekendDays(now);
     case 'monthly':
       return monthDays(now);
+    case 'all':
+      return [];
   }
 }
 
+/**
+ * 랭킹 쿼리 WHERE 절의 기간 조건과 바인딩. daily_stats 는 별칭 `s` 로 가정한다.
+ * 'all' 은 전체 기간이라 날짜 필터를 걸지 않는다(1=1).
+ */
+export function dayFilter(type: BoardType, now: number): { sql: string; binds: string[] } {
+  if (type === 'all') return { sql: '1=1', binds: [] };
+  const days = boardDays(type, now);
+  return { sql: `s.day IN (${days.map(() => '?').join(',')})`, binds: days };
+}
+
 export function periodOf(type: BoardType, now: number): Period {
+  if (type === 'all') return { all: true };
   if (type === 'daily') return { day: utcToday(now) };
   const days = boardDays(type, now);
   return { from: days[0], to: days[days.length - 1], days };
@@ -46,18 +62,17 @@ export async function computeRanking(
   const now = Date.now();
 
   // daily_stats 는 (user_id, day, agent) 단위 행 — daily 도 유저별 합산이 필요해 전 보드 동일 쿼리.
-  const days = boardDays(type, now);
-  const placeholders = days.map(() => '?').join(',');
+  const { sql: dayCond, binds: dayBinds } = dayFilter(type, now);
   const result = await env.DB.prepare(
     `SELECT s.user_id, u.nickname, u.public_id, MAX(s.country) AS country,
             SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
      FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
-     WHERE s.day IN (${placeholders})
+     WHERE ${dayCond}
      GROUP BY s.user_id, u.nickname, u.public_id
      ORDER BY ${orderCol} DESC, s.user_id ASC
      LIMIT ?`,
   )
-    .bind(...days, limit)
+    .bind(...dayBinds, limit)
     .all<LeaderboardRow>();
 
   return result.results.map((r, i) => ({
@@ -86,10 +101,9 @@ export async function computeZoneRanking(
 ): Promise<RankEntry[]> {
   const orderCol = METRIC_COL[metric];
   const now = Date.now();
-  const days = boardDays(type, now);
-  const ph = days.map(() => '?').join(',');
+  const { sql: dayCond, binds: dayBinds } = dayFilter(type, now);
   const cityClause = cityLower != null ? 'AND LOWER(u.city) = ?' : '';
-  const binds: (string | number)[] = [...days, country];
+  const binds: (string | number)[] = [...dayBinds, country];
   if (cityLower != null) binds.push(cityLower);
   binds.push(limit);
 
@@ -97,7 +111,7 @@ export async function computeZoneRanking(
     `SELECT s.user_id, u.nickname, u.public_id, u.country AS country,
             SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
      FROM daily_stats s JOIN users u ON u.user_id = s.user_id
-     WHERE s.day IN (${ph}) AND u.country = ? ${cityClause}
+     WHERE ${dayCond} AND u.country = ? ${cityClause}
      GROUP BY s.user_id, u.nickname, u.public_id
      ORDER BY ${orderCol} DESC, s.user_id ASC
      LIMIT ?`,

@@ -54,6 +54,7 @@ describe('parseType', () => {
     expect(parseType('weekly')).toBe('weekly');
     expect(parseType('weekend')).toBe('weekend');
     expect(parseType('monthly')).toBe('monthly');
+    expect(parseType('all')).toBe('all'); // 전체 기간
   });
 
   it('미지정·미지원 값은 daily 로 폴백한다', () => {
