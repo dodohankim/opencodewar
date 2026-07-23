@@ -20,6 +20,10 @@ export interface Env {
   RENDER_ORIGIN?: string;
   /** 렌더 서비스 인증 키(X-OCW-Render-Key). wrangler secret 으로 주입. */
   RENDER_KEY?: string;
+  /** Google OAuth 클라이언트 ID(공개값, wrangler.jsonc vars). 미설정 시 /auth/* 는 안내만 반환. */
+  GOOGLE_CLIENT_ID?: string;
+  /** Google OAuth 클라이언트 secret. wrangler secret 으로 주입. */
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 // 'all' = 전체 기간(all-time). daily·weekly·weekend·monthly 는 유지하되(CLI /me 등), 웹 리더보드는 현재 all 만 노출.
