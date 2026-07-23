@@ -278,7 +278,7 @@
       <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
     </div>
     <div class="screen">
-      <div class="echo"><span class="sig">you@open-code-war</span>:~$ <span id="cmdEcho">GET /leaderboard?type=daily&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ <span id="cmdEcho">GET /leaderboard?type=all&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
 
       <div id="boardView">
       <section class="box banner">
@@ -295,13 +295,8 @@
         </div>
       </section>
 
+      <!-- 기간 필터(daily·weekly·weekend·monthly)는 유저가 쌓이면 다시 노출. 현재는 전체 기간(all)으로 통일. -->
       <div class="controls">
-        <div class="tabs" role="tablist" aria-label="period">
-          <button class="tab" role="tab" aria-selected="true"  data-board="daily">daily</button>
-          <button class="tab" role="tab" aria-selected="false" data-board="weekly">weekly</button>
-          <button class="tab" role="tab" aria-selected="false" data-board="weekend">weekend <span class="k" data-i18n="sub_weekend">fri·sat·sun</span></button>
-          <button class="tab" role="tab" aria-selected="false" data-board="monthly">monthly</button>
-        </div>
         <div class="sorts">
           <button class="sort" data-metric="prompts" aria-pressed="true">prompts</button>
           <button class="sort" data-metric="chars" aria-pressed="false">chars</button>
@@ -324,7 +319,7 @@
       </div>
 
       <section class="box">
-        <span class="legend" id="boardLegend">leaderboard · daily · prompts</span>
+        <span class="legend" id="boardLegend">leaderboard · all · prompts</span>
         <div class="board-scroll">
           <table>
             <thead>
@@ -346,7 +341,7 @@
           <ul class="list">
             <li><span class="k">01</span><span data-i18n-html="rules1"><b>Input = a prompt submit.</b> +1 each Enter; characters counted too.</span></li>
             <li><span class="k">02</span><span data-i18n-html="rules2"><b>No content collected.</b> Only the character count (a number) is sent.</span></li>
-            <li><span class="k">03</span><span data-i18n-html="rules3"><b>Four boards.</b> Daily, weekly, weekend (<b>Fri·Sat·Sun</b>) &amp; monthly.</span></li>
+            <li><span class="k">03</span><span data-i18n-html="rules3"><b>One all-time board.</b> Every prompt you've ever sent counts toward your rank.</span></li>
           </ul>
         </section>
         <section class="box">
@@ -451,11 +446,10 @@
       tagline: 'The leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi.',
       live_on: 'Live', live_off: 'Server unreachable',
       joined: 'joined', rank1: '#1', updated: 'Updated',
-      sub_weekend: 'fri·sat·sun',
       me_ph: 'your nickname (highlight)',
       rules1: '<b>Input = a prompt submit.</b> +1 each Enter; characters counted too.',
       rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
-      rules3: '<b>Four boards.</b> Daily, weekly, weekend (<b>Fri·Sat·Sun</b>) &amp; monthly.',
+      rules3: "<b>One all-time board.</b> Every prompt you've ever sent counts toward your rank.",
       install_legend: 'join · install',
       install_note_claude: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
       install_note_codex: 'Same plugin as Claude Code — Codex shares the plugin/marketplace system. Then start Codex and pick <b>Trust all and continue</b> on the “Hooks need review” screen; until you do, Codex silently skips the hook. Needs Node.js on your PATH.',
@@ -484,11 +478,10 @@
       tagline: '코딩 에이전트에 가장 많이 입력한 코더를 가리는 리더보드 — 클로드 코드·코덱스·오픈코드·파이.',
       live_on: '집계 중', live_off: '서버 연결 실패',
       joined: '참가', rank1: '1위', updated: '집계',
-      sub_weekend: '금·토·일',
       me_ph: '내 닉네임 (하이라이트)',
       rules1: '<b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.',
       rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
-      rules3: '<b>네 개의 판.</b> 일간·주간·월간, 주말은 <b>금·토·일</b>.',
+      rules3: '<b>전체 기간 단일 리더보드.</b> 지금까지 보낸 모든 입력이 순위에 반영됩니다.',
       install_legend: '참가 · 설치',
       install_note_claude: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
       install_note_codex: 'Claude Code와 <b>같은 플러그인</b>입니다 — 코덱스도 동일한 플러그인·마켓플레이스 체계를 씁니다. 설치 후 Codex를 실행해 “Hooks need review” 화면에서 <b>Trust all and continue</b>를 선택하세요. 선택 전에는 훅이 조용히 무시됩니다. PATH에 Node.js가 있어야 합니다.',
@@ -515,7 +508,7 @@
   };
   const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
 
-  let curBoard = 'daily';
+  let curBoard = 'all'; // 전체 기간으로 통일(기간 필터 탭은 유저가 쌓이면 재도입)
   let curMetric = 'prompts';
   let curScope = 'global';   // global | country | city
   let curCountry = null;     // 선택된 국가코드
@@ -669,11 +662,6 @@
     const cc = code.toUpperCase();
     return String.fromCodePoint(cc.charCodeAt(0) + 0x1f1a5, cc.charCodeAt(1) + 0x1f1a5);
   }
-
-  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((x) => x.setAttribute('aria-selected', x === b));
-    curBoard = b.dataset.board; load();
-  }));
 
   // join·install 패널: 에이전트별 설치 명령 전환.
   // Codex 는 Claude Code 와 같은 플러그인·마켓플레이스 체계를 써서 같은 플러그인을 그대로 설치한다.

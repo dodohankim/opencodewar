@@ -22,7 +22,7 @@ import {
   type Links,
   type Project,
 } from './validate';
-import { METRIC_COL, SNAPSHOT_KEY, boardDays, computeZoneRanking, getSnapshot, periodOf } from './snapshot';
+import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, dayFilter, getSnapshot, periodOf } from './snapshot';
 import { displayNickname } from './nickname';
 import { isValidPublicId, newPublicId } from './publicid';
 import { cityKey, cleanCity, countryFlag } from './zones';
@@ -257,8 +257,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
   const orderCol = METRIC_COL[metric];
   const now = Date.now();
 
-  const days = boardDays(type, now);
-  const ph = days.map(() => '?').join(',');
+  const { sql: dayCond, binds: dayBinds } = dayFilter(type, now);
 
   // 한 번의 쿼리로 프로필 + 글로벌/국가/도시 구역의 순위·인원을 계산한다.
   // agg  = 기간 내 전체 유저 집계(글로벌). aggc = 내 국가로 좁힘. aggt = 내 국가+도시로 좁힘.
@@ -266,7 +265,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
   const sql = `
     WITH agg AS (
       SELECT s.user_id, SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
-      FROM daily_stats s WHERE s.day IN (${ph}) GROUP BY s.user_id
+      FROM daily_stats s WHERE ${dayCond} GROUP BY s.user_id
     ),
     me AS (SELECT prompts, chars FROM agg WHERE user_id = ?),
     prof AS (SELECT nickname, bio, role, company, links, projects, country, city FROM users WHERE user_id = ?),
@@ -301,7 +300,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
            ELSE (SELECT COUNT(*) + 1 FROM aggt WHERE ${orderCol} > (SELECT ${orderCol} FROM me)) END AS city_rank`;
 
   const row = await env.DB.prepare(sql)
-    .bind(...days, userId, userId)
+    .bind(...dayBinds, userId, userId)
     .first<{
       nickname: string | null;
       bio: string | null;

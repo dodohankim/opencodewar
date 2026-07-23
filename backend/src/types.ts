@@ -22,7 +22,8 @@ export interface Env {
   RENDER_KEY?: string;
 }
 
-export type BoardType = 'daily' | 'weekly' | 'weekend' | 'monthly';
+// 'all' = 전체 기간(all-time). daily·weekly·weekend·monthly 는 유지하되(CLI /me 등), 웹 리더보드는 현재 all 만 노출.
+export type BoardType = 'daily' | 'weekly' | 'weekend' | 'monthly' | 'all';
 export type Metric = 'prompts' | 'chars';
 
 /** D1 리더보드 쿼리 원시 행 */
@@ -48,7 +49,7 @@ export interface RankEntry {
   chars: number;
 }
 
-export type Period = { day: string } | { from: string; to: string; days: string[] };
+export type Period = { day: string } | { from: string; to: string; days: string[] } | { all: true };
 
 export interface BoardSnapshot {
   period: Period;
