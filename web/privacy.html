@@ -90,32 +90,34 @@
       <!-- ============ ENGLISH ============ -->
       <div id="en">
         <h1>Privacy Policy</h1>
-        <p class="updated">Last updated: July 13, 2026</p>
+        <p class="updated">Last updated: July 23, 2026</p>
 
         <p class="lead"><b>The short version.</b> Open Code War ranks how much you type into your coding agent (Claude Code, Codex, OpenCode, pi). We collect the minimum needed to build the leaderboard and never see or store the <b>content</b> of your prompts — only counts. The whole codebase is open source, so you can verify exactly what happens.
           <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
 
         <h2><span class="n">01</span> What we collect</h2>
         <ul>
-          <li><b>Anonymous device ID</b> — a random identifier generated on your machine at install. Not linked to your name, email, or any account.</li>
+          <li><b>Anonymous device ID</b> — a random identifier generated on your machine at install. Not linked to your name, email, or any account unless you choose to link Google (below).</li>
           <li><b>Usage counts</b> — the number of prompts you submit and the number of characters in them (numbers only).</li>
           <li><b>Agent type</b> — which coding agent the prompt came from (e.g. <code>claude-code</code>, <code>codex</code>). A single label, nothing else.</li>
           <li><b>Country</b> — derived by Cloudflare from your IP. We store only the 2-letter code (e.g. <code>KR</code>), never your IP.</li>
           <li><b>Profile you choose to add</b> — nickname, bio, role, company, links, projects. Optional and <strong>public</strong>.</li>
+          <li><b>Google account (optional)</b> — if you link one with <code>/ocw signup</code>, we store your Google account ID and email address for account recovery and merging usage across devices. Your email is <strong>private by default</strong> — it appears on your public profile only if you opt in with <code>/ocw email public</code>, and you can hide it again anytime with <code>/ocw email private</code>. We receive only your account ID and email (OpenID <code>openid email</code> scopes) — no contacts, files, or anything else, and we never see your password.</li>
         </ul>
 
         <h2><span class="n">02</span> What we never collect</h2>
         <ul>
           <li>The <b>content</b> of your prompts or Claude's responses.</li>
           <li>Your code, files, or project data.</li>
-          <li>Your name, email, or password — there is no login.</li>
+          <li>Your password — Google sign-in is optional, handled entirely by Google, and we never see your credentials.</li>
+          <li>Anything from your Google account beyond your account ID and email address.</li>
         </ul>
 
         <h2><span class="n">03</span> How we use it</h2>
         <p>Only to compute and show the public leaderboard and your public profile. We do not sell data and we do not run ads.</p>
 
         <h2><span class="n">04</span> Public information</h2>
-        <p>Your nickname, bio, role, company, links, and projects appear publicly on the leaderboard and profile pages. Don't add anything you don't want to be public. Outbound links you add are marked <code>rel="nofollow"</code>.</p>
+        <p>Your nickname, bio, role, company, links, and projects appear publicly on the leaderboard and profile pages. Don't add anything you don't want to be public. Outbound links you add are marked <code>rel="nofollow"</code>. Your linked email is <strong>not</strong> public unless you explicitly enable <code>/ocw email public</code>.</p>
 
         <h2><span class="n">05</span> Third parties &amp; international data transfers</h2>
         <p class="tight">The service runs entirely on <strong>Cloudflare</strong> (Workers, the D1 database, KV, and Web Analytics) and is operated from <strong>South Korea</strong>. Your data may therefore be stored and processed on Cloudflare's global network and accessed from South Korea — that is, outside your own country.</p>
@@ -129,11 +131,12 @@
         <p>We keep your data while your participation is active. You can delete all of it at any time (below). Raw events may be kept briefly for abuse prevention and re-aggregation.</p>
 
         <h2><span class="n">07</span> Your rights &amp; how to delete</h2>
-        <p class="tight">Because there is no login, we identify you only by your local anonymous ID. From the plugin you can:</p>
+        <p class="tight">We identify you by your local anonymous ID (and, if linked, your Google account). From the plugin you can:</p>
         <ul>
           <li>Stop collection anytime — <code>/ocw disable</code></li>
+          <li>Hide your email — <code>/ocw email private</code> (this is the default).</li>
           <li>Clear your public profile — <code>/ocw delete</code> — removes your bio, role, company, links, and projects. Your nickname and usage stay on the leaderboard.</li>
-          <li>Erase everything — <code>/ocw delete all confirm</code> — permanently removes your events, statistics, and profile, and takes you off the leaderboard.</li>
+          <li>Erase everything — <code>/ocw delete all confirm</code> — permanently removes your events, statistics, profile, and Google account link, and takes you off the leaderboard.</li>
         </ul>
 
         <h2><span class="n">08</span> Children</h2>
@@ -152,32 +155,34 @@
       <!-- ============ 한국어 ============ -->
       <div id="ko" hidden>
         <h1>개인정보처리방침</h1>
-        <p class="updated">최종 업데이트: 2026년 7월 13일</p>
+        <p class="updated">최종 업데이트: 2026년 7월 23일</p>
 
         <p class="lead"><b>요약.</b> Open Code War는 코딩 에이전트(클로드 코드·코덱스·오픈코드·파이)에 얼마나 많이 입력하는지로 순위를 매기는 리더보드입니다. 리더보드에 필요한 최소한만 수집하며, 프롬프트의 <b>내용</b>은 절대 보거나 저장하지 않습니다 — 오직 개수만 셉니다. 전체 코드가 오픈소스라 무엇이 일어나는지 직접 검증할 수 있습니다.
           <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
 
         <h2><span class="n">01</span> 수집하는 것</h2>
         <ul>
-          <li><b>익명 기기 ID</b> — 설치 시 기기에서 생성되는 무작위 식별자. 이름·이메일·계정과 연결되지 않습니다.</li>
+          <li><b>익명 기기 ID</b> — 설치 시 기기에서 생성되는 무작위 식별자. Google 연동(아래)을 직접 선택하지 않는 한 이름·이메일·계정과 연결되지 않습니다.</li>
           <li><b>사용량 수치</b> — 제출한 프롬프트 개수와 글자 수(숫자만).</li>
           <li><b>에이전트 종류</b> — 어떤 코딩 에이전트에서 보낸 프롬프트인지(예: <code>claude-code</code>, <code>codex</code>). 라벨 하나뿐입니다.</li>
           <li><b>국가</b> — Cloudflare가 IP로부터 추정. 2자리 코드(<code>KR</code> 등)만 저장하고 IP는 저장하지 않습니다.</li>
           <li><b>직접 추가하는 프로필</b> — 닉네임·자기소개·직함·회사·링크·프로젝트. 선택 사항이며 <strong>공개</strong>됩니다.</li>
+          <li><b>Google 계정 (선택)</b> — <code>/ocw signup</code> 으로 연동하면 계정 복구와 여러 기기 사용량 합산을 위해 Google 계정 ID와 이메일 주소를 저장합니다. 이메일은 <strong>기본 비공개</strong>이며, <code>/ocw email public</code> 으로 직접 켠 경우에만 공개 프로필에 표시되고 <code>/ocw email private</code> 으로 언제든 다시 숨길 수 있습니다. 계정 ID와 이메일(OpenID <code>openid email</code> 범위)만 받으며 — 연락처·파일 등 그 외에는 아무것도 받지 않고, 비밀번호는 절대 볼 수 없습니다.</li>
         </ul>
 
         <h2><span class="n">02</span> 절대 수집하지 않는 것</h2>
         <ul>
           <li>프롬프트나 Claude 응답의 <b>내용</b>.</li>
           <li>당신의 코드·파일·프로젝트 데이터.</li>
-          <li>이름·이메일·비밀번호 — 로그인이 없습니다.</li>
+          <li>비밀번호 — Google 로그인은 선택 사항이고 전 과정을 Google 이 처리하며, 우리는 자격증명을 볼 수 없습니다.</li>
+          <li>Google 계정에서 계정 ID·이메일 주소 외의 어떤 것도 받지 않습니다.</li>
         </ul>
 
         <h2><span class="n">03</span> 이용 목적</h2>
         <p>공개 리더보드와 공개 프로필을 계산·표시하는 데에만 사용합니다. 데이터를 판매하지 않으며 광고도 없습니다.</p>
 
         <h2><span class="n">04</span> 공개되는 정보</h2>
-        <p>닉네임·자기소개·직함·회사·링크·프로젝트는 리더보드와 프로필 페이지에 공개됩니다. 공개되면 안 되는 정보는 넣지 마세요. 추가한 외부 링크에는 <code>rel="nofollow"</code>가 붙습니다.</p>
+        <p>닉네임·자기소개·직함·회사·링크·프로젝트는 리더보드와 프로필 페이지에 공개됩니다. 공개되면 안 되는 정보는 넣지 마세요. 추가한 외부 링크에는 <code>rel="nofollow"</code>가 붙습니다. 연동한 이메일은 <code>/ocw email public</code> 을 직접 켜지 않는 한 <strong>공개되지 않습니다</strong>.</p>
 
         <h2><span class="n">05</span> 제3자 및 국외 이전</h2>
         <p class="tight">서비스는 전적으로 <strong>Cloudflare</strong>(Workers, D1 데이터베이스, KV, Web Analytics) 위에서 동작하며 <strong>대한민국</strong>에서 운영됩니다. 따라서 데이터가 Cloudflare 글로벌 네트워크에 저장·처리되고 한국에서 접근될 수 있습니다 — 즉 이용자 본국 밖입니다.</p>
@@ -191,11 +196,12 @@
         <p>참여가 유효한 동안 보관합니다. 언제든 전체 삭제할 수 있습니다(아래). 원시 이벤트는 어뷰징 방지·재집계를 위해 짧게 보관될 수 있습니다.</p>
 
         <h2><span class="n">07</span> 이용자 권리 및 삭제 방법</h2>
-        <p class="tight">로그인이 없으므로 로컬 익명 ID로만 식별합니다. 플러그인에서:</p>
+        <p class="tight">로컬 익명 ID(연동했다면 Google 계정)로 식별합니다. 플러그인에서:</p>
         <ul>
           <li>집계 중지 — <code>/ocw disable</code></li>
+          <li>이메일 숨기기 — <code>/ocw email private</code> (기본값입니다).</li>
           <li>공개 프로필 비우기 — <code>/ocw delete</code> — 자기소개·직함·회사·링크·프로젝트를 지웁니다. 닉네임과 사용량(순위)은 리더보드에 그대로 남습니다.</li>
-          <li>완전 삭제 — <code>/ocw delete all confirm</code> — 이벤트·통계·프로필을 영구 삭제하고 리더보드에서도 제거합니다.</li>
+          <li>완전 삭제 — <code>/ocw delete all confirm</code> — 이벤트·통계·프로필과 Google 연동을 영구 삭제하고 리더보드에서도 제거합니다.</li>
         </ul>
 
         <h2><span class="n">08</span> 아동</h2>

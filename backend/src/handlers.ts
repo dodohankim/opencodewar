@@ -269,6 +269,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
     ),
     me AS (SELECT prompts, chars FROM agg WHERE user_id = ?),
     prof AS (SELECT nickname, bio, role, company, links, projects, country, city FROM users WHERE user_id = ?),
+    acct AS (SELECT email, email_public FROM accounts WHERE user_id = ? LIMIT 1),
     aggc AS (
       SELECT a.prompts, a.chars FROM agg a JOIN users u ON u.user_id = a.user_id
       WHERE u.country = (SELECT country FROM prof)
@@ -287,6 +288,8 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
       (SELECT projects FROM prof) AS projects,
       (SELECT country FROM prof) AS country,
       (SELECT city FROM prof) AS city,
+      (SELECT email FROM acct) AS account_email,
+      (SELECT email_public FROM acct) AS account_email_public,
       COALESCE((SELECT prompts FROM me), 0) AS prompts,
       COALESCE((SELECT chars FROM me), 0) AS chars,
       (SELECT COUNT(*) FROM agg) AS total,
@@ -300,7 +303,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
            ELSE (SELECT COUNT(*) + 1 FROM aggt WHERE ${orderCol} > (SELECT ${orderCol} FROM me)) END AS city_rank`;
 
   const row = await env.DB.prepare(sql)
-    .bind(...dayBinds, userId, userId)
+    .bind(...dayBinds, userId, userId, userId)
     .first<{
       nickname: string | null;
       bio: string | null;
@@ -310,6 +313,8 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
       projects: string | null;
       country: string | null;
       city: string | null;
+      account_email: string | null;
+      account_email_public: number | null;
       prompts: number;
       chars: number;
       total: number;
@@ -356,6 +361,7 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
       projects: parseProjects(row?.projects ?? null),
       country,
       city,
+      account: row?.account_email ? { email: row.account_email, emailPublic: !!row.account_email_public } : null,
       prompts: Number(row?.prompts) || 0,
       chars: Number(row?.chars) || 0,
       rank: row?.rank ?? null, // 글로벌(하위호환)
@@ -462,12 +468,66 @@ export async function handleDelete(request: Request, env: Env): Promise<Response
     env.DB.prepare('DELETE FROM events WHERE user_id = ?').bind(userId),
     env.DB.prepare('DELETE FROM daily_stats WHERE user_id = ?').bind(userId),
     env.DB.prepare('DELETE FROM users WHERE user_id = ?').bind(userId),
+    env.DB.prepare('DELETE FROM accounts WHERE user_id = ?').bind(userId), // Google 연동도 함께 해제
   ]);
 
   // 리더보드에서 즉시 사라지도록 스냅샷을 무효화(다음 조회 시 재빌드).
   await env.KV.delete(SNAPSHOT_KEY);
 
   return json({ ok: true, deleted: true });
+}
+
+/** GET /random — 등록(닉네임 보유) 유저 중 한 명을 무작위로. 공개 정보만 반환하며 user_id 는 내보내지 않는다. */
+export async function handleRandom(env: Env): Promise<Response> {
+  const user = await env.DB.prepare(
+    `SELECT u.user_id, u.nickname, u.public_id, u.bio, u.role, u.company, u.links, u.projects,
+            u.country, u.city, u.created_at,
+            a.email AS acct_email, a.email_public AS acct_email_public
+       FROM users u LEFT JOIN accounts a ON a.user_id = u.user_id
+      WHERE u.nickname IS NOT NULL
+      ORDER BY RANDOM() LIMIT 1`,
+  ).first<{
+    user_id: string;
+    nickname: string;
+    public_id: string | null;
+    bio: string | null;
+    role: string | null;
+    company: string | null;
+    links: string | null;
+    projects: string | null;
+    country: string | null;
+    city: string | null;
+    created_at: number;
+    acct_email: string | null;
+    acct_email_public: number | null;
+  }>();
+  if (!user) return json({ error: 'no_users' }, 404);
+
+  const agg = await env.DB.prepare(
+    'SELECT COALESCE(SUM(prompts), 0) AS p, COALESCE(SUM(chars), 0) AS c FROM daily_stats WHERE user_id = ?',
+  )
+    .bind(user.user_id)
+    .first<{ p: number; c: number }>();
+
+  return json({
+    user: {
+      nickname: user.nickname,
+      public_id: user.public_id,
+      bio: user.bio ?? null,
+      role: user.role ?? null,
+      company: user.company ?? null,
+      links: parseLinks(user.links),
+      projects: parseProjects(user.projects),
+      // 이메일은 본인이 공개 옵트인한 경우에만 — 비공개 정보는 서버에서부터 내보내지 않는다.
+      email: user.acct_email_public ? (user.acct_email ?? null) : null,
+      country: user.country ?? null,
+      flag: countryFlag(user.country),
+      city: user.city ?? null,
+      joinedAt: Number(user.created_at) || null,
+      prompts: Number(agg?.p) || 0,
+      chars: Number(agg?.c) || 0,
+    },
+  });
 }
 
 /**
@@ -519,6 +579,13 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   if (!user) {
     return json({ error: 'user_not_found' }, 404);
   }
+
+  // 공개 이메일: Google 연동 + 본인이 공개 옵트인(/ocw email public)한 경우에만 노출.
+  // (users.email 은 로그인 도입 전 예약 컬럼 — 항상 NULL, 사용하지 않는다.)
+  const acct = await env.DB.prepare('SELECT email, email_public FROM accounts WHERE user_id = ? LIMIT 1')
+    .bind(user.user_id)
+    .first<{ email: string | null; email_public: number }>();
+  const publicEmail = acct && acct.email_public ? (acct.email ?? null) : null;
 
   // 상세 페이지는 "그 유저의 로컬 시간"으로 본다(리더보드의 공용 UTC 와 별개). TZ 미상이면 UTC 폴백.
   const tz = isValidTimezone(user.timezone) ? user.timezone : 'UTC';
@@ -583,7 +650,7 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     company: user.company ?? null,
     links: parseLinks(user.links),
     projects: parseProjects(user.projects),
-    email: user.email ?? null, // 로그인 도입 전까지 항상 null
+    email: publicEmail, // 옵트인(/ocw email public)한 연동 이메일만. 기본 비공개.
     country: user.country ?? null,
     flag: countryFlag(user.country), // 국가 구역 표시용 국기(없으면 '')
     city: user.city ?? null,

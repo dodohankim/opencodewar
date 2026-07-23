@@ -33,6 +33,7 @@ export function loadConfig() {
       city: null,
       links: {},
       projects: [],
+      account: null,
       ...cfg,
     };
   } catch {

@@ -6,12 +6,21 @@ import {
   handleMe,
   handleProfile,
   handleRegister,
+  handleRandom,
   handleTrack,
   handleUser,
   handleUserHours,
   handleZones,
 } from './handlers';
 import { buildSnapshot, putSnapshot } from './snapshot';
+import {
+  handleAccountUpdate,
+  handleAuthCallback,
+  handleAuthConfirm,
+  handleAuthLink,
+  handleAuthStart,
+  handleAuthStatus,
+} from './auth';
 import { handleOgImage, handleProfilePage, nicknameFromPath, ogImageIdFromPath, profilePath } from './og';
 import { isValidNickname } from './validate';
 
@@ -69,11 +78,33 @@ export default {
       if (pathname === '/me' && request.method === 'GET') {
         return await handleMe(url, env);
       }
+      // Google 계정 연동 (DESIGN.md §14)
+      if (pathname === '/auth/start' && request.method === 'POST') {
+        return await handleAuthStart(request, env);
+      }
+      if (pathname.startsWith('/auth/link/') && request.method === 'GET') {
+        return await handleAuthLink(url, env, pathname.slice('/auth/link/'.length));
+      }
+      if (pathname === '/auth/callback' && request.method === 'GET') {
+        return await handleAuthCallback(url, env);
+      }
+      if (pathname === '/auth/confirm' && request.method === 'POST') {
+        return await handleAuthConfirm(request, env);
+      }
+      if (pathname === '/auth/status' && request.method === 'GET') {
+        return await handleAuthStatus(url, env);
+      }
+      if (pathname === '/account' && request.method === 'POST') {
+        return await handleAccountUpdate(request, env);
+      }
       if (pathname === '/user/hours' && request.method === 'GET') {
         return await handleUserHours(url, env);
       }
       if (pathname === '/user' && request.method === 'GET') {
         return await handleUser(url, env);
+      }
+      if (pathname === '/random' && request.method === 'GET') {
+        return await handleRandom(env);
       }
       return json({ error: 'not_found' }, 404);
     } catch (err) {

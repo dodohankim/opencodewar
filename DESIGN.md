@@ -319,3 +319,112 @@ GROUP BY user_id ORDER BY p DESC LIMIT :limit;
 
 ### 남은 것
 - Cron + 스냅샷(또는 Cache API) 구현, 웹에 "집계 시각" 표기, 간격 env화(운영 30m/테스트 1m).
+
+---
+
+## 14. 로그인 / 계정 연동 (Google OAuth) — 설계
+
+> §4.4 "로그인 없음"을 대체하는 **선택적** 계정 연동. 비로그인(익명)은 현행 그대로 유지된다.
+
+### 14.1 목표 / 비목표
+
+**목표**
+- **계정 복구** — 로컬 config(userId) 유실 시 Google 로그인으로 되찾기. 현재 가장 아픈 문제.
+- **멀티 기기 합산** — 회사/집 기기를 한 계정으로.
+- **소유권** — 닉네임·프로필이 계정에 귀속. (웹 "email: Available after sign-in" 자리)
+
+**비목표**
+- 사용량 위조 방지 (§14.6 — 로그인은 신원 증명이지 정직성 검증이 아님)
+- 로그인 강제 — 익명 참가는 계속 1급 시민. 진입장벽 없음이 이 서비스의 생명.
+- 웹 세션 / 웹 프로필 편집 — 2단계. (콜백에서 쿠키만 심어두면 확장 가능)
+
+### 14.2 원칙: 진입점은 플러그인, 브라우저는 OAuth 동의에만
+
+- **wrangler 스타일 로컬 콜백 서버(localhost 리슨)는 만들지 않는다.** 슬래시 커맨드는 단명 프로세스라 브라우저 완료를 기다릴 수 없다.
+- 대신 `gh auth login` 스타일 **링크 코드** 방식 — CLI는 URL만 출력하고, OAuth 콜백은 Worker가 받는다.
+- **로컬에 Google 토큰을 저장하지 않는다.** 자격증명은 지금처럼 userId 하나. Google 연동은 "이 userId의 주인" 증명·복구 수단일 뿐이다.
+  → 별도 auth 관리 CLI 불필요. 기존 ocw-cli에 `signup` 서브커맨드 + config 필드 추가로 충분.
+
+### 14.3 플로우
+
+```
+/ocw signup
+  → POST /auth/start {userId}
+      서버: 링크 코드 발급 (KV, TTL 10분, 1회용, userId 바인딩)
+      CLI:  config.pendingLinkCode 저장 + URL 출력
+브라우저: GET /auth/link/<code>
+  → 302 Google OAuth (state = code + nonce)
+  → GET /auth/callback: 코드 교환 → id_token(google_sub, email)
+      - 연동 확인 페이지: "닉네임 <X> 계정에 이 Google 계정을 연동합니다" [확인]  ← link-jacking 방지
+      - accounts upsert + KV에 결과 기록 → 완료 페이지 ("터미널로 돌아가세요")
+다음 /ocw 명령(또는 track 훅) 실행 시:
+  → pendingLinkCode 있으면 GET /auth/status?code
+      done → (필요시) userId 교체 + 병합 결과 안내, 코드 삭제
+      만료 → 안내 후 코드 삭제
+```
+
+폴링 없음 — 슬래시 커맨드 특성(단명, 4초 타임아웃)에 맞춘 "다음 실행 시 해소(pendingLinkCode)" 패턴.
+
+### 14.4 "옮겨 타기" 두 케이스
+
+| 케이스 | 서버 | CLI |
+|---|---|---|
+| **첫 가입** (google_sub 신규) | accounts에 (google_sub → 현재 userId) 저장 | 변화 없음 — 데이터 이동 없이 소유권만 계정에 귀속 |
+| **기존 계정 재로그인** (다른 기기/재설치) | canonical userId 반환. 로컬 익명 사용량 있으면 일회성 병합: events·daily_stats를 canonical로 UPDATE/합산, 옛 users 행 삭제, 프로필 충돌은 canonical 우선 | config.userId를 canonical로 교체 → 이후 훅도 자동으로 새 userId로 집계 |
+
+병합은 자동 + 결과 안내("두 기록을 합쳤습니다: +N 프롬프트"). 슬래시 커맨드는 대화형 확인이 불가하다.
+
+### 14.5 스키마 / 엔드포인트 / 설정
+
+```sql
+-- 0009_accounts.sql
+CREATE TABLE accounts (
+  account_id TEXT PRIMARY KEY,        -- 'acc_' + random
+  google_sub TEXT UNIQUE NOT NULL,
+  email      TEXT,
+  user_id    TEXT NOT NULL,           -- canonical (users.user_id)
+  created_at INTEGER NOT NULL
+);
+```
+
+| 엔드포인트 | 역할 |
+|---|---|
+| `POST /auth/start` {userId} | 링크 코드 발급 → {code, url, expiresAt} |
+| `GET /auth/link/:code` | 302 → Google OAuth |
+| `GET /auth/callback` | 코드 교환·검증 → 연동 확인/완료 페이지 |
+| `GET /auth/status?code` | CLI가 다음 실행 때 결과 조회 → {status, canonicalUserId?, email?, merged?} |
+
+- `GOOGLE_CLIENT_ID`(vars) / `GOOGLE_CLIENT_SECRET`(wrangler secret), redirect URI `https://opencodewar.dev/auth/callback`
+- id_token 검증: token 엔드포인트에서 TLS로 직접 수신하므로 서명(JWKS) 검증은 생략하고 `aud`·`iss` 확인만 (MVP 기준 안전).
+
+### 14.6 보안 / 악용 분석 (솔직한 한계)
+
+- **사용량 위조는 로그인과 무관하게 여전히 가능.** 훅이 클라이언트에서 돌므로 자기 userId로 `/track`을 curl 호출하면 그만이다. 현재 방어: IP당 60건/분 rate limit + 이벤트당 chars ≤ 20,000 클램프 → **상한 내 조작(이론상 하루 86,400 프롬프트)은 막지 못한다.** 자가 보고 리더보드의 본질적 한계(WakaTime 등 동일). 재미용 스코프에서는 수용, 상금·보상이 걸리면 서명 클라이언트/이상치 탐지 필요.
+- **다중 계정** — 익명 참가 허용이므로 계정 무한 생성 가능(현행과 동일).
+- **link-jacking** — 공격자가 자기 링크 URL을 피해자에게 클릭시키면 피해자의 Google이 공격자 userId에 연동될 수 있다 → 콜백에서 자동 연동하지 않고 **확인 페이지**(연동 대상 닉네임 표시 + 명시적 버튼)를 거쳐 완화.
+- **코드 브루트포스** — 코드 엔트로피 ≥ 64bit, 1회용, TTL 10분, 시도 rate limit.
+- **병합 악용** — 타인 데이터 병합은 그 userId(비밀키) 없이는 불가.
+
+### 14.7 구현 순서
+
+1. `0009_accounts.sql` 마이그레이션
+2. Worker auth 라우트 4개 + 병합 로직 (+ 테스트)
+3. Google Cloud OAuth 클라이언트 생성 + secret 등록
+4. CLI `signup`(별칭 `login`) + pendingLinkCode 해소 + status에 연동 상태 표시
+5. 연동 확인/완료/에러 웹 페이지
+
+### 14.8 결정 사항 (2026-07-23 확정)
+
+- ✅ **Google 로그인 도입 확정** — 위 설계대로 구현·배포. OAuth 클라이언트는 GCP `opencodewar` 프로젝트,
+  동의 화면 "Open Code War"(외부·프로덕션 게시됨, scope: openid email).
+- ✅ 명령 이름: `signup` (별칭 `login`).
+- ✅ 프로필 이메일 공개는 **옵트인** — `/ocw email public|private`(기본 private, accounts.email_public).
+  비공개면 본인 status 에만 표시되고 공개 API(/user)·웹 상세에는 나가지 않는다.
+- ✅ `/ocw delete all` 은 accounts(Google 연동)도 함께 삭제.
+- ⬜ 연동 해제 `/ocw unlink` — 보류.
+
+**어뷰징 조사 결론(2026-07-23)**: 개인(Pro/Max) 유저의 실사용을 제3자가 검증할 Anthropic API·OAuth·서명은
+존재하지 않음(Analytics API 는 Team/Enterprise org admin 전용). statusline 광고 플랫폼들(ADtention·
+Claude Code Ads·Kickbacks — 실제 돈이 걸림)도 암호학적 검증 없이 서버측 카운팅 + 휴리스틱 + 지급 보류로
+운영. 즉 완전 차단은 현재 불가 → 로그인(밴 지속성) + §14.6 억제책이 실질 상한. Anthropic 이 개인 usage
+OAuth 를 열면 그때 "verified" 트랙 추가.
