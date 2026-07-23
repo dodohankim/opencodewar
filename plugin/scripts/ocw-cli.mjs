@@ -3,7 +3,7 @@
 // 서브커맨드:
 //   nickname <이름> | bio <소개> | role <직함> | company <회사>
 //   link <website|github|x|linkedin> <url>
-//   project add <이름> :: <설명> :: <url> | project list | project remove <번호> | project clear
+//   project add <이름> :: <설명> :: <url> | project list | project remove|delete <번호|이름> | project clear
 //   status | whoami | enable | disable | help
 
 import { ensureConfig, saveConfig, endpointOf } from './lib/config.mjs';
@@ -167,7 +167,7 @@ function projectUsage() {
     '사용법:',
     '- `/ocw project add <이름> :: <설명> :: <url>` (설명·url 선택, 최대 5개)',
     '- `/ocw project list`',
-    '- `/ocw project remove <번호>`',
+    '- `/ocw project remove <번호|이름>` (별칭: delete)',
     '- `/ocw project clear`',
     '예) `/ocw project add Open Code War :: Claude Code 리더보드 :: https://opencodewar.dev`',
   ].join('\n');
@@ -217,10 +217,18 @@ async function project(input) {
     return pushProjects(next, `✅ 프로젝트 추가: ${name} (${next.length}/${MAX_PROJECTS})`);
   }
 
-  if (action === 'remove') {
-    const idx = Number(remainder);
+  if (action === 'remove' || action === 'delete' || action === 'rm') {
+    if (!current.length) {
+      return print('등록된 프로젝트가 없습니다.\n' + projectUsage());
+    }
+    let idx = Number(remainder);
     if (!Number.isInteger(idx) || idx < 1 || idx > current.length) {
-      return print(`사용법: \`/ocw project remove <번호>\` — 1~${current.length || 0} 사이. 목록은 \`/ocw project list\`.`);
+      // 번호가 아니면 이름으로 찾는다(대소문자 무시).
+      const byName = current.findIndex((p) => p.name.toLowerCase() === remainder.toLowerCase());
+      if (!remainder || byName === -1) {
+        return print(`사용법: \`/ocw project remove <번호|이름>\` — 번호는 1~${current.length}. 목록은 \`/ocw project list\`.`);
+      }
+      idx = byName + 1;
     }
     const removed = current[idx - 1];
     const next = current.filter((_, i) => i !== idx - 1);
@@ -349,6 +357,13 @@ async function status() {
     if (zones.city) rankParts.push(`${zones.city.label} ${fmt(zones.city)}`);
     lines.push(`- 순위(일간): ${rankParts.join(' · ')}`);
   }
+
+  // 내 프로필 페이지 링크. 닉네임 미등록이면 페이지가 없으므로 생략.
+  const nickForUrl = (me && me.nickname) || cfg.nickname || null;
+  if (nickForUrl) {
+    lines.push(`- 내 페이지: ${endpoint}/u/${encodeURIComponent(nickForUrl)}`);
+  }
+
   lines.push('\n전체 명령 보기 → `/ocw help`');
   return print(lines.join('\n'));
 }
@@ -364,7 +379,7 @@ function help() {
       '- `/ocw city <도시>` — 내 도시 (도시 구역 랭킹 "이 구역 코드워리어")',
       '- `/ocw link <종류> <url>` — 링크 (종류: website/blog/github/x/linkedin · website·blog는 주소 표시, SNS는 아이콘)',
       '- `/ocw project add <이름> :: <설명> :: <url>` — 사이드프로젝트 (최대 5개)',
-      '- `/ocw project list | remove <번호> | clear` — 프로젝트 관리',
+      '- `/ocw project list | remove|delete <번호|이름> | clear` — 프로젝트 관리',
       '- `/ocw status` — 내 정보 및 오늘 순위',
       '- `/ocw disable` / `/ocw enable` — 집계 끄기/켜기',
       '- `/ocw delete` — 프로필만 비움(닉네임·순위·사용량 유지)',

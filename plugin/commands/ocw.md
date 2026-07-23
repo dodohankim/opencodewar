@@ -1,6 +1,6 @@
 ---
 description: Open Code War — 프로필(닉네임·bio·직함·회사·링크·프로젝트) 설정, 내 순위/상태 확인
-argument-hint: "help | nickname <이름> | bio <소개> | role <직함> | company <회사> | city <도시> | link <종류> <url> | project add|list|remove|clear | status | delete"
+argument-hint: "help | nickname <이름> | bio <소개> | role <직함> | company <회사> | city <도시> | link <종류> <url> | project add|list|remove|delete|clear | status | delete"
 disable-model-invocation: true
 allowed-tools: Bash(node:*)
 ---
