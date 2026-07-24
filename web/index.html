@@ -1828,9 +1828,12 @@
   $('backBtn').addEventListener('click', goBoard);
 
   // ── 프로필 공유: 모바일(터치)은 시스템 공유 시트, 데스크톱은 링크 복사 ──
-  // 공유 URL 은 정식 주소(/u/<nick>) — api·기타 파라미터 제거.
+  // 공유 URL 은 정식 주소(/u/<nick>) + ?d=YYYYMMDD —
+  // 날짜 파라미터로 카톡·X 등의 링크 미리보기 캐시를 일 단위로 우회한다
+  // (데일리 카드가 어제 이미지로 보이는 것 방지). 라우팅은 경로만 보므로 무해.
   function profileUrl(nick) {
-    return location.origin + PROFILE_PREFIX + encodeURIComponent(nick);
+    const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return location.origin + PROFILE_PREFIX + encodeURIComponent(nick) + '?d=' + d;
   }
   let shareFlashTimer = null;
   function flashShareBtn(msg) {
