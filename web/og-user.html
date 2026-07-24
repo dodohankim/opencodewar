@@ -7,19 +7,14 @@
   /* 소셜 카드는 단일 다크로 고정(카톡·슬랙·X 미리보기 배경과 무관하게 일관) */
   :root{
     --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
-    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441;
+    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441; --hover:rgba(231,231,227,0.06);
     --ag-codex:#7FA6E0; --ag-opencode:#D99A55;
     --skin:#E8C39E; --eye:#232320;
     --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box;margin:0;}
   html,body{width:1200px;height:630px;background:var(--bg);color:var(--fg);font-family:var(--mono);overflow:hidden;}
-  .card{width:1200px;height:630px;padding:52px 60px 46px;display:flex;flex-direction:column;position:relative;}
-
-  .top{display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:22px;}
-  .lights{display:flex;gap:10px;}
-  .lights i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
-  .dom{font-weight:600;color:var(--fg);letter-spacing:.02em;display:flex;align-items:center;gap:14px;}
+  .card{width:1200px;height:630px;padding:46px 60px 40px;display:flex;flex-direction:column;position:relative;}
 
   /* ── 픽셀 병정(랜딩과 동일 스프라이트) ── */
   .sprite{display:block;}
@@ -28,84 +23,75 @@
   .army-codex .px-u{fill:var(--ag-codex);}
   .army-opencode .px-u{fill:var(--ag-opencode);}
   .army-pi .px-u{fill:var(--pi);}
-  .portrait{position:relative;width:84px;height:84px;flex:none;}
-  .tdots{position:absolute;top:-8px;left:20px;display:flex;gap:5px;}
-  .tdots b{width:7px;height:7px;background:var(--faint);}
-  .tdots b:nth-child(2),.tdots b:nth-child(3){opacity:.4;}
-  .rankchip{display:inline-flex;align-items:center;gap:10px;font-size:22px;color:var(--fg);
-    border:1.5px solid var(--line);border-radius:7px;padding:7px 16px;align-self:center;}
-  .peakflag{position:absolute;left:calc(50% - 7px);bottom:100%;width:36px;height:44px;pointer-events:none;}
-  .peakflag .px-f{fill:var(--pi);}  /* 오늘 강조색(보라) 깃발 */
-  .sentry{width:48px;height:48px;flex:none;margin:-8px 0;}
 
-  .cmd{margin-top:20px;color:var(--dim);font-size:22px;}
-  .cmd .sig{color:var(--fg);}
-  .cmd .cur{display:inline-block;width:12px;height:22px;background:var(--fg);vertical-align:-3px;margin-left:4px;}
+  .eyebrow{color:var(--dim);font-size:21px;letter-spacing:.14em;}
+  .cols{display:flex;gap:52px;margin-top:28px;flex:1;min-height:0;}
 
-  .idrow{display:flex;align-items:center;gap:18px;margin-top:12px;}
-  .nick{font-size:52px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
-  .loc{color:var(--dim);font-size:22px;align-self:flex-end;padding-bottom:6px;}
-  .date{margin-left:auto;font-size:25px;color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em;align-self:flex-end;padding-bottom:6px;}
-  .date .dow{color:var(--dim);font-weight:400;}
+  /* 좌: 병정 초상 액자 + 계급 */
+  .pframe{width:320px;flex:none;border:2px solid var(--line);border-radius:10px;background:var(--hover);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px 0;}
+  .pframe .soldier{width:180px;height:180px;position:relative;}
+  .tdots{position:absolute;top:-14px;left:42px;display:flex;gap:10px;}
+  .tdots i{width:13px;height:13px;background:var(--faint);display:block;}
+  .tdots i:nth-child(2),.tdots i:nth-child(3){opacity:.4;}
+  .rankrow{display:flex;align-items:center;gap:14px;font-size:28px;font-weight:700;}
+  .rankrow .en{color:var(--dim);font-weight:400;}
 
-  /* 히어로: 오늘(최근 활동일) 글자수를 제일 크게 */
-  .hero{margin-top:18px;}
-  .hero .num{font-size:112px;font-weight:800;line-height:.8;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;}
-  .hero .lab{font-size:30px;color:var(--dim);margin-top:12px;}
+  /* 우: 오늘의 출격 */
+  .right{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .idline{display:flex;align-items:baseline;gap:16px;}
+  .nick{font-size:58px;font-weight:800;letter-spacing:-0.03em;line-height:1;}
+  .loc{color:var(--dim);font-size:22px;}
+  .hero{margin-top:26px;}
+  .hero .num{font-size:100px;font-weight:800;line-height:.85;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;}
+  .hero .num.rec{color:var(--amber);}
+  .hero .lab{font-size:25px;color:var(--dim);margin-top:12px;}
   .hero .lab b{color:var(--fg);}
-  .hero .lab .sep{color:var(--faint);margin:0 4px;}
 
-  /* 스트릭 뱃지 */
-  .badge{margin-top:16px;font-size:24px;color:var(--amber);display:inline-flex;align-items:center;gap:8px;}
-  .badge b{color:var(--fg);font-weight:700;}
-  .badge .since{color:var(--faint);}
+  /* 오늘의 도전: 내 최고기록 대비 게이지(앰버). 글리프 대신 div 블록 — 렌더 폰트 이슈 원천 차단 */
+  .chal{margin-top:18px;font-size:23px;color:var(--dim);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .chal b{color:var(--fg);}
+  .chal .newrec{color:var(--amber);font-weight:700;}
+  .gaugebar{display:inline-flex;gap:4px;}
+  .gaugebar i{width:13px;height:22px;background:var(--faint);display:block;border-radius:2px;}
+  .gaugebar i.on{background:var(--amber);}
 
-  /* 최근 14일 막대(높이=글자수). 스트릭 구간 초록, 오늘 보라, 그 외 활동일 흰색, 미활동 회색. */
-  .graph{margin-top:auto;}
-  .bars{display:flex;align-items:flex-end;gap:9px;height:120px;}
-  .bars .b{flex:1;background:var(--line);border-radius:2px;min-height:4px;position:relative;}
-  .bars .b.on{background:var(--fg);}
-  .bars .b.streak{background:var(--ok);}
-  .bars .b.today{background:var(--pi);}
-  .axis{display:flex;justify-content:space-between;margin-top:11px;font-size:18px;color:var(--faint);font-variant-numeric:tabular-nums;}
-  .axis .mid{opacity:.7;}
+  .streakline{margin-top:12px;font-size:22px;color:var(--amber);}
+  .streakline b{color:var(--fg);}
+  .streakline .since{color:var(--faint);}
+
+  .lifetime{margin-top:auto;border-top:2px dotted var(--line);padding-top:16px;font-size:20px;color:var(--dim);}
+  .lifetime b{color:var(--fg);}
+  .lifetime .k{color:var(--faint);letter-spacing:.08em;font-size:17px;margin-right:8px;}
 
   .foot{margin-top:20px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:19px;}
-  .foot .tagf{color:var(--dim);}
   .foot .live{display:flex;align-items:center;gap:10px;}
   .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--ok);display:block;}
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="top">
-      <div class="lights"><i></i><i></i><i></i></div>
-      <div class="dom"><span class="sentry army-claude" id="sentrySlot" aria-hidden="true"></span>opencodewar.dev</div>
-    </div>
+    <div class="eyebrow">OPEN CODE WAR · DAILY SORTIE</div>
 
-    <div class="cmd"><span class="sig">you@open-code-war</span>:~$ GET /u/<span id="uNick2"></span><span class="cur"></span></div>
-
-    <div class="idrow">
-      <span class="portrait" id="portrait" aria-hidden="true"></span>
-      <div class="nick" id="nick">–</div>
-      <span class="rankchip" id="rankchip" style="display:none"></span>
-      <div class="loc" id="loc"></div>
-      <div class="date" id="date"></div>
-    </div>
-
-    <div class="hero">
-      <div class="num" id="heroNum">0</div>
-      <div class="lab" id="heroLab"></div>
-    </div>
-    <div class="badge" id="badge"></div>
-
-    <div class="graph">
-      <div class="bars" id="bars"></div>
-      <div class="axis"><span id="axL"></span><span class="mid" id="axM"></span><span id="axR"></span></div>
+    <div class="cols">
+      <div class="pframe">
+        <span class="soldier" id="portrait"></span>
+        <span class="rankrow" id="rankrow" style="display:none"></span>
+      </div>
+      <div class="right">
+        <div class="idline"><span class="nick" id="nick">–</span><span class="loc" id="loc"></span></div>
+        <div class="hero">
+          <div class="num" id="heroNum">0</div>
+          <div class="lab" id="heroLab"></div>
+        </div>
+        <div class="chal" id="chal" style="display:none"></div>
+        <div class="streakline" id="badge" style="display:none"></div>
+        <div class="lifetime" id="lifetime" style="display:none"></div>
+      </div>
     </div>
 
     <div class="foot">
-      <div class="tagf">no prompt content · character counts only</div>
+      <div>no prompt content · character counts only</div>
       <div class="live"><i></i><span>live</span></div>
     </div>
   </div>
@@ -117,46 +103,19 @@
     date: "2026-07-22", dow: "Wed",
     heroChars: 24197, heroPrompts: 178, heroIsToday: true, heroDayLabel: "",
     streak: 12, since: "Jul 11",
-    series: [
-      {chars:3200,active:true,streak:false,today:false},
-      {chars:0,active:false,streak:false,today:false},
-      {chars:5400,active:true,streak:true,today:false},
-      {chars:8100,active:true,streak:true,today:false},
-      {chars:12600,active:true,streak:true,today:false},
-      {chars:6300,active:true,streak:true,today:false},
-      {chars:9200,active:true,streak:true,today:false},
-      {chars:7100,active:true,streak:true,today:false},
-      {chars:11800,active:true,streak:true,today:false},
-      {chars:8400,active:true,streak:true,today:false},
-      {chars:15200,active:true,streak:true,today:false},
-      {chars:9600,active:true,streak:true,today:false},
-      {chars:7400,active:true,streak:true,today:false},
-      {chars:24197,active:true,streak:true,today:true}
-    ],
-    axis: { l: "7/09", m: "7/16", r: "7/22" },
+    series: [], axis: { l: "", m: "", r: "" },
     stamp: "2026-07-22 · KST",
-    agent: "claude-code", activeToday: true, allTimePrompts: 1791
+    agent: "claude-code", activeToday: true,
+    allTimePrompts: 1832, allTimeChars: 1770317,
+    bestPrompts: 336
   }/*END*/;
 
   function comma(n){ return Number(n||0).toLocaleString('en-US'); }
-
-  var d = DATA;
-  document.getElementById('nick').textContent = d.nick;
-  document.getElementById('uNick2').textContent = d.nick;
-  document.getElementById('loc').textContent =
-    (d.country ? d.country + ' ' + (d.flag || '') : '') + (d.city ? ' · ' + d.city : '');
-  document.getElementById('date').innerHTML = d.date + ' <span class="dow">' + d.dow + '</span>';
-
-  document.getElementById('heroNum').textContent = comma(d.heroChars);
-  var when = d.heroIsToday ? 'today' : '· ' + d.heroDayLabel;
-  document.getElementById('heroLab').innerHTML =
-    '<b>chars</b> ' + when + ' <span class="sep">·</span> ' + comma(d.heroPrompts) + ' prompts';
-
-  var badge = document.getElementById('badge');
-  if (d.streak > 0) {
-    badge.innerHTML = '🔥 <b>' + d.streak + '-day streak</b>' + (d.since ? ' <span class="since">· since ' + d.since + '</span>' : '');
-  } else {
-    badge.style.display = 'none';
+  function compact(n){
+    n = Number(n||0);
+    if (n >= 1e6) return (n/1e6).toFixed(2).replace(/\.?0+$/,'') + 'M';
+    if (n >= 1e4) return Math.round(n/1e3) + 'k';
+    return comma(n);
   }
 
   // ── 픽셀 병정 스프라이트(랜딩과 동일 16×16 맵) ──
@@ -166,16 +125,13 @@
       '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
       '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......'
     ],
-    sentry: [ // 보초(소총 세워 듦)
+    sentry: [ // 보초(소총 세워 듦) — 오늘 활동 없는 날
       '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
       '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
       '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU..UU......','...BBB..BBB.....'
-    ],
-    chartflag: [
-      '.R......','.RFFFFFF','.RFFFFFF','.RFFFF..','.R......','.R......','.R......','.R......','.R......','.R......'
     ]
   };
-  var SPRITE_CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+  var SPRITE_CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', M:'r', K:'r' };
   function spriteSVG(name) {
     var map = SPRITES[name], rects = '';
     for (var y = 0; y < map.length; y++) for (var x = 0; x < map[y].length; x++) {
@@ -187,12 +143,12 @@
 
   // ── 계급(정책: DESIGN.md §16, 웹 index.html 의 RANKS 와 동일 값) ──
   var RANKS = [
-    { en:'Private', min:0, ins:['bars',1] }, { en:'PFC', min:200, ins:['bars',2] },
-    { en:'Corporal', min:1000, ins:['bars',3] }, { en:'Sergeant', min:3000, ins:['bars',4] },
-    { en:'Staff Sgt', min:7000, ins:['chev',1] }, { en:'Sgt 1st Class', min:15000, ins:['chev',2] },
-    { en:'Master Sgt', min:30000, ins:['chev',3] }, { en:'2nd Lt', min:60000, ins:['dia',1] },
-    { en:'Captain', min:120000, ins:['dia',2] }, { en:'Major', min:250000, ins:['dia',3] },
-    { en:'Colonel', min:500000, ins:['dia',4] }, { en:'General', min:1000000, ins:['star',1] }
+    { ko:'이병', en:'Private', min:0, ins:['bars',1] }, { ko:'일병', en:'PFC', min:200, ins:['bars',2] },
+    { ko:'상병', en:'Corporal', min:1000, ins:['bars',3] }, { ko:'병장', en:'Sergeant', min:3000, ins:['bars',4] },
+    { ko:'하사', en:'Staff Sgt', min:7000, ins:['chev',1] }, { ko:'중사', en:'Sgt 1st Class', min:15000, ins:['chev',2] },
+    { ko:'상사', en:'Master Sgt', min:30000, ins:['chev',3] }, { ko:'소위', en:'2nd Lt', min:60000, ins:['dia',1] },
+    { ko:'대위', en:'Captain', min:120000, ins:['dia',2] }, { ko:'소령', en:'Major', min:250000, ins:['dia',3] },
+    { ko:'대령', en:'Colonel', min:500000, ins:['dia',4] }, { ko:'장군', en:'General', min:1000000, ins:['star',1] }
   ];
   var INS_UNIT = {
     bars: ['KKKKKKKKKK'],
@@ -200,7 +156,7 @@
     dia: ['..K..','.KKK.','KKKKK','.KKK.','..K..'],
     star: ['....K....','....K....','.KKKKKKK.','..KKKKK..','...KKK...','..KK.KK..','.K.....K.']
   };
-  function insigniaSVG(kind, n) {
+  function insigniaSVG(kind, n, scale) {
     var map, i;
     if (kind === 'dia') {
       map = INS_UNIT.dia.map(function(row){ return Array(n).fill(row).join('.'); });
@@ -217,43 +173,76 @@
     for (var y = 0; y < map.length; y++) for (var x = 0; x < map[y].length; x++)
       if (map[y][x] === 'K') rects += '<rect x="' + x + '" y="' + y + '" width="1" height="1" class="px-k"/>';
     var w = map[0].length, h = map.length;
-    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w * 2.4 + '" height="' + h * 2.4 + '" shape-rendering="crispEdges">' + rects + '</svg>';
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w * scale + '" height="' + h * scale + '" shape-rendering="crispEdges">' + rects + '</svg>';
   }
 
-  // 초상: 주력 에이전트 군복 + 포즈(오늘 활동 → 타이핑, 아니면 보초). 구 데이터엔 필드가 없어 폴백.
+  var d = DATA;
+
+  // 초상: 주력 에이전트 군복 + 포즈(오늘 활동 → 타이핑, 아니면 보초)
   var AGENT_ARMY = { 'claude-code':'army-claude', codex:'army-codex', opencode:'army-opencode', pi:'army-pi' };
   var portrait = document.getElementById('portrait');
-  portrait.className = 'portrait ' + (AGENT_ARMY[d.agent] || 'army-claude');
+  portrait.className = 'soldier ' + (AGENT_ARMY[d.agent] || 'army-claude');
   var active = d.activeToday != null ? d.activeToday : !!d.heroIsToday;
   portrait.innerHTML = active
-    ? spriteSVG('typer1') + '<i class="tdots"><b></b><b></b><b></b></i>'
+    ? spriteSVG('typer1') + '<span class="tdots"><i></i><i></i><i></i></span>'
     : spriteSVG('sentry');
 
-  // 계급 칩(allTimePrompts 있을 때만 — 렌더러가 구버전이면 자동 생략)
+  // 계급(allTimePrompts 있을 때만 — 렌더러가 구버전이면 자동 생략)
   if (typeof d.allTimePrompts === 'number') {
     var ri = 0;
     while (ri + 1 < RANKS.length && d.allTimePrompts >= RANKS[ri + 1].min) ri++;
     var rk = RANKS[ri];
-    var chip = document.getElementById('rankchip');
-    chip.innerHTML = insigniaSVG(rk.ins[0], rk.ins[1]) + rk.en;
-    chip.style.display = 'inline-flex';
+    var row = document.getElementById('rankrow');
+    row.innerHTML = '<span>' + insigniaSVG(rk.ins[0], rk.ins[1], 4.4) + '</span>' + rk.ko + ' <span class="en">' + rk.en + '</span>';
+    row.style.display = 'inline-flex';
   }
 
-  // 상단 보초
-  document.getElementById('sentrySlot').innerHTML = spriteSVG('sentry');
+  document.getElementById('nick').textContent = d.nick;
+  document.getElementById('loc').textContent =
+    (d.country ? d.country + ' ' + (d.flag || '') : '') + (d.city ? ' · ' + d.city : '');
 
-  // 최근 14일 막대(높이=글자수, 스트릭/오늘 강조 + 오늘 막대 깃발)
-  var s = d.series || [];
-  var maxC = s.reduce(function(m, x){ return Math.max(m, x.chars || 0); }, 1);
-  document.getElementById('bars').innerHTML = s.map(function(x){
-    var h = Math.max(4, Math.round((x.chars || 0) / maxC * 120));
-    var cls = !x.active ? '' : (x.today ? 'today' : (x.streak ? 'streak' : 'on'));
-    var flag = x.today && x.active ? '<span class="peakflag">' + spriteSVG('chartflag') + '</span>' : '';
-    return '<div class="b ' + cls + '" style="height:' + h + 'px">' + flag + '</div>';
-  }).join('');
-  document.getElementById('axL').textContent = d.axis.l;
-  document.getElementById('axM').textContent = d.axis.m;
-  document.getElementById('axR').textContent = d.axis.r;
+  // 히어로 = 가장 최근 활동일의 prompts. 신기록(오늘 > 종전 최고)이면 앰버 강조.
+  var best = typeof d.bestPrompts === 'number' ? d.bestPrompts : null;
+  var isRecord = !!(d.heroIsToday && best != null && best > 0 && d.heroPrompts > best);
+  var numEl = document.getElementById('heroNum');
+  numEl.textContent = comma(d.heroPrompts);
+  if (isRecord) numEl.className = 'num rec';
+  var when = d.heroIsToday ? 'fired today' : '· ' + d.heroDayLabel;
+  document.getElementById('heroLab').innerHTML =
+    '<b>prompts</b> ' + when + ' · <b>' + comma(d.heroChars) + '</b> chars';
+
+  // 오늘의 도전 게이지: 내 최고기록 대비(div 블록 10칸)
+  function gaugeHtml(on) {
+    var out = '<span class="gaugebar">';
+    for (var i = 0; i < 10; i++) out += '<i' + (i < on ? ' class="on"' : '') + '></i>';
+    return out + '</span>';
+  }
+  if (best != null && best > 0) {
+    var chal = document.getElementById('chal');
+    if (isRecord) {
+      // 꽉 찬 게이지가 곧 100% — 퍼센트 표기는 중복이라 생략(한 줄 유지)
+      chal.innerHTML = '<span class="newrec">⭐ NEW PERSONAL BEST</span><span>· previous <b>' + comma(best) + '</b></span>' + gaugeHtml(10);
+    } else {
+      var pct = Math.min(100, Math.round((d.heroPrompts / best) * 100));
+      chal.innerHTML = '<span>vs my best <b>' + comma(best) + '</b></span>' + gaugeHtml(Math.min(10, Math.round(pct / 10))) + '<b>' + pct + '%</b>';
+    }
+    chal.style.display = 'flex';
+  }
+
+  // 스트릭
+  if (d.streak > 0) {
+    var badge = document.getElementById('badge');
+    badge.innerHTML = '🔥 <b>' + d.streak + '-day campaign</b>' + (d.since ? ' <span class="since">· since ' + d.since + '</span>' : '');
+    badge.style.display = 'block';
+  }
+
+  // 누적(전 기간)
+  if (typeof d.allTimePrompts === 'number') {
+    var lt = document.getElementById('lifetime');
+    lt.innerHTML = '<span class="k">ALL-TIME</span><b>' + comma(d.allTimePrompts) + '</b> prompts' +
+      (typeof d.allTimeChars === 'number' ? ' · <b>' + compact(d.allTimeChars) + '</b> chars' : '');
+    lt.style.display = 'block';
+  }
 </script>
 </body>
 </html>

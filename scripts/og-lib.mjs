@@ -105,6 +105,11 @@ export async function buildData(api, seg) {
   let agent = null;
   for (const a in agentSum) if (!agent || agentSum[a] > agentSum[agent]) agent = a;
 
+  // 오늘의 도전 게이지 기준 = 히어로 날을 제외한 30일 창 최고 prompts.
+  // (히어로 날 포함이면 "오늘 > 최고"가 성립할 수 없어 신기록 판정이 불가능해진다)
+  let bestPrompts = 0;
+  for (let j = 0; j < n; j++) if (j !== heroIdx) bestPrompts = Math.max(bestPrompts, days[j].prompts || 0);
+
   return {
     nick,
     country: profile.country || '',
@@ -121,10 +126,12 @@ export async function buildData(api, seg) {
     series,
     axis,
     stamp: kstStamp(),
-    // ── 픽셀 병정·계급용(신규 /user 필드 없으면 null → 템플릿이 표시 생략) ──
+    // ── 픽셀 병정·계급·도전 게이지용(신규 /user 필드 없으면 null → 템플릿이 표시 생략) ──
     agent, // 주력 에이전트 id ('claude-code' 등)
     activeToday: n ? isActive(days[n - 1]) : false, // 초상 포즈(타이핑/보초)
     allTimePrompts: profile.allTime && typeof profile.allTime.prompts === 'number' ? profile.allTime.prompts : null,
+    allTimeChars: profile.allTime && typeof profile.allTime.chars === 'number' ? profile.allTime.chars : null,
+    bestPrompts, // 종전 최고(히어로 날 제외) — 오늘이 이보다 크면 ⭐ NEW PERSONAL BEST 레이아웃
   };
 }
 
