@@ -20,10 +20,12 @@ export interface ProfileMetaRow {
  * 프로필 공유 미리보기용 설명을 만든다.
  * role·company·bio 가 있으면 그걸로, 없으면 기본 문구. MAX_OG_DESC 초과 시 말줄임.
  */
-export function buildOgDescription(row: ProfileMetaRow): string {
+export function buildOgDescription(row: ProfileMetaRow, rank?: number | null): string {
   const who = [row.role, row.company].filter(Boolean).join(' @ ');
   const bio = (row.bio ?? '').trim();
-  const intro = [who, bio].filter(Boolean).join(' · ');
+  // 전체 순위가 있으면 맨 앞에 붙인다(공유 미리보기에서 순위가 먼저 보이게).
+  const rankBit = typeof rank === 'number' && rank > 0 ? `#${rank} on the board` : '';
+  const intro = [rankBit, who, bio].filter(Boolean).join(' · ');
   const desc = intro
     ? `${intro} — coding agent activity on Open Code War.`
     : 'Coding agent activity — prompts & chars over the last 30 days on Open Code War.';
@@ -223,6 +225,22 @@ export async function handleProfilePage(
         })
       : Promise.resolve(null);
 
+  // 전체 순위(공유 미리보기용, 전 기간 prompts). daily_stats 전체 집계 — 규모 커지면 리더보드 스냅샷 재사용 고려.
+  // 에셋·메타 조회와 병렬. 조회 실패/미활동이면 null → 순위 표기 생략(fail open).
+  const rankCol = byNick ? 'nickname' : 'public_id';
+  const rankPromise: Promise<number | null> =
+    byNick || byId
+      ? env.DB.prepare(
+          `WITH tot AS (SELECT user_id AS uid, SUM(prompts) AS p FROM daily_stats GROUP BY user_id),
+                me AS (SELECT t.p AS p FROM tot t JOIN users u ON u.user_id = t.uid WHERE u.${rankCol} = ?)
+           SELECT (SELECT COUNT(*) FROM me) AS hasme, (SELECT COUNT(*) + 1 FROM tot WHERE p > (SELECT p FROM me)) AS grank`,
+        )
+          .bind(byNick ? (seg as string).trim() : (seg as string))
+          .first<{ hasme: number; grank: number }>()
+          .then((r) => (r && Number(r.hasme) > 0 ? Number(r.grank) || null : null))
+          .catch(() => null)
+      : Promise.resolve(null);
+
   const assetRes = await assetPromise;
   const contentType = assetRes.headers.get('Content-Type') ?? '';
   if ((!byNick && !byId) || !contentType.includes('text/html')) return withVisitorCountry(assetRes, country);
@@ -241,8 +259,11 @@ export async function handleProfilePage(
   const canonicalSeg = row.nickname ?? (seg as string);
   const metaRow: ProfileMetaRow = { nickname: displayName, bio: row.bio, role: row.role, company: row.company };
 
-  const title = `${displayName} · Open Code War`;
-  const desc = buildOgDescription(metaRow);
+  // 공유 링크: 전체 top-3 만 순위를 앞세운다(카드 메달과 동일 규칙, 4위↓는 기존 문구).
+  const rank = await rankPromise;
+  const topRank = rank && rank <= 3 ? rank : null;
+  const title = topRank ? `${displayName} · #${topRank} on Open Code War` : `${displayName} · Open Code War`;
+  const desc = buildOgDescription(metaRow, topRank);
   const pageUrl = profileUrl(canonicalSeg);
   // 유저별 OG 이미지(public_id 기준). public_id 가 없으면(구 데이터) 공통 og.png 유지.
   const publicId = byId ? (seg as string) : row.public_id;
