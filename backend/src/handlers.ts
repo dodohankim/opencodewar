@@ -567,7 +567,7 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   // D1 은 쿼리마다 네트워크 왕복(실측 ~150-200ms)이므로 프로필·이메일·이벤트·일별 집계를
   // batch 하나(단일 왕복)로 묶는다. 2~4번째 쿼리는 user_id 를 서브쿼리로 재조회(인덱스 조회라 비용 무시 가능).
   const sub = `(SELECT user_id FROM users WHERE ${where})`;
-  const [userRes, acctRes, eventRes, statRes] = await env.DB.batch([
+  const [userRes, acctRes, eventRes, statRes, rankRes] = await env.DB.batch([
     env.DB.prepare(
       `SELECT user_id, public_id, nickname, bio, role, company, links, projects, country, city, timezone, created_at
          FROM users WHERE ${where}`,
@@ -579,6 +579,20 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     ),
     env.DB.prepare(
       `SELECT day, SUM(prompts) AS prompts, SUM(chars) AS chars FROM daily_stats WHERE user_id = ${sub} GROUP BY day`,
+    ).bind(bind),
+    // 전체·국가 순위(전 기간 누적 prompts 기준, 리더보드 total 탭과 동일 개념).
+    // tot = 유저별 전 기간 prompts 합. 규모 커지면 리더보드 스냅샷 재사용 고려(지금은 라이브 집계).
+    env.DB.prepare(
+      `WITH tot AS (SELECT s.user_id AS uid, SUM(s.prompts) AS p FROM daily_stats s GROUP BY s.user_id),
+            me AS (SELECT t.p AS p, u.country AS c FROM tot t JOIN users u ON u.user_id = t.uid WHERE u.${where})
+       SELECT
+         (SELECT COUNT(*) FROM me) AS hasme,
+         (SELECT c FROM me) AS mecountry,
+         (SELECT COUNT(*) FROM tot) AS gtotal,
+         (SELECT COUNT(*) + 1 FROM tot WHERE p > (SELECT p FROM me)) AS grank,
+         (SELECT COUNT(*) FROM tot t JOIN users u ON u.user_id = t.uid WHERE u.country = (SELECT c FROM me)) AS ctotal,
+         (SELECT COUNT(*) + 1 FROM tot t JOIN users u ON u.user_id = t.uid
+            WHERE u.country = (SELECT c FROM me) AND t.p > (SELECT p FROM me)) AS crank`,
     ).bind(bind),
   ]);
 
@@ -655,6 +669,17 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   // current(오늘/어제까지 자정 유예) + longest(역대 최장).
   const streakInfo = computeStreak(dayStats, now);
 
+  // 전체·국가 순위(위 batch 5번째). hasme=0(활동 없음)이면 순위 없음(null).
+  const rankRow = rankRes.results[0] as
+    | { hasme: number; mecountry: string | null; gtotal: number; grank: number; ctotal: number; crank: number }
+    | undefined;
+  const hasMe = rankRow ? Number(rankRow.hasme) > 0 : false;
+  const rank = hasMe ? Number(rankRow!.grank) || null : null;
+  const rankTotal = rankRow ? Number(rankRow.gtotal) || 0 : 0;
+  const hasCountryRank = hasMe && rankRow!.mecountry != null;
+  const countryRank = hasCountryRank ? Number(rankRow!.crank) || null : null;
+  const countryTotal = hasCountryRank ? Number(rankRow!.ctotal) || 0 : 0;
+
   return json({
     // 익명 유저는 저장된 닉네임이 없으므로 userId 파생 자동 닉네임으로 표시한다.
     nickname: displayNickname(user.nickname, user.user_id),
@@ -679,6 +704,11 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     streak: streakInfo.current, // 현재 연속 "친 날"(공용 UTC, §17). 웹·OG 카드가 재활용
     streakLongest: streakInfo.longest, // 역대 최장 연속
     streakSince: streakInfo.since, // 현재 연속 시작 UTC 날짜 'YYYY-MM-DD' | null
+    // 전체·국가 순위(전 기간 누적 prompts). 활동 없으면 null. 웹 프로필 헤더 '전체 순위' 표시용.
+    rank,
+    rankTotal,
+    countryRank,
+    countryTotal,
   });
 }
 
