@@ -92,6 +92,8 @@
     --ok:#4F8258; --err:#B0553F;
     /* 에이전트별 차트 색 (claude-code 는 기본 막대색 --fg 사용) */
     --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    /* 픽셀 병정 공통색 — 라이트/다크 동일 */
+    --skin:#E8C39E; --eye:#232320;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
     color-scheme: light;
   }
@@ -136,6 +138,93 @@
   .status b { color:var(--fg); font-weight:600; }
   .dotlive { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
   .dotlive.off { background:var(--err); }
+
+  /* ───────── pixel soldiers — 히어로 전장 · 톱3 퍼레이드 · 랭크 병정 · 보초 ───────── */
+  .sprite { display:block; }
+  .px-s { fill:var(--skin); }
+  .px-e { fill:var(--eye); }
+  .px-r { fill:var(--fg); }
+  .army-claude   .px-u, .army-claude   .px-f { fill:var(--fg); }
+  .army-codex    .px-u, .army-codex    .px-f { fill:var(--ag-codex); }
+  .army-opencode .px-u, .army-opencode .px-f { fill:var(--ag-opencode); }
+  .army-pi       .px-u, .army-pi       .px-f { fill:var(--ag-pi); }
+  .flip .sprite { transform:scaleX(-1); }
+
+  /* 히어로 전장: 후방 타이퍼(입력) → 전열 사격(트레이서) → +1 */
+  .battlefield { position:relative; height:74px; margin:8px 0 12px;
+    border-bottom:2px dotted var(--line); overflow:hidden; }
+  .soldier { position:absolute; bottom:2px; width:56px; height:56px; }
+  .soldier.p1 { left:2px; } .soldier.p2 { left:52px; } .soldier.p3 { left:100px; }
+  .soldier.flip.p1 { left:auto; right:2px; }
+  .soldier.flip.p2 { left:auto; right:52px; }
+  .soldier.flip.p3 { left:auto; right:100px; }
+  .soldier .flash { position:absolute; width:6px; height:6px; background:var(--fg); opacity:0;
+    right:-6px; top:calc(43.75% - 1px); animation:flash 1.15s steps(1) infinite; }
+  .soldier.flip .flash { right:auto; left:-6px; }
+  .soldier.kneel .flash { top:calc(62.5% - 2px); }
+  @keyframes flash { 0%,7% { opacity:1; } 8%,100% { opacity:0; } }
+  .soldier .f { position:absolute; inset:0; }
+  .soldier .f2 { opacity:0; }
+  .soldier.typer .f1 { animation:gait1 .34s linear infinite; }
+  .soldier.typer .f2 { animation:gait2 .34s linear infinite; }
+  .tdots { position:absolute; top:-3px; left:13px; display:flex; gap:3px; }
+  .tdots b { width:4px; height:4px; background:var(--faint); opacity:.25; animation:tdot 1.15s steps(1) infinite; }
+  .tdots b:nth-child(2) { animation-delay:.22s; }
+  .tdots b:nth-child(3) { animation-delay:.44s; }
+  @keyframes tdot { 0%,24% { opacity:1; } 25%,100% { opacity:.25; } }
+  .tracer { position:absolute; width:5px; height:3px; opacity:0; }
+  .tracer.t-r { animation:traceR 1.15s steps(18) infinite; }
+  .tracer.t-l { animation:traceL 1.15s steps(18) infinite; }
+  @keyframes traceR { 0% { left:13%; opacity:1; } 55% { left:84%; opacity:1; } 56%,100% { left:84%; opacity:0; } }
+  @keyframes traceL { 0% { left:84%; opacity:1; } 55% { left:13%; opacity:1; } 56%,100% { left:13%; opacity:0; } }
+  .hit { position:absolute; font-size:10px; color:var(--faint); opacity:0; animation:hit 3.4s steps(6) infinite; }
+  @keyframes hit { 0%,54% { opacity:0; transform:translateY(0); }
+    56% { opacity:1; transform:translateY(0); } 70% { opacity:1; transform:translateY(-7px); }
+    82%,100% { opacity:0; transform:translateY(-10px); } }
+  .debris { position:absolute; bottom:2px; width:3px; height:3px; background:var(--line); }
+  @media (max-width:560px) {
+    .soldier.typer { display:none; }
+    .soldier.p2 { left:2px; } .soldier.flip.p2 { right:2px; }
+    .soldier.p3 { left:50px; } .soldier.flip.p3 { right:50px; }
+  }
+
+  /* 톱3 우승 퍼레이드: 세로 소총 포지션이 그대로 깃대가 된다 */
+  .marchbox { padding:0; height:88px; }
+  .march-clip { position:absolute; inset:0; overflow:hidden; border-radius:6px; }
+  /* --march-start 는 렌더 후 트랙 폭에 맞춰 JS가 갱신(긴 닉네임 pop-in 방지) */
+  .march-track { position:absolute; bottom:6px; left:var(--march-start,-560px); display:flex; align-items:flex-end; gap:18px;
+    animation:marchacross 24s linear infinite; }
+  @keyframes marchacross { from { left:var(--march-start,-560px); } to { left:105%; } }
+  .march-clip .ground { position:absolute; left:0; right:0; bottom:6px; border-bottom:2px dotted var(--line); }
+  .marcher { position:relative; width:44px; height:44px; }
+  .marcher .f, .bearer .f { position:absolute; left:0; bottom:0; width:44px; height:44px; }
+  .marcher .f2, .bearer .f2 { opacity:0; }
+  .marcher .f1, .bearer .f1 { animation:gait1 .52s linear infinite; }
+  .marcher .f2, .bearer .f2 { animation:gait2 .52s linear infinite; }
+  @keyframes gait1 { 0%,49.9% { opacity:1; } 50%,99.9% { opacity:0; } 100% { opacity:1; } }
+  @keyframes gait2 { 0%,49.9% { opacity:0; } 50%,99.9% { opacity:1; } 100% { opacity:0; } }
+  /* 깃발(y3–20)은 뒷사람 머리(y30~) 위 공중을 지나가므로 간격을 좁혀도 안 겹친다.
+     margin-left 는 깃발 폭에 맞춰 JS가 키운다(기본 20px). */
+  .bearer { position:relative; width:44px; height:74px; margin-left:20px;
+    display:block; color:inherit; text-decoration:none; cursor:pointer; }
+  /* 기수 클릭 → 유저 상세. 움직이는 표적은 못 맞추니 호버 시 퍼레이드 일시정지 */
+  .march-clip:hover .march-track,
+  .march-clip:hover .f1, .march-clip:hover .f2 { animation-play-state:paused; }
+  .bearer:hover .flag, .bearer:focus-visible .flag { text-decoration:underline; text-underline-offset:2px; }
+  .bearer:focus-visible { outline:2px solid var(--ok); outline-offset:2px; }
+  .bearer .pole { position:absolute; left:24px; top:4px; width:3px; height:26px; background:var(--fg); }
+  /* 깃발은 깃대 뒤(행진 반대 방향)로 나부낀다 — 제비꼬리 노치도 뒤쪽 끝에 */
+  .bearer .flag { position:absolute; right:17px; top:3px; height:17px; line-height:17px; padding:0 6px 0 11px;
+    font-size:10px; font-weight:700; letter-spacing:0.02em; white-space:nowrap; color:var(--bg);
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 6px 50%); }
+  .bearer.army-claude   .flag { background:var(--fg); }
+  .bearer.army-codex    .flag { background:var(--ag-codex); }
+  .bearer.army-opencode .flag { background:var(--ag-opencode); }
+  .bearer.army-pi       .flag { background:var(--ag-pi); }
+
+  /* 리더보드 톱3 랭크 병정 · 푸터 보초 */
+  .mini { display:inline-block; width:20px; height:20px; vertical-align:-5px; margin-right:6px; }
+  .sentry { display:inline-block; width:26px; height:26px; vertical-align:-8px; margin-right:2px; }
 
   .theme-toggle { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
   .theme-toggle:hover { color:var(--fg); }
@@ -304,7 +393,12 @@
   .pagefoot a:hover { color:var(--fg); }
   .pagefoot .dot { color:var(--faint); }
   @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} .ship{flex-wrap:wrap;} }
-  @media (prefers-reduced-motion:reduce){ .cursor{animation:none;} }
+  @media (prefers-reduced-motion:reduce){
+    .cursor,.flash,.tracer,.hit,.march-track,.marcher .f1,.marcher .f2,
+    .bearer .f1,.bearer .f2,.soldier.typer .f1,.soldier.typer .f2,.tdots b { animation:none !important; }
+    .tracer,.hit { display:none; }
+    .marcher .f2, .bearer .f2, .soldier.typer .f2 { opacity:0; }
+  }
 </style>
 <script defer src="https://analytics.stonkradar.io/k.js" data-site="kdf_9e315b52f3f2" data-track-params="user"></script>
 </head>
@@ -323,7 +417,7 @@
       <section class="box banner">
         <span class="legend">ocw · live</span>
         <h1 class="big">OPEN CODE WAR</h1>
-        <div class="rule" aria-hidden="true">════════════════════════════════════════════════════════════════</div>
+        <div class="battlefield" id="battlefield" aria-hidden="true"></div>
         <p data-i18n="tagline">The leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi.</p>
         <div class="status">
           <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">Connecting…</span></span>
@@ -331,6 +425,15 @@
           <span>region <b id="regionChip">KR</b></span>
           <span><span data-i18n="rank1">#1</span> <b id="champChip">–</b></span>
           <span id="updChip"></span>
+        </div>
+      </section>
+
+      <!-- 톱3 우승 퍼레이드 — 리더보드 응답이 오면 renderParade 가 채운다 -->
+      <section class="box marchbox" id="paradeBox" hidden>
+        <span class="legend">victory parade</span>
+        <div class="march-clip">
+          <div class="ground"></div>
+          <div class="march-track" id="marchTrack"></div>
         </div>
       </section>
 
@@ -465,6 +568,7 @@
   </div>
 
   <footer class="pagefoot">
+    <span class="sentry army-claude" id="sentrySlot" aria-hidden="true"></span>
     <a href="/privacy" data-i18n="privacy_link">Privacy</a>
     <span class="dot" aria-hidden="true">·</span>
     <a href="https://github.com/dodohankim/opencodewar" target="_blank" rel="noopener">GitHub</a>
@@ -668,6 +772,7 @@
     $('regionChip').textContent = champ && champ.country ? `${champ.country} ${flagOf(champ.country)}` : '–';
     // 경과시간 대신 집계 주기를 고정 표기 — 백엔드 cron(*/5)·SNAPSHOT_TTL_MS와 맞춘 값.
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} · ${t('every_5m')}` : '';
+    renderParade(rows);
 
     if (!rows.length) {
       $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('empty')}</div></td></tr>`;
@@ -688,9 +793,13 @@
       const nmCell = ref
         ? `<span class="nm link" data-nick="${escapeHtml(ref)}" role="button" tabindex="0">${nm}</span>`
         : `<span class="nm">${nm}</span>`;
+      // 톱3 랭크 병정: 1위는 기수, 2·3위는 병정 (순위 기반 군복색 — RANK_ARMY)
+      const mini = r.rank <= 3
+        ? `<span class="mini ${RANK_ARMY[r.rank]}" aria-hidden="true">${spriteSVG(r.rank === 1 ? 'flag' : 'march2')}</span>`
+        : '';
       return `<tr class="${isMe ? 'me' : ''}">
         <td><span class="${rankCls}">${r.rank}</span></td>
-        <td>${nmCell}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
+        <td>${mini}${nmCell}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
         <td class="num"><span class="pnum">${fmt(primary)}</span></td>
         <td class="num"><span class="snum">${fmt(second)}</span></td>
         <td><span class="bar">${bar(pct)}</span></td>
@@ -708,6 +817,213 @@
     if (typeof code !== 'string' || !/^[A-Za-z]{2}$/.test(code)) return '';
     const cc = code.toUpperCase();
     return String.fromCodePoint(cc.charCodeAt(0) + 0x1f1a5, cc.charCodeAt(1) + 0x1f1a5);
+  }
+
+  // ── 픽셀 병정: 16×16 ASCII 맵 → SVG. U=군복 H=헬멧 S=피부 E=눈 R=소총/깃대 B=군화 F=깃발 M=모니터 K=키보드 ──
+  const SPRITES = {
+    aim: [ // 서서 조준(우향)
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '.UUUUUUUSRRRRRRR',
+      '.U..UUUUSRR.....',
+      '.U..UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UU.UU.......',
+      '....UU.UU.......',
+      '....UU.UU.......',
+      '...BBB.BBB......',
+    ],
+    kneel: [ // 앉아쏴(우향)
+      '................',
+      '................',
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '.UUUUUUUSRRRRRRR',
+      '.U..UUUUSRR.....',
+      '....UUUU........',
+      '....UUUUUU......',
+      '....UU..UU......',
+      '....UU..UU......',
+      '...BBB..BBB.....',
+    ],
+    typer1: [ // 후방 오퍼레이터 — 손 올림
+      '................',
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '..UUUUUU...MM...',
+      '..UUUUUU...MM...',
+      '..UUUUUSS..MM...',
+      '..UUUUU....MM...',
+      '...UUU..KKKKK...',
+      '...UUUUUU.......',
+      '...UUUUUUB......',
+      '..BBBBBBBB......',
+    ],
+    typer2: [ // 후방 오퍼레이터 — 손 내림(타건)
+      '................',
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '..UUUUUU...MM...',
+      '..UUUUUU...MM...',
+      '..UUUUU....MM...',
+      '..UUUUUSS..MM...',
+      '...UUU..KKKKK...',
+      '...UUUUUU.......',
+      '...UUUUUUB......',
+      '..BBBBBBBB......',
+    ],
+    march1: [ // 행진 프레임1 — 다리 벌림
+      '.........R......',
+      '...HHHHHHR......',
+      '..HHHHHHHR......',
+      '..HHHHHHHR......',
+      '...SSSESSR......',
+      '...SSSSS.R......',
+      '..UUUUUUUR......',
+      '..UUUUUUSR......',
+      '..U.UUUU.R......',
+      '..U.UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '...UU..UU.......',
+      '..UU....UU......',
+      '.UU......UU.....',
+      'BBB......BBB....',
+    ],
+    march2: [ // 행진 프레임2 — 다리 모음
+      '.........R......',
+      '...HHHHHHR......',
+      '..HHHHHHHR......',
+      '..HHHHHHHR......',
+      '...SSSESSR......',
+      '...SSSSS.R......',
+      '..UUUUUUUR......',
+      '..UUUUUUSR......',
+      '..U.UUUU.R......',
+      '..U.UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UU.UU.......',
+      '....UU..UU......',
+      '...BBB..BBB.....',
+    ],
+    flag: [ // 기수(1위 뱃지용) — 깃발
+      '.........RFFFFFF',
+      '.........RFFFFFF',
+      '...HHHHHHRFFFFFF',
+      '..HHHHHHHRFFFF..',
+      '..HHHHHHHR......',
+      '...SSSESSR......',
+      '...SSSSS.R......',
+      '..UUUUUUSR......',
+      '..UUUUUUSR......',
+      '..U.UUUU.R......',
+      '....UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UU.UU.......',
+      '....UU.UU.......',
+      '...BBB.BBB......',
+    ],
+  };
+  const SPRITE_CLS = { H: 'u', U: 'u', S: 's', E: 'e', R: 'r', B: 'r', F: 'f', M: 'r', K: 'r' };
+
+  function spriteSVG(name) {
+    const map = SPRITES[name];
+    let rects = '';
+    for (let y = 0; y < map.length; y++) {
+      for (let x = 0; x < map[y].length; x++) {
+        const ch = map[y][x];
+        if (ch === '.') continue;
+        rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${SPRITE_CLS[ch]}"/>`;
+      }
+    }
+    return `<svg class="sprite" viewBox="0 0 16 16" width="100%" height="100%" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+
+  // 2프레임 걷기(행진·타건 공용). i 로 delay 를 엇갈리게.
+  const gaitFrames = (i) => `
+      <span class="f f1" style="animation-delay:${(i % 2) * -0.26}s">${spriteSVG('march1')}</span>
+      <span class="f f2" style="animation-delay:${(i % 2) * -0.26}s">${spriteSVG('march2')}</span>`;
+
+  // 히어로 전장(정적 연출) + 푸터 보초 — 최초 1회.
+  (function initSoldiers() {
+    const typer = `<span class="f f1">${spriteSVG('typer1')}</span><span class="f f2">${spriteSVG('typer2')}</span><i class="tdots"><b></b><b></b><b></b></i>`;
+    $('battlefield').innerHTML = `
+      <span class="soldier typer p1 army-codex">${typer}</span>
+      <span class="soldier p2 army-claude">${spriteSVG('aim')}<i class="flash"></i></span>
+      <span class="soldier kneel p3 army-codex">${spriteSVG('kneel')}<i class="flash" style="animation-delay:.45s"></i></span>
+      <span class="soldier typer p1 flip army-pi">${typer}</span>
+      <span class="soldier p2 flip army-opencode">${spriteSVG('aim')}<i class="flash" style="animation-delay:.7s"></i></span>
+      <span class="soldier kneel p3 flip army-pi">${spriteSVG('kneel')}<i class="flash" style="animation-delay:.2s"></i></span>
+      <div class="tracer t-r" style="top:40px; background:var(--fg);"></div>
+      <div class="tracer t-r" style="top:48px; background:var(--ag-codex); animation-delay:.45s"></div>
+      <div class="tracer t-l" style="top:41px; background:var(--ag-opencode); animation-delay:.7s"></div>
+      <div class="tracer t-l" style="top:49px; background:var(--ag-pi); animation-delay:.2s"></div>
+      <span class="hit" style="left:46%; top:26px;">+1</span>
+      <span class="hit" style="left:56%; top:31px; animation-delay:1.7s">+1</span>
+      <i class="debris" style="left:24%"></i><i class="debris" style="left:38%; width:5px;"></i>
+      <i class="debris" style="left:52%"></i><i class="debris" style="left:71%; width:5px;"></i><i class="debris" style="left:85%"></i>`;
+    $('sentrySlot').innerHTML = spriteSVG('march2');
+  })();
+
+  // 순위 → 군복색(에이전트 정보가 스냅샷에 없어 순위 기반 고정 배색).
+  const RANK_ARMY = { 1: 'army-claude', 2: 'army-codex', 3: 'army-pi' };
+
+  // ── 톱3 우승 퍼레이드: 현재 보드의 1·2·3위가 닉네임 깃발을 들고 행진 ──
+  let paradeKey = ''; // 같은 톱3면 재렌더하지 않는다(행진 애니메이션 리셋 방지)
+  function renderParade(rows) {
+    const top = (rows || []).slice(0, 3);
+    const box = $('paradeBox');
+    if (!top.length) { box.hidden = true; paradeKey = ''; return; }
+    const key = top.map((r) => `${r.rank}:${r.registered ? r.nickname : r.public_id}:${r.nickname || ''}`).join('|');
+    if (key === paradeKey) { box.hidden = false; return; }
+    paradeKey = key;
+    const bearer = (r, i) => {
+      const ref = r.registered ? r.nickname : r.public_id;
+      const nick = r.nickname || t('anon');
+      const disp = nick.length > 16 ? nick.slice(0, 15) + '…' : nick;
+      const inner = `<i class="pole"></i><i class="flag">#${r.rank} ${escapeHtml(disp)}</i>${gaitFrames(i)}`;
+      if (!ref) return `<span class="bearer ${RANK_ARMY[r.rank] || ''}">${inner}</span>`;
+      return `<a class="bearer ${RANK_ARMY[r.rank] || ''}" href="${escapeHtml(urlFor(ref))}" data-nick="${escapeHtml(ref)}" title="#${r.rank} ${escapeHtml(nick)}">${inner}</a>`;
+    };
+    const escort = (a, i) => `<span class="marcher ${a}" aria-hidden="true">${gaitFrames(i)}</span>`;
+    const track = $('marchTrack');
+    // 행진 방향(→) 기준 1위가 선두 — DOM 순서는 [후미 호위 3][3위][2위][1위][선두 호위].
+    track.innerHTML =
+      escort('army-pi', 0) + escort('army-opencode', 1) + escort('army-codex', 0) +
+      [...top].reverse().map(bearer).join('') + escort('army-opencode', 1);
+    box.hidden = false;
+    // 깃발 폭에 맞춰 유닛 간격·트랙 시작점을 동적 계산(긴 닉네임 겹침·pop-in 방지).
+    requestAnimationFrame(() => {
+      track.querySelectorAll('.bearer').forEach((b) => {
+        const f = b.querySelector('.flag');
+        b.style.marginLeft = Math.max(20, (f ? f.offsetWidth : 0) - 54) + 'px';
+      });
+      track.style.setProperty('--march-start', `-${track.scrollWidth + 80}px`);
+    });
   }
 
   // join·install 패널: 에이전트별 설치 명령 전환.
@@ -1297,9 +1613,9 @@
     renderUserChart();
   }
 
-  // 코더 이름 클릭 → 상세 (리더보드 행 + 챔피언 칩 모두 위임 처리)
+  // 코더 이름 클릭 → 상세 (리더보드 행 + 챔피언 칩 + 퍼레이드 기수 모두 위임 처리)
   document.addEventListener('click', (e) => {
-    const link = e.target.closest && e.target.closest('.nm.link');
+    const link = e.target.closest && e.target.closest('.nm.link, .bearer');
     if (link && link.dataset.nick) { e.preventDefault(); navigateUser(link.dataset.nick); }
   });
   document.addEventListener('keydown', (e) => {

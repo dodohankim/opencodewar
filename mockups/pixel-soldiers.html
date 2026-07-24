@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — pixel soldiers</title>
+<style>
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F;
+    --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    --skin:#E8C39E; --eye:#232320;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+      --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px; line-height:1.5;
+    padding:clamp(10px,3vw,30px) clamp(10px,3vw,30px) 90px; -webkit-font-smoothing:antialiased; }
+  .mocknote { max-width:920px; margin:0 auto 10px; font-size:11.5px; color:var(--faint); }
+  .term { max-width:920px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; margin-top:22px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .box > .tag { position:absolute; top:-0.7em; right:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--ok); }
+  .banner .big { font-size:clamp(22px,4.4vw,34px); font-weight:700; letter-spacing:0.04em; margin:0; }
+  .banner .rule { color:var(--faint); overflow:hidden; white-space:nowrap; margin:4px 0 10px; }
+  .banner p.tagline { margin:0; color:var(--dim); font-size:13px; }
+  .status { margin-top:14px; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
+  .status b { color:var(--fg); font-weight:600; }
+  .dotlive { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
+
+  /* ───────────────── pixel sprites ───────────────── */
+  .sprite { display:block; }
+  .px-s { fill:var(--skin); }
+  .px-e { fill:var(--eye); }
+  .px-r { fill:var(--fg); }
+  .army-claude   .px-u, .army-claude   .px-f { fill:var(--fg); }
+  .army-codex    .px-u, .army-codex    .px-f { fill:var(--ag-codex); }
+  .army-opencode .px-u, .army-opencode .px-f { fill:var(--ag-opencode); }
+  .army-pi       .px-u, .army-pi       .px-f { fill:var(--ag-pi); }
+  .flip .sprite { transform:scaleX(-1); }
+
+  /* ── 시안 A · 히어로 전장 ── */
+  body.opt-a .banner .rule { display:none; }
+  body:not(.opt-a) .battlefield { display:none; }
+  .battlefield { position:relative; height:74px; margin:8px 0 12px;
+    border-bottom:2px dotted var(--line); overflow:hidden; }
+  .soldier { position:absolute; bottom:2px; width:56px; height:56px; }
+  .soldier .flash { position:absolute; width:6px; height:6px; background:var(--fg); opacity:0;
+    top:calc(43.75% - 1px); animation:flash 1.15s steps(1) infinite; }
+  .soldier .flash { right:-6px; }
+  .soldier.flip .flash { right:auto; left:-6px; }
+  .soldier.kneel .flash { top:calc(62.5% - 2px); }
+  @keyframes flash { 0%,7% { opacity:1; } 8%,100% { opacity:0; } }
+  /* 후방 타이핑 오퍼레이터: 2프레임 손 애니메이션 + 머리 위 typing 인디케이터 */
+  .soldier .f { position:absolute; inset:0; }
+  .soldier .f2 { opacity:0; }
+  .soldier.typer .f1 { animation:gait1 .34s linear infinite; }
+  .soldier.typer .f2 { animation:gait2 .34s linear infinite; }
+  .tdots { position:absolute; top:-3px; left:13px; display:flex; gap:3px; }
+  .tdots b { width:4px; height:4px; background:var(--faint); opacity:.25; animation:tdot 1.15s steps(1) infinite; }
+  .tdots b:nth-child(2) { animation-delay:.22s; }
+  .tdots b:nth-child(3) { animation-delay:.44s; }
+  @keyframes tdot { 0%,24% { opacity:1; } 25%,100% { opacity:.25; } }
+  .tracer { position:absolute; width:5px; height:3px; opacity:0; }
+  .tracer.t-r { animation:traceR 1.15s steps(18) infinite; }
+  .tracer.t-l { animation:traceL 1.15s steps(18) infinite; }
+  @keyframes traceR { 0% { left:13%; opacity:1; } 55% { left:84%; opacity:1; } 56%,100% { left:84%; opacity:0; } }
+  @keyframes traceL { 0% { left:84%; opacity:1; } 55% { left:13%; opacity:1; } 56%,100% { left:13%; opacity:0; } }
+  .hit { position:absolute; font-size:10px; color:var(--faint); opacity:0; animation:hit 3.4s steps(6) infinite; }
+  @keyframes hit { 0%,54% { opacity:0; transform:translateY(0); }
+    56% { opacity:1; transform:translateY(0); } 70% { opacity:1; transform:translateY(-7px); }
+    82%,100% { opacity:0; transform:translateY(-10px); } }
+  .debris { position:absolute; bottom:2px; width:3px; height:3px; background:var(--line); }
+
+  /* ── 시안 B · 행진 대열 ── */
+  body:not(.opt-b) .marchbox { display:none; }
+  .marchbox { padding:0; height:88px; }
+  .march-clip { position:absolute; inset:0; overflow:hidden; border-radius:6px; }
+  .march-track { position:absolute; bottom:6px; left:-560px; display:flex; align-items:flex-end; gap:18px;
+    animation:marchacross 24s linear infinite; }
+  @keyframes marchacross { from { left:-560px; } to { left:105%; } }
+  .marcher { position:relative; width:44px; height:44px; }
+  .marcher .f, .bearer .f { position:absolute; left:0; bottom:0; width:44px; height:44px; }
+  .marcher .f2, .bearer .f2 { opacity:0; }
+  .marcher .f1, .bearer .f1 { animation:gait1 .52s linear infinite; }
+  .marcher .f2, .bearer .f2 { animation:gait2 .52s linear infinite; }
+  /* 톱3 기수: 행진 스프라이트의 세로 소총 포지션이 그대로 깃대가 된다 */
+  /* 깃발(y3–20)은 뒷사람 머리(y30~) 위 공중을 지나가므로 간격을 좁혀도 안 겹친다 */
+  .bearer { position:relative; width:44px; height:74px; margin-left:20px;
+    display:block; color:inherit; text-decoration:none; cursor:pointer; }
+  /* 기수 클릭 → 유저 상세. 움직이는 표적은 못 맞추니 호버 시 퍼레이드 일시정지 */
+  .march-clip:hover .march-track,
+  .march-clip:hover .f1, .march-clip:hover .f2 { animation-play-state:paused; }
+  .bearer:hover .flag, .bearer:focus-visible .flag { text-decoration:underline; text-underline-offset:2px; }
+  .bearer:focus-visible { outline:2px solid var(--ok); outline-offset:2px; }
+  .bearer .pole { position:absolute; left:24px; top:4px; width:3px; height:26px; background:var(--fg); }
+  /* 깃발은 깃대 뒤(행진 반대 방향)로 나부낀다 — 제비꼬리 노치도 뒤쪽 끝에 */
+  .bearer .flag { position:absolute; right:17px; top:3px; height:17px; line-height:17px; padding:0 6px 0 11px;
+    font-size:10px; font-weight:700; letter-spacing:0.02em; white-space:nowrap; color:var(--bg);
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 6px 50%); }
+  .bearer.army-claude   .flag { background:var(--fg); }
+  .bearer.army-codex    .flag { background:var(--ag-codex); }
+  .bearer.army-opencode .flag { background:var(--ag-opencode); }
+  .bearer.army-pi       .flag { background:var(--ag-pi); }
+  @keyframes gait1 { 0%,49.9% { opacity:1; } 50%,99.9% { opacity:0; } 100% { opacity:1; } }
+  @keyframes gait2 { 0%,49.9% { opacity:0; } 50%,99.9% { opacity:1; } 100% { opacity:0; } }
+  .march-clip .ground { position:absolute; left:0; right:0; bottom:6px; border-bottom:2px dotted var(--line); }
+
+  /* ── 시안 C · 랭크 병정 ── */
+  body:not(.opt-c) .mini { display:none; }
+  .mini { display:inline-block; width:20px; height:20px; vertical-align:-5px; margin-right:6px; }
+
+  /* ── 시안 D · 보초 ── */
+  body:not(.opt-d) .sentry { display:none; }
+  .sentry { display:inline-block; width:26px; height:26px; vertical-align:-8px; margin-right:2px; }
+
+  .theme-toggle { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
+  .theme-toggle:hover { color:var(--fg); }
+
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-top:22px; }
+  .sorts { display:inline-flex; gap:6px; }
+  .sort { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:6px 12px; border-radius:5px; cursor:default; white-space:nowrap; }
+  .sort[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+
+  .board-scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:640px; }
+  thead th { font-size:10.5px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); text-align:left; padding:6px 15px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th.num, td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tbody td { padding:7px 15px; font-size:13.5px; vertical-align:middle; }
+  tbody tr { border-bottom:1px dotted var(--line); }
+  tbody tr:last-child { border-bottom:0; }
+  tbody tr:hover { background:var(--hover); }
+  .rank { color:var(--dim); font-variant-numeric:tabular-nums; }
+  .rank.b { color:var(--fg); font-weight:700; }
+  .rank.one { background:var(--rev-bg); color:var(--rev-fg); padding:1px 6px; border-radius:3px; font-weight:700; }
+  .nm { color:var(--fg); }
+  .cc { color:var(--faint); font-size:12px; }
+  .pnum { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
+  .snum { color:var(--dim); font-variant-numeric:tabular-nums; }
+  .bar { letter-spacing:-1px; white-space:nowrap; }
+  .bar .on { color:var(--fg); }
+  .bar .off { color:var(--faint); }
+
+  .lower { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  ul.list { margin:0; padding:0; list-style:none; display:grid; gap:9px; }
+  ul.list li { display:flex; gap:10px; font-size:13px; color:var(--dim); }
+  ul.list .k { color:var(--faint); flex:none; }
+  ul.list b { color:var(--fg); font-weight:600; }
+  .install .cmd { font-family:var(--mono); font-size:12.5px; color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:5px; padding:6px 9px; margin-bottom:6px; word-break:break-all; }
+  .install p { font-size:12.5px; color:var(--dim); margin:8px 0 0; }
+
+  .pagefoot { max-width:920px; margin:14px auto 0; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px; font-size:11.5px; color:var(--faint); }
+  .pagefoot .dot { color:var(--faint); }
+
+  /* ── 시안 토글 패널 ── */
+  .mockpanel { position:fixed; right:14px; bottom:14px; z-index:20; background:var(--bg); border:1px solid var(--line);
+    border-radius:8px; padding:12px 14px 10px; font-size:12px; color:var(--dim); box-shadow:0 4px 18px rgba(0,0,0,0.12); }
+  .mockpanel .ttl { font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; color:var(--faint); margin-bottom:8px; }
+  .mockpanel label { display:flex; gap:7px; align-items:center; cursor:pointer; padding:2px 0; }
+  .mockpanel label:hover { color:var(--fg); }
+  .mockpanel .theme-toggle { margin-top:8px; width:100%; }
+
+  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} }
+  @media (prefers-reduced-motion:reduce){
+    .cursor,.flash,.tracer,.hit,.march-track,.marcher .f1,.marcher .f2,
+    .bearer .f1,.bearer .f2,.soldier.typer .f1,.soldier.typer .f2,.tdots b { animation:none !important; }
+    .tracer,.hit { display:none; }
+    .marcher .f2, .bearer .f2, .soldier.typer .f2 { opacity:0; }
+  }
+</style>
+</head>
+<body class="opt-a opt-b opt-c opt-d">
+
+  <p class="mocknote">mockup · pixel soldiers 시안 — 오른쪽 아래 패널에서 옵션(A–D)을 켜고 끄며 비교하세요. 실제 랜딩과 같은 토큰/레이아웃 위에 얹은 데모입니다.</p>
+
+  <div class="term">
+    <div class="titlebar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="name">ocw — open-code-war (mockup)</span>
+      <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
+    </div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor" aria-hidden="true"></span></div>
+
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <span class="tag">시안 A · 히어로 전장</span>
+        <h1 class="big">OPEN CODE WAR</h1>
+        <div class="rule" aria-hidden="true">════════════════════════════════════════════════════════════════</div>
+        <div class="battlefield" id="battlefield" aria-hidden="true"></div>
+        <p class="tagline">The leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi.</p>
+        <div class="status">
+          <span><span class="dotlive" aria-hidden="true"></span>Live</span>
+          <span>joined <b>128</b></span>
+          <span>region <b>KR 🇰🇷</b></span>
+          <span>#1 <b>dohan</b></span>
+          <span>Updated KST 21:40:05 · every 5m</span>
+        </div>
+      </section>
+
+      <section class="box marchbox">
+        <span class="legend">victory parade</span>
+        <span class="tag">시안 B · 톱3 퍼레이드</span>
+        <div class="march-clip">
+          <div class="ground"></div>
+          <div class="march-track" id="marchTrack"></div>
+        </div>
+      </section>
+
+      <div class="controls">
+        <div class="sorts">
+          <button class="sort" aria-pressed="true">prompts</button>
+          <button class="sort" aria-pressed="false">chars</button>
+        </div>
+      </div>
+
+      <section class="box">
+        <span class="legend">leaderboard · all · prompts</span>
+        <span class="tag">시안 C · 랭크 병정</span>
+        <div class="board-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>coder</th>
+                <th class="num">prompts</th>
+                <th class="num">chars</th>
+                <th>activity</th><th>cc</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="lower">
+        <section class="box">
+          <span class="legend">rules</span>
+          <ul class="list">
+            <li><span class="k">01</span><span><b>Input = a prompt submit.</b> +1 each Enter; characters counted too.</span></li>
+            <li><span class="k">02</span><span><b>No content collected.</b> Only the character count (a number) is sent.</span></li>
+            <li><span class="k">03</span><span><b>One all-time board.</b> Every prompt you've ever sent counts toward your rank.</span></li>
+          </ul>
+        </section>
+        <section class="box install">
+          <span class="legend">join · install</span>
+          <div class="cmd">/plugin marketplace add dodohankim/opencodewar</div>
+          <div class="cmd">/plugin install open-code-war@opencodewar</div>
+          <p>Then type prompts in Claude Code to start counting.</p>
+        </section>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="pagefoot">
+    <span class="sentry" id="sentry" aria-hidden="true"></span>
+    <span>Privacy</span>
+    <span class="dot" aria-hidden="true">·</span>
+    <span>GitHub</span>
+    <span class="dot" aria-hidden="true">·</span>
+    <span>no prompt content collected · open source <span id="sentryTag">— sentry on duty</span></span>
+  </footer>
+
+  <aside class="mockpanel" aria-label="시안 토글">
+    <div class="ttl">시안 토글</div>
+    <label><input type="checkbox" data-opt="a" checked /> A · 히어로 전장</label>
+    <label><input type="checkbox" data-opt="b" checked /> B · 톱3 퍼레이드</label>
+    <label><input type="checkbox" data-opt="c" checked /> C · 랭크 병정</label>
+    <label><input type="checkbox" data-opt="d" checked /> D · 보초</label>
+    <button class="theme-toggle" id="themeBtn2" type="button">◐ dark / light</button>
+  </aside>
+
+<script>
+  // ── 16×16 스프라이트 맵. U=군복 H=헬멧(=군복색) S=피부 E=눈 R=소총 B=군화 F=깃발 ──
+  const SPRITES = {
+    aim: [ // 서서 조준(우향)
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '.UUUUUUUSRRRRRRR',
+      '.U..UUUUSRR.....',
+      '.U..UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UU.UU.......',
+      '....UU.UU.......',
+      '....UU.UU.......',
+      '...BBB.BBB......',
+    ],
+    kneel: [ // 앉아쏴(우향)
+      '................',
+      '................',
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '.UUUUUUUSRRRRRRR',
+      '.U..UUUUSRR.....',
+      '....UUUU........',
+      '....UUUUUU......',
+      '....UU..UU......',
+      '....UU..UU......',
+      '...BBB..BBB.....',
+    ],
+    march1: [ // 행진 프레임1 — 다리 벌림
+      '.........R......',
+      '...HHHHHHR......',
+      '..HHHHHHHR......',
+      '..HHHHHHHR......',
+      '...SSSESSR......',
+      '...SSSSS.R......',
+      '..UUUUUUUR......',
+      '..UUUUUUSR......',
+      '..U.UUUU.R......',
+      '..U.UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '...UU..UU.......',
+      '..UU....UU......',
+      '.UU......UU.....',
+      'BBB......BBB....',
+    ],
+    march2: [ // 행진 프레임2 — 다리 모음
+      '.........R......',
+      '...HHHHHHR......',
+      '..HHHHHHHR......',
+      '..HHHHHHHR......',
+      '...SSSESSR......',
+      '...SSSSS.R......',
+      '..UUUUUUUR......',
+      '..UUUUUUSR......',
+      '..U.UUUU.R......',
+      '..U.UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UU.UU.......',
+      '....UU..UU......',
+      '...BBB..BBB.....',
+    ],
+    typer1: [ // 후방 오퍼레이터 — 손 올림
+      '................',
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '..UUUUUU...MM...',
+      '..UUUUUU...MM...',
+      '..UUUUUSS..MM...',
+      '..UUUUU....MM...',
+      '...UUU..KKKKK...',
+      '...UUUUUU.......',
+      '...UUUUUUB......',
+      '..BBBBBBBB......',
+    ],
+    typer2: [ // 후방 오퍼레이터 — 손 내림(타건)
+      '................',
+      '................',
+      '...HHHHHH.......',
+      '..HHHHHHHH......',
+      '..HHHHHHHH......',
+      '...SSSESS.......',
+      '...SSSSS........',
+      '..UUUUUU........',
+      '..UUUUUU...MM...',
+      '..UUUUUU...MM...',
+      '..UUUUU....MM...',
+      '..UUUUUSS..MM...',
+      '...UUU..KKKKK...',
+      '...UUUUUU.......',
+      '...UUUUUUB......',
+      '..BBBBBBBB......',
+    ],
+    flag: [ // 기수(1위) — 깃발
+      '.........RFFFFFF',
+      '.........RFFFFFF',
+      '...HHHHHHRFFFFFF',
+      '..HHHHHHHRFFFF..',
+      '..HHHHHHHR......',
+      '...SSSESSR......',
+      '...SSSSS.R......',
+      '..UUUUUUSR......',
+      '..UUUUUUSR......',
+      '..U.UUUU.R......',
+      '....UUUU........',
+      '....UUUU........',
+      '....UUUU........',
+      '....UU.UU.......',
+      '....UU.UU.......',
+      '...BBB.BBB......',
+    ],
+  };
+  const CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+
+  function spriteSVG(name, extra) {
+    const map = SPRITES[name];
+    let rects = '';
+    for (let y = 0; y < map.length; y++) {
+      for (let x = 0; x < map[y].length; x++) {
+        const ch = map[y][x];
+        if (ch === '.') continue;
+        rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${CLS[ch]}"/>`;
+      }
+    }
+    return `<svg class="sprite ${extra || ''}" viewBox="0 0 16 16" width="100%" height="100%" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+
+  // ── 시안 A · 히어로 전장 ──
+  const bf = document.getElementById('battlefield');
+  const typer = `<span class="f f1">${'PLACE1'}</span><span class="f f2">${'PLACE2'}</span><i class="tdots"><b></b><b></b><b></b></i>`
+    .replace('PLACE1', spriteSVG('typer1')).replace('PLACE2', spriteSVG('typer2'));
+  bf.innerHTML = `
+    <span class="soldier army-codex typer" style="left:2px;">${typer}</span>
+    <span class="soldier army-claude"  style="left:52px;"  >${spriteSVG('aim')}<i class="flash"></i></span>
+    <span class="soldier army-codex kneel" style="left:100px;" >${spriteSVG('kneel')}<i class="flash" style="animation-delay:.45s"></i></span>
+    <span class="soldier army-pi typer flip" style="right:2px;">${typer}</span>
+    <span class="soldier army-opencode flip" style="right:52px;" >${spriteSVG('aim')}<i class="flash" style="animation-delay:.7s"></i></span>
+    <span class="soldier army-pi kneel flip" style="right:100px;">${spriteSVG('kneel')}<i class="flash" style="animation-delay:.2s"></i></span>
+    <div class="tracer t-r" style="top:40px; background:var(--fg);"></div>
+    <div class="tracer t-r" style="top:48px; background:var(--ag-codex); animation-delay:.45s"></div>
+    <div class="tracer t-l" style="top:41px; background:var(--ag-opencode); animation-delay:.7s"></div>
+    <div class="tracer t-l" style="top:49px; background:var(--ag-pi); animation-delay:.2s"></div>
+    <span class="hit" style="left:46%; top:26px;">+1</span>
+    <span class="hit" style="left:56%; top:31px; animation-delay:1.7s">+1</span>
+    <i class="debris" style="left:24%"></i><i class="debris" style="left:38%; width:5px;"></i>
+    <i class="debris" style="left:52%"></i><i class="debris" style="left:71%; width:5px;"></i><i class="debris" style="left:85%"></i>
+  `;
+
+  // ── 시안 B · 톱3 우승 퍼레이드 ──
+  const gaitFrames = (i) => `
+      <span class="f f1" style="animation-delay:${(i % 2) * -0.26}s">${spriteSVG('march1')}</span>
+      <span class="f f2" style="animation-delay:${(i % 2) * -0.26}s">${spriteSVG('march2')}</span>`;
+  const TOP3 = [
+    { rank: 1, nick: 'dohan',       army: 'army-claude' },
+    { rank: 2, nick: 'kenzo',       army: 'army-codex'  },
+    { rank: 3, nick: 'mightyviksy', army: 'army-pi'     },
+  ];
+  // 행진 방향(→) 기준 1위가 선두 — DOM 순서는 [후미 호위][3위][2위][1위][선두 호위].
+  // 기수 클릭 → 유저 상세(실서비스에선 리더보드 행처럼 /u/<nick> pushState 라우팅).
+  const bearers = [...TOP3].reverse().map((t, i) => `
+    <a class="bearer ${t.army}" href="https://opencodewar.dev/u/${encodeURIComponent(t.nick)}"
+       target="_blank" rel="noopener" title="#${t.rank} ${t.nick} — view profile">
+      <i class="pole"></i><i class="flag">#${t.rank} ${t.nick}</i>
+      ${gaitFrames(i)}
+    </a>`).join('');
+  const escort = (a, i) => `<span class="marcher ${a}">${gaitFrames(i)}</span>`;
+  document.getElementById('marchTrack').innerHTML =
+    escort('army-pi', 0) + escort('army-opencode', 1) + escort('army-codex', 0) +
+    bearers + escort('army-opencode', 1);
+
+  // ── 시안 C · 랭크 병정 (상위 3명만) ──
+  const ROWS = [
+    { r: 1, nick: 'dohan',      army: 'army-claude',   sprite: 'flag',   p: 3412, c: 128400, bar: 12, cc: 'KR 🇰🇷' },
+    { r: 2, nick: 'kenzo',      army: 'army-codex',    sprite: 'march2', p: 2988, c: 101210, bar: 10, cc: 'JP 🇯🇵' },
+    { r: 3, nick: 'mightyviksy',army: 'army-pi',       sprite: 'march2', p: 2410, c:  88012, bar: 8,  cc: 'US 🇺🇸' },
+    { r: 4, nick: 'aiden',      p: 1821, c: 64450, bar: 6, cc: 'KR 🇰🇷' },
+    { r: 5, nick: 'norio',      p: 1544, c: 51230, bar: 5, cc: 'DE 🇩🇪' },
+    { r: 6, nick: '(anon)',     p: 1102, c: 40018, bar: 4, cc: 'FR 🇫🇷' },
+    { r: 7, nick: 'wonu',       p:  931, c: 33540, bar: 3, cc: 'KR 🇰🇷' },
+    { r: 8, nick: '(anon)',     p:  702, c: 21077, bar: 2, cc: 'CA 🇨🇦' },
+  ];
+  const fmt = (n) => n.toLocaleString('en-US');
+  const bar = (on) => `<span class="on">${'█'.repeat(on)}</span><span class="off">${'░'.repeat(12 - on)}</span>`;
+  document.getElementById('tbody').innerHTML = ROWS.map((r) => {
+    const rankCls = r.r === 1 ? 'rank one' : (r.r <= 3 ? 'rank b' : 'rank');
+    const mini = r.sprite ? `<span class="mini ${r.army}">${spriteSVG(r.sprite)}</span>` : '';
+    return `<tr>
+      <td><span class="${rankCls}">${r.r}</span></td>
+      <td>${mini}<span class="nm">${r.nick}</span></td>
+      <td class="num"><span class="pnum">${fmt(r.p)}</span></td>
+      <td class="num"><span class="snum">${fmt(r.c)}</span></td>
+      <td><span class="bar">${bar(r.bar)}</span></td>
+      <td><span class="cc">${r.cc}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── 시안 D · 보초 ──
+  document.getElementById('sentry').innerHTML = spriteSVG('march2');
+  document.getElementById('sentry').classList.add('army-claude');
+
+  // ── 토글 패널 ──
+  document.querySelectorAll('.mockpanel input[data-opt]').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      document.body.classList.toggle('opt-' + cb.dataset.opt, cb.checked);
+      if (cb.dataset.opt === 'd') document.getElementById('sentryTag').hidden = !cb.checked;
+    });
+  });
+  const flipTheme = () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+  };
+  document.getElementById('themeBtn').addEventListener('click', flipTheme);
+  document.getElementById('themeBtn2').addEventListener('click', flipTheme);
+</script>
+</body>
+</html>
