@@ -105,7 +105,10 @@ export function ogImageKey(publicId: string): string {
   return `og:img:${publicId}`;
 }
 export function ogImageUrl(publicId: string): string {
-  return `${SITE_ORIGIN}${OG_IMAGE_PREFIX}${publicId}.png`;
+  // ?d=YYYYMMDD — 카톡·X 등 플랫폼의 이미지 캐시를 일 단위로 우회한다(데일리 카드 컨셉 유지).
+  // /og/ 라우팅·KV 캐시는 pathname 만 보므로 서버 동작엔 영향 없다.
+  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  return `${SITE_ORIGIN}${OG_IMAGE_PREFIX}${publicId}.png?d=${d}`;
 }
 /** '/og/<public_id>.png' 에서 public_id 를 꺼낸다. 형식이 아니면 null. */
 export function ogImageIdFromPath(pathname: string): string | null {
