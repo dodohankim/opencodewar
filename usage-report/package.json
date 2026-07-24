@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev --test-scheduled",
+    "send": "sh send-now.sh",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
