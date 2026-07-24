@@ -15,6 +15,7 @@
   },
   // secrets(wrangler secret put): CF_ANALYTICS_TOKEN(Analytics·KV·D1 Read), DISCORD_WEBHOOK_URL
   "vars": {
-    "ACCOUNT_ID": "492eb95b0233bc6c035d6dafd5c7a616"
+    "ACCOUNT_ID": "492eb95b0233bc6c035d6dafd5c7a616",
+    "OCW_DB_ID": "340fb3b8-5a64-4fd5-8d11-8cd316ad8178"
   }
 }

@@ -4,6 +4,7 @@
 
 interface Env {
   ACCOUNT_ID: string;
+  OCW_DB_ID: string; // ocw-db (D1) — 유저 리포트용
   CF_ANALYTICS_TOKEN: string; // secret: Account Analytics Read + KV/D1 Read
   DISCORD_WEBHOOK_URL: string; // secret
 }
@@ -162,6 +163,53 @@ async function buildReport(env: Env) {
   return { today, sections, byScript, workersErrors };
 }
 
+// ocw-db 를 REST 로 읽기 쿼리(바인딩 대신 REST — 로컬 --test-scheduled 에서도 실DB 그대로 조회됨)
+async function d1Query(env: Env, sql: string, params: unknown[] = []): Promise<any> {
+  const res = await fetch(
+    `${API}/accounts/${env.ACCOUNT_ID}/d1/database/${env.OCW_DB_ID}/query`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.CF_ANALYTICS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sql, params }),
+    },
+  );
+  const body: any = await res.json();
+  if (!body.success) throw new Error(`D1 쿼리 실패: ${JSON.stringify(body.errors)}`);
+  return body.result[0].results;
+}
+
+// OCW 유저 리포트 embed — 오늘(UTC) 가입·활성 유저. daily_stats.day 는 UTC 일자.
+async function buildUserEmbed(env: Env) {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 864e5).toISOString().slice(0, 10);
+  const todayStartMs = Date.parse(`${today}T00:00:00Z`);
+  const yesterdayStartMs = Date.parse(`${yesterday}T00:00:00Z`);
+
+  const [row] = await d1Query(
+    env,
+    `SELECT
+      (SELECT COUNT(*) FROM users WHERE created_at >= ?1) AS signups_today,
+      (SELECT COUNT(*) FROM users WHERE created_at >= ?2 AND created_at < ?1) AS signups_yesterday,
+      (SELECT COUNT(*) FROM users) AS total_users,
+      (SELECT COUNT(DISTINCT user_id) FROM daily_stats WHERE day = ?3) AS active_today,
+      (SELECT COUNT(DISTINCT user_id) FROM daily_stats WHERE day = ?4) AS active_yesterday,
+      (SELECT COALESCE(SUM(prompts), 0) FROM daily_stats WHERE day = ?3) AS prompts_today,
+      (SELECT COALESCE(SUM(chars), 0) FROM daily_stats WHERE day = ?3) AS chars_today`,
+    [todayStartMs, yesterdayStartMs, today, yesterday],
+  );
+
+  return {
+    title: `OCW 유저 리포트 — ${today} (UTC)`,
+    description: [
+      `👥 오늘 가입 **${row.signups_today}명** (누적 ${row.total_users}명)`,
+      `⚡ 오늘 활성 **${row.active_today}명** · 프롬프트 ${compact(row.prompts_today)}건 · ${compact(row.chars_today)}자`,
+      `어제: 가입 ${row.signups_yesterday}명 · 활성 ${row.active_yesterday}명`,
+    ].join('\n'),
+    color: 0x5865f2,
+  };
+}
+
 async function sendDiscord(env: Env, payload: unknown) {
   const res = await fetch(env.DISCORD_WEBHOOK_URL, {
     method: 'POST',
@@ -197,6 +245,12 @@ async function report(env: Env) {
     : `✓ 전 항목 여유 — 최고 사용률: ${top.section} ${top.label} ${top.pct.toFixed(1)}%`;
   const errNote = workersErrors ? `\n🔥 Worker 오류 ${workersErrors}건 발생` : '';
 
+  // 유저 리포트는 실패해도 사용량 리포트 발송을 막지 않는다.
+  const userEmbed = await buildUserEmbed(env).catch((err) => {
+    console.error('user report failed:', err);
+    return { title: 'OCW 유저 리포트', description: `⚠ 조회 실패: ${err instanceof Error ? err.message : String(err)}`, color: 0xed4245 };
+  });
+
   await sendDiscord(env, {
     username: 'CF Usage',
     embeds: [
@@ -207,6 +261,7 @@ async function report(env: Env) {
         footer: { text: '일일 한도 리셋 00:00 UTC (KST 09:00)' },
         timestamp: new Date().toISOString(),
       },
+      userEmbed,
     ],
   });
 }
