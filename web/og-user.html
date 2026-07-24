@@ -60,9 +60,11 @@
   .streakline b{color:var(--fg);}
   .streakline .since{color:var(--faint);}
 
-  .lifetime{margin-top:auto;border-top:2px dotted var(--line);padding-top:16px;font-size:20px;color:var(--dim);}
+  .lifetime{margin-top:auto;border-top:2px dotted var(--line);padding-top:16px;font-size:20px;color:var(--dim);
+    display:flex;align-items:baseline;justify-content:space-between;gap:20px;}
   .lifetime b{color:var(--fg);}
   .lifetime .k{color:var(--faint);letter-spacing:.08em;font-size:17px;margin-right:8px;}
+  .lifetime .when{color:var(--faint);letter-spacing:.04em;white-space:nowrap;}
 
   .foot{margin-top:20px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:19px;}
   .foot .live{display:flex;align-items:center;gap:10px;}
@@ -193,7 +195,8 @@
     while (ri + 1 < RANKS.length && d.allTimePrompts >= RANKS[ri + 1].min) ri++;
     var rk = RANKS[ri];
     var row = document.getElementById('rankrow');
-    row.innerHTML = '<span>' + insigniaSVG(rk.ins[0], rk.ins[1], 4.4) + '</span>' + rk.ko + ' <span class="en">' + rk.en + '</span>';
+    // 계급은 계급장(인시그니아)만 표시 — 텍스트 라벨(ko/en) 제외
+    row.innerHTML = '<span>' + insigniaSVG(rk.ins[0], rk.ins[1], 6) + '</span>';
     row.style.display = 'inline-flex';
   }
 
@@ -240,9 +243,12 @@
   // 누적(전 기간)
   if (typeof d.allTimePrompts === 'number') {
     var lt = document.getElementById('lifetime');
-    lt.innerHTML = '<span class="k">ALL-TIME</span><b>' + comma(d.allTimePrompts) + '</b> prompts' +
-      (typeof d.allTimeChars === 'number' ? ' · <b>' + compact(d.allTimeChars) + '</b> chars' : '');
-    lt.style.display = 'block';
+    lt.innerHTML =
+      '<span class="stats"><span class="k">ALL-TIME</span><b>' + comma(d.allTimePrompts) + '</b> prompts' +
+      (typeof d.allTimeChars === 'number' ? ' · <b>' + compact(d.allTimeChars) + '</b> chars' : '') +
+      '</span>' +
+      (d.date ? '<span class="when">' + d.date + (d.dow ? ' ' + d.dow : '') + '</span>' : '');
+    lt.style.display = 'flex';
   }
 </script>
 </body>

@@ -344,6 +344,8 @@
   .cardpop .cp-frame { position:relative; aspect-ratio:1200/630; border-radius:5px; border:1px solid var(--line); overflow:hidden; background:var(--backdrop); }
   .cardpop .cp-frame img { width:100%; height:100%; object-fit:cover; display:block; }
   .cardpop .cp-frame .cp-load { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--faint); }
+  /* [hidden] 이 display:flex 에 눌리지 않도록 명시적으로 숨김(로드 완료 후 워터마크처럼 남는 것 방지). */
+  .cardpop .cp-frame .cp-load[hidden] { display:none; }
   .cardpop .cp-btns { display:flex; gap:8px; margin-top:12px; }
   .cardpop .cp-btns button { flex:1; font:inherit; font-size:12.5px; border:1px solid var(--line); background:var(--bg);
     color:var(--fg); padding:8px 0; border-radius:5px; cursor:pointer; }
@@ -1888,7 +1890,9 @@
         const cls = v === 0 ? 'zero' : i === peakIdx ? 'peak' : '';
         const segs = barSegs(multi, v, hh.agents, agents, metric);
         const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(hh.agents || {}))}"` : '';
-        return `<div class="col ${cls}" data-lbl="${hhLabel(i)}" data-p="${hh.prompts}" data-c="${hh.chars}"${ag}><div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        // 30일 뷰와 동일하게 — 피크 시각 막대 위에 픽셀 깃발
+        const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
+        return `<div class="col ${cls}" data-lbl="${hhLabel(i)}" data-p="${hh.prompts}" data-c="${hh.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
