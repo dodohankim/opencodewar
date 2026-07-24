@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildOgDescription, MAX_OG_DESC, nicknameFromPath, profileUrl, type ProfileMetaRow } from '../src/og';
+import {
+  buildOgDescription,
+  MAX_OG_DESC,
+  nicknameFromPath,
+  profileUrl,
+  visitorCountry,
+  type ProfileMetaRow,
+} from '../src/og';
 
 describe('nicknameFromPath', () => {
   it('/u/<nickname> 에서 닉네임을 꺼낸다', () => {
@@ -68,5 +75,27 @@ describe('buildOgDescription', () => {
     const desc = buildOgDescription(row({ bio: 'x'.repeat(200) }));
     expect(desc.length).toBeLessThanOrEqual(MAX_OG_DESC);
     expect(desc.endsWith('…')).toBe(true);
+  });
+});
+
+describe('visitorCountry', () => {
+  const req = (country: unknown) => ({ cf: country === undefined ? undefined : { country } }) as unknown as Request;
+
+  it('Cloudflare 가 준 국가코드를 그대로 돌려준다', () => {
+    expect(visitorCountry(req('KR'))).toBe('KR');
+    expect(visitorCountry(req('US'))).toBe('US');
+  });
+
+  it('국가를 모르는 값(XX·T1)과 cf 없음(로컬)은 null', () => {
+    expect(visitorCountry(req('XX'))).toBeNull();
+    expect(visitorCountry(req('T1'))).toBeNull();
+    expect(visitorCountry(req(undefined))).toBeNull();
+    expect(visitorCountry(req(null))).toBeNull();
+  });
+
+  it('형식이 어긋난 값은 null', () => {
+    expect(visitorCountry(req('kr'))).toBeNull(); // 소문자 = CF 형식 아님
+    expect(visitorCountry(req('KOR'))).toBeNull();
+    expect(visitorCountry(req(''))).toBeNull();
   });
 });

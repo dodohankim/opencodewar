@@ -10,6 +10,39 @@
 <meta name="robots" content="index, follow" />
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F4" />
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0E0D" />
+<!-- 방문자 국가(ISO alpha-2). Worker 가 서빙하며 Cloudflare 의 CF-IPCountry 값으로 채운다. -->
+<meta name="ocw-country" content="" />
+<script>
+  // 기본 언어 결정(index.html 과 동일 규칙): ?lang= → 직접 선택 → 접속 국가(KR) → 브라우저 언어 → en.
+  window.OCW_LANG = (function () {
+    var norm = function (v) {
+      v = String(v || '').trim().toLowerCase();
+      if (v === 'ko' || v === 'kr' || v.indexOf('ko-') === 0) return 'ko';
+      if (v === 'en' || v.indexOf('en-') === 0) return 'en';
+      return null;
+    };
+    try {
+      var q = norm(new URLSearchParams(location.search).get('lang'));
+      if (q) {
+        localStorage.setItem('ocw_lang', q);
+        localStorage.setItem('ocw_lang_manual', '1');
+        return q;
+      }
+      if (localStorage.getItem('ocw_lang_manual') === '1') {
+        var saved = norm(localStorage.getItem('ocw_lang'));
+        if (saved) return saved;
+      }
+      var meta = document.querySelector('meta[name="ocw-country"]');
+      var cc = ((meta && meta.content) || '').toUpperCase();
+      if (cc) return cc === 'KR' ? 'ko' : 'en';
+      var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+      for (var i = 0; i < langs.length; i++) if (norm(langs[i]) === 'ko') return 'ko';
+      return 'en';
+    } catch (e) {
+      return 'en';
+    }
+  })();
+</script>
 <style>
   :root {
     --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
@@ -223,7 +256,8 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
-  let LANG = localStorage.getItem('ocw_lang') || 'en';
+  // 언어는 <head> 의 판정 스크립트가 정한다(?lang= → 직접 선택 → 접속 국가 → 브라우저 언어).
+  let LANG = window.OCW_LANG === 'ko' ? 'ko' : 'en';
 
   function applyLang() {
     const ko = LANG === 'ko';
@@ -234,9 +268,21 @@
     $('foot').textContent = ko
       ? 'Open Code War · opencodewar.dev · 오픈소스 · 프라이버시 우선'
       : 'Open Code War · opencodewar.dev · open source, privacy-first';
-    localStorage.setItem('ocw_lang', LANG);
   }
-  $('langBtn').addEventListener('click', () => { LANG = LANG === 'en' ? 'ko' : 'en'; applyLang(); });
+
+  // 직접 고른 언어만 저장하고(자동 판정값 저장 금지) 주소의 ?lang= 도 함께 맞춘다.
+  function setLang(lang) {
+    LANG = lang;
+    try {
+      localStorage.setItem('ocw_lang', lang);
+      localStorage.setItem('ocw_lang_manual', '1');
+    } catch (e) {}
+    const u = new URL(location.href);
+    u.searchParams.set('lang', lang);
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    applyLang();
+  }
+  $('langBtn').addEventListener('click', () => setLang(LANG === 'en' ? 'ko' : 'en'));
 
   $('themeBtn').addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-theme');

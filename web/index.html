@@ -11,6 +11,45 @@
   // 저장된 수동 테마를 첫 페인트 전에 적용해 깜빡임(FOUC)을 막는다.
   try { var _t = localStorage.getItem('ocw_theme'); if (_t === 'dark' || _t === 'light') document.documentElement.setAttribute('data-theme', _t); } catch (e) {}
 </script>
+<!-- 방문자 국가(ISO alpha-2). Worker 가 서빙하며 Cloudflare 의 CF-IPCountry 값으로 채운다.
+     정적으로 열면(로컬 파일 등) 빈 값 → 아래 스크립트가 브라우저 언어로 판단한다. -->
+<meta name="ocw-country" content="" />
+<script>
+  // 기본 언어 결정(첫 페인트 전). 우선순위:
+  //   1) ?lang=ko|kr|en  — 명시 지정. 저장해서 다음 방문에도 유지한다.
+  //   2) 사용자가 직접 고른 값(langBtn 토글)
+  //   3) 접속 국가 — KR 이면 한국어, 그 외 국가는 영어
+  //   4) 국가를 모를 때만 브라우저 언어(ko-* → 한국어)
+  window.OCW_LANG = (function () {
+    var norm = function (v) {
+      v = String(v || '').trim().toLowerCase();
+      if (v === 'ko' || v === 'kr' || v.indexOf('ko-') === 0) return 'ko';
+      if (v === 'en' || v.indexOf('en-') === 0) return 'en';
+      return null;
+    };
+    try {
+      var q = norm(new URLSearchParams(location.search).get('lang'));
+      if (q) {
+        localStorage.setItem('ocw_lang', q);
+        localStorage.setItem('ocw_lang_manual', '1');
+        return q;
+      }
+      // 예전 버전은 자동 판정값까지 ocw_lang 에 저장했다 → 직접 고른 표시(_manual)가 있을 때만 신뢰한다.
+      if (localStorage.getItem('ocw_lang_manual') === '1') {
+        var saved = norm(localStorage.getItem('ocw_lang'));
+        if (saved) return saved;
+      }
+      var meta = document.querySelector('meta[name="ocw-country"]');
+      var cc = ((meta && meta.content) || '').toUpperCase();
+      if (cc) return cc === 'KR' ? 'ko' : 'en';
+      var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+      for (var i = 0; i < langs.length; i++) if (norm(langs[i]) === 'ko') return 'ko';
+      return 'en';
+    } catch (e) {
+      return 'en';
+    }
+  })();
+</script>
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F4" />
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0E0D" />
 
@@ -439,7 +478,8 @@
   const API = (params.get('api') || location.origin).replace(/\/+$/, '');
   const BARW = 12;
 
-  let LANG = localStorage.getItem('ocw_lang') || 'en';
+  // 언어는 <head> 의 판정 스크립트가 정한다(?lang= → 직접 선택 → 접속 국가 → 브라우저 언어).
+  let LANG = window.OCW_LANG === 'ko' ? 'ko' : 'en';
   const T = {
     en: {
       langBtn: '한국어',
@@ -553,7 +593,20 @@
     document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
     document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
     $('langBtn').textContent = t('langBtn');
-    localStorage.setItem('ocw_lang', LANG);
+  }
+
+  // 직접 고른 언어만 저장한다(자동 판정값을 저장하면 나중에 국가 판정이 영영 안 먹는다).
+  // 주소의 ?lang= 도 함께 맞춰 링크를 복사하면 언어까지 그대로 공유되게 한다.
+  function setLang(lang) {
+    LANG = lang;
+    try {
+      localStorage.setItem('ocw_lang', lang);
+      localStorage.setItem('ocw_lang_manual', '1');
+    } catch (e) {}
+    const u = new URL(location.href);
+    u.searchParams.set('lang', lang);
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    applyLang();
   }
 
   function bar(pct) {
@@ -787,8 +840,7 @@
     try { localStorage.setItem('ocw_theme', next); } catch (e) {}
   });
   $('langBtn').addEventListener('click', () => {
-    LANG = LANG === 'en' ? 'ko' : 'en';
-    applyLang();
+    setLang(LANG === 'en' ? 'ko' : 'en');
     if (curUser) { if (uData) renderUser(uData); } else { load(); }
   });
 

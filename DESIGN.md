@@ -428,3 +428,47 @@ CREATE TABLE accounts (
 Claude Code Ads·Kickbacks — 실제 돈이 걸림)도 암호학적 검증 없이 서버측 카운팅 + 휴리스틱 + 지급 보류로
 운영. 즉 완전 차단은 현재 불가 → 로그인(밴 지속성) + §14.6 억제책이 실질 상한. Anthropic 이 개인 usage
 OAuth 를 열면 그때 "verified" 트랙 추가.
+
+---
+
+## 15. 언어 (i18n) — 기본 언어 자동 판정
+
+웹은 영어/한국어 두 벌을 한 파일 안에 갖고 있다(`web/index.html` 의 `T` 사전, `privacy.html` 은
+`#en`/`#ko` 블록). 바뀐 건 **어떤 언어로 시작할지**를 정하는 규칙이다.
+
+### 15.1 판정 순서
+
+| 순위 | 신호 | 결과 |
+|------|------|------|
+| 1 | `?lang=ko\|kr\|ko-KR\|en` | 그대로 적용 + "직접 선택"으로 저장 |
+| 2 | 직접 고른 값 (`ocw_lang_manual='1'`) | 저장된 언어 |
+| 3 | **접속 국가** (Cloudflare `cf.country`) | `KR` → 한국어, 그 외 → 영어 |
+| 4 | 국가를 모를 때만 브라우저 언어 | `ko-*` → 한국어, 그 외 영어 |
+
+3순위가 있으므로 **국가를 아는 한 브라우저 언어는 보지 않는다** — 미국 접속이면 브라우저가 한국어여도
+영어. "한국이면 한국어, 그 외는 영어"를 그대로 지킨다. 4순위는 로컬 개발·Tor 등 국가 미상일 때만.
+
+### 15.2 국가는 어떻게 웹까지 오나
+
+`cf.country` 는 Worker 만 볼 수 있으므로, Worker 가 HTML 을 서빙할 때
+`<meta name="ocw-country" content="">` 에 값을 심는다(`og.ts` 의 `visitorCountry` / `withVisitorCountry`).
+`<head>` 의 판정 스크립트가 첫 페인트 전에 이 값을 읽어 언어를 정한다 → 추가 왕복도, 영어가 번쩍했다가
+한국어로 바뀌는 깜빡임도 없다.
+
+- 대상 경로: `/`, `/u/<nick>`, `/privacy` — 셋 다 `assets.run_worker_first` 또는 Worker 폴백으로 도달.
+- 그 외 정적 파일(favicon·og.png)은 Worker 를 타지 않는다(캐시 그대로).
+- 국가가 섞인 HTML 은 방문자마다 다르므로 `Cache-Control: private, max-age=0, must-revalidate` —
+  공유 캐시(CDN)에 담겨 다른 나라 사람에게 나가는 사고를 막는다.
+
+### 15.3 저장 규칙
+
+- **자동 판정 결과는 저장하지 않는다.** 저장해 버리면 국가 판정이 영영 안 먹는다.
+- 직접 토글하거나 `?lang=` 로 들어왔을 때만 `ocw_lang` + `ocw_lang_manual='1'` 저장.
+- 구버전은 자동 판정값까지 `ocw_lang` 에 저장했으므로 `ocw_lang_manual` 이 있을 때만 신뢰한다
+  (기존 방문자도 국가 기반 자동 판정을 새로 받게 된다).
+- 토글하면 주소의 `?lang=` 도 현재 언어로 맞춘다 → 링크를 복사하면 언어까지 그대로 공유된다.
+
+### 15.4 남은 것
+
+- ⬜ `?lang=ko` 변형의 SEO(hreflang + 자기참조 canonical) — 지금은 canonical 이 항상 `/` 라
+  검색엔진에는 영어판만 색인된다. 한국어 유입을 노릴 때 검토.

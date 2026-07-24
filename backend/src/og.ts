@@ -31,6 +31,48 @@ export function buildOgDescription(row: ProfileMetaRow): string {
   return desc.slice(0, MAX_OG_DESC - 1).trimEnd() + '…';
 }
 
+/** Cloudflare 가 국가를 특정하지 못한 경우의 값 — 실제 국가가 아니므로 '모름'으로 다룬다. */
+const UNKNOWN_COUNTRY = new Set(['XX', 'T1']);
+
+/**
+ * 방문자 국가(ISO 3166-1 alpha-2). Cloudflare 가 IP 로 붙여주는 값.
+ * 로컬 개발·Tor·판별 실패면 null → 웹이 브라우저 언어로 내려간다.
+ */
+export function visitorCountry(request: Request): string | null {
+  const cc = request.cf?.country;
+  if (typeof cc !== 'string' || !/^[A-Z]{2}$/.test(cc) || UNKNOWN_COUNTRY.has(cc)) return null;
+  return cc;
+}
+
+/**
+ * 정적 HTML 의 <meta name="ocw-country"> 에 방문자 국가를 심는다.
+ * 웹은 이 값으로 첫 방문 기본 언어를 고른다(KR → 한국어, 그 외 → 영어).
+ * 국가를 모르면 빈 값 그대로 둔다(웹이 브라우저 언어로 판단).
+ */
+export function withVisitorCountry(res: Response, country: string | null): Response {
+  if (!country || !(res.headers.get('Content-Type') ?? '').includes('text/html')) return res;
+  return asPrivate(
+    new HTMLRewriter()
+      .on('meta[name="ocw-country"]', {
+        element(el) {
+          el.setAttribute('content', country);
+        },
+      })
+      .transform(res),
+  );
+}
+
+/**
+ * 방문자 국가가 섞인 HTML 은 사람마다 다르다 → 공유 캐시(CDN·프록시)에 담기지 않게 private 로 낮춘다.
+ * 안 그러면 한 나라 방문자가 받은 페이지가 다른 나라 방문자에게 그대로 나갈 수 있다.
+ * 브라우저 캐시는 그대로 두되 매번 재검증(must-revalidate)한다.
+ */
+function asPrivate(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.set('Cache-Control', 'private, max-age=0, must-revalidate');
+  return new Response(res.body, { status: res.status, headers });
+}
+
 /** 프로필 경로 접두어. 닉네임이 API·페이지 경로와 충돌하지 않도록 네임스페이스를 분리한다. */
 export const PROFILE_PREFIX = '/u/';
 
@@ -146,12 +188,14 @@ export async function handleProfilePage(
   // /u/<seg> 는 정적 에셋이 아니므로 루트(index.html)를 대신 가져온다.
   const assetReq = url.pathname === '/' ? request : new Request(new URL('/', url), request);
   const assetRes = await env.ASSETS.fetch(assetReq);
+  // 방문자 국가는 프로필 유무와 무관하게 항상 심는다(루트 '/' 도 이 경로로 들어온다).
+  const country = visitorCountry(request);
 
   // seg 는 등록 닉네임이거나 공개 slug(public_id). 둘 다 아니면 재작성 없이 에셋 그대로(fail open).
   const byNick = isValidNickname(seg);
   const byId = !byNick && isValidPublicId(seg);
   const contentType = assetRes.headers.get('Content-Type') ?? '';
-  if ((!byNick && !byId) || !contentType.includes('text/html')) return assetRes;
+  if ((!byNick && !byId) || !contentType.includes('text/html')) return withVisitorCountry(assetRes, country);
 
   let row:
     | { nickname: string | null; bio: string | null; role: string | null; company: string | null; public_id: string | null; user_id?: string }
@@ -166,11 +210,13 @@ export async function handleProfilePage(
           .first();
   } catch (err) {
     console.error(JSON.stringify({ level: 'error', msg: 'og_lookup_failed', err: String(err) }));
-    return assetRes;
+    return withVisitorCountry(assetRes, country);
   }
   // 없는 프로필은 앱 UI(“User not found.”)를 그대로 보여주되 상태코드는 404 —
   // 크롤러가 존재하지 않는 유저 주소를 색인하지 않도록(soft 404 방지).
-  if (!row) return new Response(assetRes.body, { status: 404, headers: assetRes.headers });
+  if (!row) {
+    return withVisitorCountry(new Response(assetRes.body, { status: 404, headers: assetRes.headers }), country);
+  }
 
   // 표시 이름: 등록 닉네임이 있으면 그대로, 없으면(익명·slug 조회) userId 파생 자동 닉네임.
   const displayName = row.nickname ?? (row.user_id ? autoNickname(row.user_id) : '');
@@ -194,7 +240,8 @@ export async function handleProfilePage(
   // 존재하는 프로필이므로 200으로 명시해 서빙한다(크롤러가 정상 페이지로 인식).
   const pageRes = assetRes.status === 200 ? assetRes : new Response(assetRes.body, { status: 200, headers: assetRes.headers });
 
-  return new HTMLRewriter()
+  const rewritten = new HTMLRewriter()
+    .on('meta[name="ocw-country"]', setContent(country ?? ''))
     .on('title', {
       element(el) {
         el.setInnerContent(title);
@@ -216,4 +263,5 @@ export async function handleProfilePage(
     .on('meta[name="twitter:description"]', setContent(desc))
     .on('meta[name="twitter:image"]', setContent(imageUrl))
     .transform(pageRes);
+  return country ? asPrivate(rewritten) : rewritten;
 }
