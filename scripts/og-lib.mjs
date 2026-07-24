@@ -135,6 +135,8 @@ export async function buildData(api, seg) {
     allTimePrompts: profile.allTime && typeof profile.allTime.prompts === 'number' ? profile.allTime.prompts : null,
     allTimeChars: profile.allTime && typeof profile.allTime.chars === 'number' ? profile.allTime.chars : null,
     bestPrompts, // 종전 최고(히어로 날 제외) — 오늘이 이보다 크면 ⭐ NEW PERSONAL BEST 레이아웃
+    rank: typeof profile.rank === 'number' ? profile.rank : null, // 전체 순위 — top-3 메달(🥇🥈🥉)용
+    bio: (profile.bio || '').trim(), // 자기소개 한 줄(카드 정체성)
   };
 }
 

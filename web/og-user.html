@@ -34,14 +34,17 @@
   .tdots{position:absolute;top:-14px;left:42px;display:flex;gap:10px;}
   .tdots i{width:13px;height:13px;background:var(--faint);display:block;}
   .tdots i:nth-child(2),.tdots i:nth-child(3){opacity:.4;}
-  .rankrow{display:flex;align-items:center;gap:14px;font-size:28px;font-weight:700;}
-  .rankrow .en{color:var(--dim);font-weight:400;}
+  /* 계급 줄: (top-3면) 메달 + 계급장. 메달이 'Corporal 자리'에 온다. */
+  .rankrow{display:flex;align-items:center;gap:14px;}
+  .rankrow .medal{font-size:46px;line-height:1;}
 
   /* 우: 오늘의 출격 */
   .right{flex:1;display:flex;flex-direction:column;min-width:0;}
   .idline{display:flex;align-items:baseline;gap:16px;}
   .nick{font-size:58px;font-weight:800;letter-spacing:-0.03em;line-height:1;}
   .loc{color:var(--dim);font-size:22px;}
+  /* 자기소개 한 줄 — 프로필처럼 좌측 액센트로 정체성 부여 */
+  .bio{margin-top:14px;padding-left:14px;border-left:2px solid var(--ok);color:var(--fg);font-size:21px;line-height:1.35;}
   .hero{margin-top:26px;}
   .hero .num{font-size:100px;font-weight:800;line-height:.85;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;}
   .hero .num.rec{color:var(--amber);}
@@ -82,6 +85,7 @@
       </div>
       <div class="right">
         <div class="idline"><span class="nick" id="nick">–</span><span class="loc" id="loc"></span></div>
+        <div class="bio" id="bio" style="display:none"></div>
         <div class="hero">
           <div class="num" id="heroNum">0</div>
           <div class="lab" id="heroLab"></div>
@@ -109,7 +113,8 @@
     stamp: "2026-07-22 · KST",
     agent: "claude-code", activeToday: true,
     allTimePrompts: 1832, allTimeChars: 1770317,
-    bestPrompts: 336
+    bestPrompts: 336,
+    rank: 1, bio: "A developer aiming to become a solopreneur."
   }/*END*/;
 
   function comma(n){ return Number(n||0).toLocaleString('en-US'); }
@@ -195,12 +200,19 @@
     while (ri + 1 < RANKS.length && d.allTimePrompts >= RANKS[ri + 1].min) ri++;
     var rk = RANKS[ri];
     var row = document.getElementById('rankrow');
-    // 계급은 계급장(인시그니아)만 표시 — 텍스트 라벨(ko/en) 제외
-    row.innerHTML = '<span>' + insigniaSVG(rk.ins[0], rk.ins[1], 6) + '</span>';
+    // 계급장 + (전체 top-3면) 메달. 텍스트 라벨(ko/en)은 표시하지 않는다.
+    var medal = (typeof d.rank === 'number' && d.rank >= 1 && d.rank <= 3) ? ['🥇', '🥈', '🥉'][d.rank - 1] : '';
+    row.innerHTML = (medal ? '<span class="medal">' + medal + '</span>' : '') + '<span>' + insigniaSVG(rk.ins[0], rk.ins[1], 6) + '</span>';
     row.style.display = 'inline-flex';
   }
 
   document.getElementById('nick').textContent = d.nick;
+  // 자기소개 한 줄(있을 때만)
+  if (d.bio) {
+    var bioEl = document.getElementById('bio');
+    bioEl.textContent = d.bio;
+    bioEl.style.display = 'block';
+  }
   document.getElementById('loc').textContent =
     (d.country ? d.country + ' ' + (d.flag || '') : '') + (d.city ? ' · ' + d.city : '');
 
