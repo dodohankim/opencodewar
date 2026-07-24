@@ -21,7 +21,15 @@ import {
   handleAuthStart,
   handleAuthStatus,
 } from './auth';
-import { handleOgImage, handleProfilePage, nicknameFromPath, ogImageIdFromPath, profilePath } from './og';
+import {
+  handleOgImage,
+  handleProfilePage,
+  nicknameFromPath,
+  ogImageIdFromPath,
+  profilePath,
+  visitorCountry,
+  withVisitorCountry,
+} from './og';
 import { isValidNickname } from './validate';
 
 export default {
@@ -43,6 +51,12 @@ export default {
           return Response.redirect(new URL(profilePath(legacy.trim()), url).toString(), 301);
         }
         return await handleProfilePage(request, url, env, null);
+      }
+      // /privacy — 정적 페이지지만 방문자 국가를 심어야 해서 Worker 를 먼저 태운다
+      // (wrangler.jsonc 의 assets.run_worker_first). 직접 들어와도 기본 언어가 맞도록.
+      if ((pathname === '/privacy' || pathname === '/privacy.html') && request.method === 'GET') {
+        const res = await env.ASSETS.fetch(request);
+        return withVisitorCountry(res, visitorCountry(request));
       }
       // /og/<public_id>.png — 유저별 공유 이미지(R2, 미스 시 공통 og.png 폴백).
       const ogId = ogImageIdFromPath(pathname);
