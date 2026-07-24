@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cf-usage-report",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-09",
+  // 크론 전용 Worker — HTTP 노출 없음(workers.dev 비활성, 라우트 없음).
+  "workers_dev": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  // 매일 23:50 UTC = KST 08:50. 무료 한도가 00:00 UTC 리셋이라 리셋 직전 = "오늘(UTC) 하루 총 사용량" 리포트.
+  "triggers": {
+    "crons": ["50 23 * * *"]
+  },
+  // secrets(wrangler secret put): CF_ANALYTICS_TOKEN(Analytics·KV·D1 Read), DISCORD_WEBHOOK_URL
+  "vars": {
+    "ACCOUNT_ID": "492eb95b0233bc6c035d6dafd5c7a616"
+  }
+}
