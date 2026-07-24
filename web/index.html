@@ -223,6 +223,10 @@
   .bearer.army-codex    .flag { background:var(--ag-codex); }
   .bearer.army-opencode .flag { background:var(--ag-opencode); }
   .bearer.army-pi       .flag { background:var(--ag-pi); }
+  /* 그룹 표지기(TOTAL/DAILY): 클릭 대상이 아닌 라벨 깃발 — 반전 없이 테두리로 구분 */
+  .bearer.herald { cursor:default; }
+  .bearer.herald .flag { background:var(--bg); color:var(--fg); border:1px solid var(--fg); height:15px; line-height:15px; letter-spacing:0.06em; }
+  .bearer.herald .px-u { fill:var(--dim); } /* 중립 회색 군복 — 소속 없는 표지기(px-u 기본값은 검정) */
 
   /* 리더보드 톱3 랭크 병정 · 푸터 보초 */
   .mini { display:inline-block; width:20px; height:20px; vertical-align:-5px; margin-right:6px; }
@@ -250,7 +254,8 @@
   .theme-toggle { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
   .theme-toggle:hover { color:var(--fg); }
 
-  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-top:22px; }
+  /* 기간 탭(total/daily)이 지표 토글(prompts/chars) 위에 오도록 세로 배치 */
+  .controls { display:flex; flex-direction:column; gap:10px; align-items:flex-start; margin-top:22px; }
   .tabs, .sorts { display:inline-flex; gap:6px; }
   .tab, .sort { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:6px 12px; border-radius:5px; cursor:pointer; white-space:nowrap; }
   .tab .k { color:var(--faint); font-size:11px; }
@@ -454,7 +459,7 @@
         </div>
       </section>
 
-      <!-- 톱3 우승 퍼레이드 — 리더보드 응답이 오면 renderParade 가 채운다 -->
+      <!-- 우승 퍼레이드 — loadParade 가 전역 total·daily 톱3를 받아 채운다(보드 탭과 무관) -->
       <section class="box marchbox" id="paradeBox" hidden>
         <span class="legend">victory parade</span>
         <div class="march-clip">
@@ -463,8 +468,12 @@
         </div>
       </section>
 
-      <!-- 기간 필터(daily·weekly·weekend·monthly)는 유저가 쌓이면 다시 노출. 현재는 전체 기간(all)으로 통일. -->
+      <!-- 보드 기간: total(전체) · daily(UTC 하루). weekly·weekend·monthly 는 유저가 쌓이면 재도입. -->
       <div class="controls">
+        <div class="tabs" role="tablist" aria-label="board period">
+          <button class="tab" data-board="all" aria-selected="true">total</button>
+          <button class="tab" data-board="daily" aria-selected="false">daily <span class="k">UTC</span></button>
+        </div>
         <div class="sorts">
           <button class="sort" data-metric="prompts" aria-pressed="true">prompts</button>
           <button class="sort" data-metric="chars" aria-pressed="false">chars</button>
@@ -547,6 +556,7 @@
           <p class="p-role" id="uRole" hidden></p>
           <p class="p-bio empty" id="uBio"></p>
           <p class="rankline" id="uRankLine" hidden></p>
+          <p class="rankline" id="uStreakLine" hidden></p>
           <div class="chips" id="uLinks"></div>
           <div class="p-fields">
             <div class="field">
@@ -624,7 +634,7 @@
       me_ph: 'search nickname',
       rules1: '<b>Input = a prompt submit.</b> +1 each Enter; characters counted too.',
       rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
-      rules3: "<b>One all-time board.</b> Every prompt you've ever sent counts toward your rank.",
+      rules3: "<b>Total & daily boards.</b> Every prompt ever counts on total; daily resets at 00:00 UTC.",
       install_legend: 'join · install',
       install_note_claude: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
       install_note_codex: 'Same plugin as Claude Code — Codex shares the plugin/marketplace system. Then start Codex and pick <b>Trust all and continue</b> on the “Hooks need review” screen; until you do, Codex silently skips the hook. Needs Node.js on your PATH.',
@@ -650,6 +660,8 @@
       p_active: 'in action today', p_idle: 'standing by', p_last: 'last active',
       rank_label: 'rank', rank_max: 'highest rank',
       rank_next: (need, next) => `<b>${need}</b> prompts to ${next}`,
+      streak_cur: (n) => `${n}-day streak`, streak_none: 'no active streak',
+      streak_best: (n) => `best ${n}`, streak_since: (d) => `since ${d}`,
     },
     ko: {
       langBtn: 'EN',
@@ -660,7 +672,7 @@
       me_ph: '닉네임 검색',
       rules1: '<b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.',
       rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
-      rules3: '<b>전체 기간 단일 리더보드.</b> 지금까지 보낸 모든 입력이 순위에 반영됩니다.',
+      rules3: '<b>전체 · 데일리 보드.</b> 전체는 모든 입력 누적, 데일리는 UTC 00:00 리셋.',
       install_legend: '참가 · 설치',
       install_note_claude: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
       install_note_codex: 'Claude Code와 <b>같은 플러그인</b>입니다 — 코덱스도 동일한 플러그인·마켓플레이스 체계를 씁니다. 설치 후 Codex를 실행해 “Hooks need review” 화면에서 <b>Trust all and continue</b>를 선택하세요. 선택 전에는 훅이 조용히 무시됩니다. PATH에 Node.js가 있어야 합니다.',
@@ -686,11 +698,13 @@
       p_active: '오늘 참전 중', p_idle: '대기 중', p_last: '마지막 참전',
       rank_label: '계급', rank_max: '최고 계급',
       rank_next: (need, next) => `${next}까지 <b>${need}</b> prompts`,
+      streak_cur: (n) => `연속 ${n}일`, streak_none: '진행 중인 연속 없음',
+      streak_best: (n) => `최장 ${n}일`, streak_since: (d) => `${d}부터`,
     },
   };
   const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
 
-  let curBoard = 'all'; // 전체 기간으로 통일(기간 필터 탭은 유저가 쌓이면 재도입)
+  let curBoard = 'all'; // 'all'(전체 기간) | 'daily'(UTC 하루) — 상단 total/daily 탭이 전환
   let curMetric = 'prompts';
   let curScope = 'global';   // global | country | city
   let curCountry = null;     // 선택된 국가코드
@@ -780,6 +794,7 @@
       $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('zone_nocity')}</div></td></tr>`;
       return;
     }
+    loadParade(); // 퍼레이드는 보드 탭·스코프와 무관(전역 total+daily) — 본 요청과 병렬 로딩
     try {
       const res = await fetch(`${API}/leaderboard?${q}&limit=50`, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -810,7 +825,6 @@
     $('regionChip').textContent = champ && champ.country ? `${champ.country} ${flagOf(champ.country)}` : '–';
     // 경과시간 대신 집계 주기를 고정 표기 — 백엔드 cron(*/5)·SNAPSHOT_TTL_MS와 맞춘 값.
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} · ${t('every_5m')}` : '';
-    renderParade(rows);
 
     if (!rows.length) {
       $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('empty')}</div></td></tr>`;
@@ -1044,13 +1058,30 @@
   // 순위 → 군복색(에이전트 정보가 스냅샷에 없어 순위 기반 고정 배색).
   const RANK_ARMY = { 1: 'army-claude', 2: 'army-codex', 3: 'army-pi' };
 
-  // ── 톱3 우승 퍼레이드: 현재 보드의 1·2·3위가 닉네임 깃발을 들고 행진 ──
-  let paradeKey = ''; // 같은 톱3면 재렌더하지 않는다(행진 애니메이션 리셋 방지)
-  function renderParade(rows) {
-    const top = (rows || []).slice(0, 3);
+  // ── 우승 퍼레이드: TOTAL(전체 기간) 톱3가 선두, DAILY(UTC 오늘) 톱3가 뒤따른다 ──
+  // 보드 탭·존 스코프와 무관하게 항상 전역 랭킹. 지표(prompts/chars)는 현재 선택을 따른다.
+  let paradeKey = ''; // 같은 구성이면 재렌더하지 않는다(행진 애니메이션 리셋 방지)
+  let paradeCache = { metric: null, at: 0, all: [], daily: [] };
+  async function loadParade() {
+    const stale = paradeCache.metric !== curMetric || Date.now() - paradeCache.at > 60000;
+    if (stale) {
+      const get = (type) =>
+        fetch(`${API}/leaderboard?type=${type}&metric=${curMetric}&limit=3`, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null);
+      const [a, d] = await Promise.all([get('all'), get('daily')]);
+      if (!a && !d) return; // 둘 다 실패면 기존 퍼레이드 유지
+      paradeCache = { metric: curMetric, at: Date.now(), all: (a && a.ranking) || [], daily: (d && d.ranking) || [] };
+    }
+    renderParade(paradeCache.all, paradeCache.daily);
+  }
+  function renderParade(allRows, dailyRows) {
+    const topAll = (allRows || []).slice(0, 3);
+    const topDay = (dailyRows || []).slice(0, 3);
     const box = $('paradeBox');
-    if (!top.length) { box.hidden = true; paradeKey = ''; return; }
-    const key = top.map((r) => `${r.rank}:${r.registered ? r.nickname : r.public_id}:${r.nickname || ''}`).join('|');
+    if (!topAll.length && !topDay.length) { box.hidden = true; paradeKey = ''; return; }
+    const gk = (rows) => rows.map((r) => `${r.rank}:${r.registered ? r.nickname : r.public_id}:${r.nickname || ''}`).join('|');
+    const key = `${curMetric}#${gk(topAll)}#${gk(topDay)}`;
     if (key === paradeKey) { box.hidden = false; return; }
     paradeKey = key;
     const bearer = (r, i) => {
@@ -1062,11 +1093,15 @@
       return `<a class="bearer ${RANK_ARMY[r.rank] || ''}" href="${escapeHtml(urlFor(ref))}" data-nick="${escapeHtml(ref)}" title="#${r.rank} ${escapeHtml(nick)}">${inner}</a>`;
     };
     const escort = (a, i) => `<span class="marcher ${a}" aria-hidden="true">${gaitFrames(i)}</span>`;
+    // 그룹 표지기(비클릭): 그룹 선두에서 TOTAL/DAILY 라벨 깃발을 든다.
+    const herald = (label) => `<span class="bearer herald"><i class="pole"></i><i class="flag">${label}</i>${gaitFrames(0)}</span>`;
+    // 행진 방향(→) 기준 표지기→1위→2위→3위 — DOM 은 후미부터라 [3위][2위][1위][표지기] 순.
+    const group = (rows, label) => (rows.length ? [...rows].reverse().map(bearer).join('') + herald(label) : '');
     const track = $('marchTrack');
-    // 행진 방향(→) 기준 1위가 선두 — DOM 순서는 [후미 호위 3][3위][2위][1위][선두 호위].
+    // 전체 대열(선두→후미): [TOTAL 표지기·톱3] → [DAILY 표지기·톱3] → 후미 호위.
     track.innerHTML =
       escort('army-pi', 0) + escort('army-opencode', 1) + escort('army-codex', 0) +
-      [...top].reverse().map(bearer).join('') + escort('army-opencode', 1);
+      group(topDay, 'DAILY·UTC') + group(topAll, 'TOTAL') + escort('army-opencode', 1);
     box.hidden = false;
     // 깃발 폭에 맞춰 유닛 간격을 동적 계산(긴 닉네임 겹침 방지) 후 마퀴 시작.
     requestAnimationFrame(() => {
@@ -1163,6 +1198,12 @@
   document.querySelectorAll('.sort').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.sort').forEach((x) => x.setAttribute('aria-pressed', x === b));
     curMetric = b.dataset.metric; load();
+  }));
+  document.querySelectorAll('.tab[data-board]').forEach((b) => b.addEventListener('click', () => {
+    if (curBoard === b.dataset.board) return;
+    curBoard = b.dataset.board;
+    document.querySelectorAll('.tab[data-board]').forEach((x) => x.setAttribute('aria-selected', x === b));
+    load();
   }));
 
   // ── 구역(zone) 셀렉터: Global → Country → City ──
@@ -1573,6 +1614,18 @@
     }
     por.hidden = false;
     $('uStatus').hidden = false;
+    // 스트릭(§17) — 현재 연속(🔥) + 최장. streak 필드 없으면(구 API 캐시) 라인 생략.
+    const sCur = typeof data.streak === 'number' ? data.streak : null;
+    const sBest = typeof data.streakLongest === 'number' ? data.streakLongest : null;
+    if (sCur == null && sBest == null) {
+      $('uStreakLine').hidden = true;
+    } else {
+      const best = sBest != null ? sBest : sCur;
+      const parts = [sCur > 0 ? `🔥 ${t('streak_cur')(sCur)}` : t('streak_none'), t('streak_best')(best)];
+      if (sCur > 0 && data.streakSince) parts.push(t('streak_since')(mmdd(data.streakSince)));
+      $('uStreakLine').innerHTML = parts.join(' · ');
+      $('uStreakLine').hidden = false;
+    }
     // 계급 — allTime 없으면(구 API 캐시 등) 표시 생략
     const at = data.allTime && typeof data.allTime.prompts === 'number' ? data.allTime.prompts : null;
     if (at == null) { $('uRank').hidden = true; $('uRankLine').hidden = true; return; }
