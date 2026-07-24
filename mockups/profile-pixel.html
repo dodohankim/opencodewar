@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — profile pixel</title>
+<style>
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F;
+    --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    --skin:#E8C39E; --eye:#232320;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+      --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px; line-height:1.5;
+    padding:clamp(10px,3vw,30px) clamp(10px,3vw,30px) 120px; -webkit-font-smoothing:antialiased; }
+  .mocknote { max-width:920px; margin:0 auto 10px; font-size:11.5px; color:var(--faint); }
+  .term { max-width:920px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; margin-top:22px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .box > .tag { position:absolute; top:-0.7em; right:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--ok); }
+  .theme-toggle { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
+  .theme-toggle:hover { color:var(--fg); }
+
+  /* ── sprites ── */
+  .sprite { display:block; }
+  .px-s { fill:var(--skin); }
+  .px-e { fill:var(--eye); }
+  .px-r { fill:var(--fg); }
+  .px-k { fill:var(--ok); }
+  .army-claude   .px-u, .army-claude   .px-f { fill:var(--fg); }
+  .army-codex    .px-u, .army-codex    .px-f { fill:var(--ag-codex); }
+  .army-opencode .px-u, .army-opencode .px-f { fill:var(--ag-opencode); }
+  .army-pi       .px-u, .army-pi       .px-f { fill:var(--ag-pi); }
+
+  /* ── 시안 A · 프로필 병정 초상 ── */
+  body:not(.opt-a) .portrait { display:none; }
+  .portrait { position:relative; width:46px; height:46px; flex:none; align-self:flex-end; }
+  .portrait .f { position:absolute; inset:0; }
+  .portrait .f2 { opacity:0; }
+  .portrait.typing .f1 { animation:gait1 .34s linear infinite; }
+  .portrait.typing .f2 { animation:gait2 .34s linear infinite; }
+  @keyframes gait1 { 0%,49.9% { opacity:1; } 50%,99.9% { opacity:0; } 100% { opacity:1; } }
+  @keyframes gait2 { 0%,49.9% { opacity:0; } 50%,99.9% { opacity:1; } 100% { opacity:0; } }
+  .tdots { position:absolute; top:-4px; left:11px; display:flex; gap:3px; }
+  .tdots b { width:4px; height:4px; background:var(--faint); opacity:.25; animation:tdot 1.15s steps(1) infinite; }
+  .tdots b:nth-child(2) { animation-delay:.22s; }
+  .tdots b:nth-child(3) { animation-delay:.44s; }
+  @keyframes tdot { 0%,24% { opacity:1; } 25%,100% { opacity:.25; } }
+  .p-status { font-size:11px; color:var(--faint); align-self:flex-end; margin-bottom:2px; }
+  body:not(.opt-a) .p-status { display:none; }
+  .p-status .on { color:var(--ok); }
+
+  /* ── 시안 C · 계급 ── */
+  body:not(.opt-c) .rankchip, body:not(.opt-c) .rankline { display:none; }
+  .rankchip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--fg);
+    border:1px solid var(--line); border-radius:5px; padding:3px 9px; align-self:center; }
+  .rankchip svg { width:14px; height:12px; }
+  .rankline { margin:10px 0 0; font-size:12px; color:var(--dim); }
+  .rankline .gbar { letter-spacing:-1px; }
+  .rankline .gbar .on { color:var(--ok); }
+  .rankline .gbar .off { color:var(--faint); }
+  .rankline b { color:var(--fg); font-weight:600; }
+
+  /* ── profile ── */
+  .backbtn { margin-top:2px; }
+  .profile .p-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .sharebtn { margin-left:auto; }
+  .profile .p-nick { font-size:clamp(19px,3.6vw,26px); font-weight:700; letter-spacing:0.02em; margin:2px 0 0; word-break:break-all; }
+  .profile .p-bio { margin:10px 0 0; color:var(--dim); font-size:13.5px; line-height:1.55; }
+  .cc { color:var(--faint); font-size:12px; }
+  .chips { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+  .chip-row { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); border:1px solid var(--line); border-radius:5px; padding:4px 10px; text-decoration:none; }
+  .chip.icon { padding:0; width:30px; height:30px; justify-content:center; gap:0; }
+  .chip.icon svg { width:15px; height:15px; fill:currentColor; display:block; }
+  .p-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; margin-top:16px; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); }
+  .field input { font:inherit; font-size:13px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:7px 9px; }
+  .field input:disabled { color:var(--faint); background:var(--hover); cursor:not-allowed; }
+  .field .val { font-size:13px; color:var(--fg); font-variant-numeric:tabular-nums; padding:7px 0; }
+
+  .ships { display:grid; gap:10px; }
+  .ship { display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:6px; padding:12px 14px; }
+  .ship-main { min-width:0; flex:1; }
+  .ship-name { font-size:13.5px; font-weight:700; color:var(--fg); }
+  .ship-desc { font-size:12.5px; color:var(--dim); margin-top:3px; }
+  .ship-host { font-size:11px; color:var(--faint); margin-top:5px; }
+  .visit { flex:none; font-size:12px; color:var(--fg); text-decoration:none; border:1px solid var(--line); border-radius:5px; padding:6px 12px; white-space:nowrap; }
+
+  /* ── stats + chart ── */
+  .box > .tzn { position:absolute; top:-0.7em; right:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--faint); }
+  .utop { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:6px; }
+  .uviews, .sorts { display:inline-flex; gap:6px; }
+  .uview, .usort { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:5px 11px; border-radius:5px; cursor:default; white-space:nowrap; }
+  .uview[aria-pressed="true"], .usort[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .ag-legend { display:block; margin-top:10px; font-size:11px; color:var(--dim); }
+  .ag-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin:0 4px 0 10px; vertical-align:-1px; }
+  .ag-legend .ag-dot:first-child { margin-left:0; }
+  .ustats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+  .tile { border:1px solid var(--line); border-radius:8px; padding:11px 12px; background:var(--hover); }
+  .tile.sel { border-color:var(--fg); }
+  .tnum { font-size:26px; font-weight:600; line-height:1.05; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
+  .tnum .den { font-size:15px; color:var(--dim); font-weight:400; }
+  .tlab { font-size:12px; color:var(--dim); margin-top:5px; }
+  .tsub { font-size:11px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
+  @media (max-width:560px) { .ustats { grid-template-columns:repeat(2,1fr); } .tnum { font-size:23px; } .p-fields { grid-template-columns:1fr; } }
+  .chart-wrap { margin-top:16px; }
+  .chart { display:flex; align-items:flex-end; gap:2px; height:150px; padding-top:24px; border-bottom:1px solid var(--line); }
+  .chart .col { flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; position:relative; }
+  .chart .col .barv { width:100%; max-width:15px; min-height:2px; background:var(--fg); border-radius:2px 2px 0 0; }
+  .chart .col.zero .barv { background:var(--line); }
+  .chart .col.wknd .barv { background:var(--dim); }
+  .chart .col.peak .barv { background:var(--ok); }
+  /* ── 시안 B · 피크 깃발 ── */
+  body:not(.opt-b) .peakflag { display:none; }
+  .peakflag { position:absolute; left:calc(50% - 3px); width:18px; height:22px; pointer-events:none; }
+  .peakflag .px-f { fill:var(--ok); }  /* 깃발 천 = 피크 강조색 */
+  .chart-x { display:flex; justify-content:space-between; margin-top:7px; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .chart-peak { font-size:11px; color:var(--faint); }
+
+  /* ── 시안 토글 패널 ── */
+  .mockpanel { position:fixed; right:14px; bottom:14px; z-index:20; background:var(--bg); border:1px solid var(--line);
+    border-radius:8px; padding:12px 14px 10px; font-size:12px; color:var(--dim); box-shadow:0 4px 18px rgba(0,0,0,0.12); }
+  .mockpanel .ttl { font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; color:var(--faint); margin-bottom:8px; }
+  .mockpanel label { display:flex; gap:7px; align-items:center; cursor:pointer; padding:2px 0; }
+  .mockpanel label:hover { color:var(--fg); }
+  .mockpanel .sub { margin-left:22px; }
+  .mockpanel .theme-toggle { margin-top:8px; width:100%; }
+
+  @media (prefers-reduced-motion:reduce){
+    .cursor,.portrait .f1,.portrait .f2,.tdots b { animation:none !important; }
+    .portrait .f2 { opacity:0; }
+  }
+</style>
+</head>
+<body class="opt-a opt-b opt-c">
+
+  <p class="mocknote">mockup · 유저 상세 pixel 시안 — A 병정 초상(주력 에이전트 군복 + 활동 상태) · B 피크 깃발 · C 계급(다음 단계 후보). 오른쪽 아래 패널로 비교.</p>
+
+  <div class="term">
+    <div class="titlebar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="name">ocw — open-code-war (mockup)</span>
+      <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
+    </div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /user?nickname=dododo <span class="cursor" aria-hidden="true"></span></div>
+
+      <button class="theme-toggle backbtn" type="button">← 리더보드</button>
+
+      <section class="box profile">
+        <span class="legend">프로필</span>
+        <span class="tag">시안 A · 병정 초상 &nbsp;·&nbsp; C · 계급</span>
+        <div class="p-head">
+          <span class="portrait army-claude" id="portrait" aria-hidden="true"></span>
+          <h2 class="p-nick">dododo</h2>
+          <span class="cc">KR 🇰🇷 · Seoul</span>
+          <span class="rankchip" title="누적 1,791 prompts"><svg id="insigniaSlot" viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true"></svg>상병</span>
+          <span class="p-status" id="pStatus"><span class="on">●</span> 오늘 참전 중 · 336 prompts</span>
+          <button class="theme-toggle sharebtn" type="button">⧉ 공유</button>
+        </div>
+        <p class="p-bio">A developer aiming to become a solopreneur.</p>
+        <p class="rankline">계급 <b>상병</b> <span class="gbar" id="rankBar"></span> 하사까지 <b>1,209</b> prompts</p>
+        <div class="chips">
+          <div class="chip-row">
+            <a class="chip icon" href="#" title="GitHub" aria-label="GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.606-.014 2.898-.014 3.293 0 .322.216.694.825.576C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+          </div>
+        </div>
+        <div class="p-fields">
+          <div class="field">
+            <label>이메일</label>
+            <input type="email" disabled placeholder="비공개" />
+          </div>
+          <div class="field">
+            <label>가입일</label>
+            <span class="val">2026-07-10</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="box">
+        <span class="legend">shipping · 2</span>
+        <div class="ships">
+          <div class="ship"><div class="ship-main"><div class="ship-name">Open Code War</div><div class="ship-desc">누가 제일 많이 타이핑했나 — Claude Code 리더보드 &amp; 터미널 개발자 명함</div><div class="ship-host">opencodewar.dev</div></div><a class="visit" href="#">방문 ↗</a></div>
+          <div class="ship"><div class="ship-main"><div class="ship-name">개미랩</div><div class="ship-desc">국내외 증권사 주식 거래 수수료 실시간 비교·랭킹 서비스</div><div class="ship-host">gaemilab.com</div></div><a class="visit" href="#">방문 ↗</a></div>
+        </div>
+      </section>
+
+      <section class="box">
+        <span class="legend">최근 30일 · prompts</span>
+        <span class="tzn">🕒 UTC 기준</span>
+        <div class="utop">
+          <div class="uviews">
+            <button class="uview" aria-pressed="true">30일</button>
+            <button class="uview" aria-pressed="false">하루</button>
+          </div>
+          <div class="sorts">
+            <button class="usort" aria-pressed="true">prompts</button>
+            <button class="usort" aria-pressed="false">chars</button>
+          </div>
+        </div>
+        <span class="ag-legend"><span class="ag-dot" style="background:var(--fg)"></span>claude-code<span class="ag-dot" style="background:var(--ag-codex)"></span>codex<span class="ag-dot" style="background:var(--ag-opencode)"></span>opencode<span class="ag-dot" style="background:var(--ag-pi)"></span>pi</span>
+        <div class="ustats">
+          <div class="tile sel"><div class="tnum">1,791</div><div class="tlab">prompts</div><div class="tsub">30일 합계</div></div>
+          <div class="tile"><div class="tnum">1.76M</div><div class="tlab">chars</div><div class="tsub">1,763,098</div></div>
+          <div class="tile"><div class="tnum">15<span class="den">/30</span></div><div class="tlab">활동일</div><div class="tsub">50%</div></div>
+          <div class="tile"><div class="tnum">336</div><div class="tlab">최고</div><div class="tsub">07-20</div></div>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart" id="chart" aria-hidden="true"></div>
+          <div class="chart-x"><span>06-25</span><span class="chart-peak">최고 07-20 · 336 <span class="tag" style="position:static;padding:0 0 0 6px;">← 시안 B · 피크 깃발</span></span><span>07-24</span></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <aside class="mockpanel" aria-label="시안 토글">
+    <div class="ttl">시안 토글</div>
+    <label><input type="checkbox" data-opt="a" checked /> A · 병정 초상</label>
+    <label class="sub"><input type="radio" name="astate" value="typing" checked /> 오늘 참전 중(타이핑)</label>
+    <label class="sub"><input type="radio" name="astate" value="idle" /> 대기 중(보초)</label>
+    <label><input type="checkbox" data-opt="b" checked /> B · 피크 깃발</label>
+    <label><input type="checkbox" data-opt="c" checked /> C · 계급 (다음 단계 후보)</label>
+    <button class="theme-toggle" id="themeBtn2" type="button">◐ dark / light</button>
+  </aside>
+
+<script>
+  // ── 스프라이트: 16×16(병정) + 소형(깃발·계급장). U=군복 S=피부 E=눈 R=잉크 F=깃발 K=계급 ──
+  const SPRITES = {
+    typer1: [
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......',
+    ],
+    typer2: [
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUU....MM...','..UUUUUSS..MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......',
+    ],
+    sentry: [
+      '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
+      '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
+      '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU..UU......','...BBB..BBB.....',
+    ],
+    chartflag: [
+      '.R......','.RFFFFFF','.RFFFFFF','.RFFFF..','.R......','.R......','.R......','.R......','.R......','.R......',
+    ],
+  };
+  const CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+  function spriteSVG(name) {
+    const map = SPRITES[name];
+    const h = map.length, w = map[0].length;
+    let rects = '';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const ch = map[y][x];
+      if (ch === '.') continue;
+      rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${CLS[ch]}"/>`;
+    }
+    return `<svg class="sprite" viewBox="0 0 ${w} ${h}" width="100%" height="100%" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+
+  // ── 시안 A: 병정 초상 — 주력 에이전트(claude-code) 군복. 오늘 활동 유무로 포즈 전환 ──
+  const portrait = document.getElementById('portrait');
+  const pStatus = document.getElementById('pStatus');
+  function renderPortrait(state) {
+    if (state === 'typing') {
+      portrait.classList.add('typing');
+      portrait.innerHTML = `<span class="f f1">${spriteSVG('typer1')}</span><span class="f f2">${spriteSVG('typer2')}</span><i class="tdots"><b></b><b></b><b></b></i>`;
+      pStatus.innerHTML = '<span class="on">●</span> 오늘 참전 중 · 336 prompts';
+    } else {
+      portrait.classList.remove('typing');
+      portrait.innerHTML = spriteSVG('sentry');
+      pStatus.innerHTML = '○ 대기 중 · 마지막 참전 07-23';
+    }
+  }
+  renderPortrait('typing');
+  document.querySelectorAll('input[name=astate]').forEach((r) => r.addEventListener('change', () => renderPortrait(r.value)));
+
+  // ── 시안 C: 계급장(상병 = 갈매기 2줄) + 진행 게이지 ──
+  const INSIGNIA2 = [
+    '.....KK.....','....KKKK....','...KK..KK...','..KK....KK..','............',
+    '.....KK.....','....KKKK....','...KK..KK...','..KK....KK..','............',
+  ];
+  document.getElementById('insigniaSlot').innerHTML = INSIGNIA2.map((row, y) =>
+    [...row].map((ch, x) => ch === 'K' ? `<rect x="${x}" y="${y}" width="1" height="1" class="px-k"/>` : '').join('')
+  ).join('');
+  // 1,791 / 3,000 (하사 기준) ≈ 60%
+  const gOn = 6, gW = 10;
+  document.getElementById('rankBar').innerHTML =
+    `<span class="on">${'▮'.repeat(gOn)}</span><span class="off">${'▯'.repeat(gW - gOn)}</span>`;
+
+  // ── 차트: dododo 실데이터 근사(최근 30일, 피크 07-20=336) + 시안 B 피크 깃발 ──
+  const DAYS = [0,0,0,0,0,0,0,0,0,0,0,0,28,12,40,150,160,190,140,55,18,8,336,155,145,175,15,0,110,62];
+  const PEAK_I = 22;
+  const max = Math.max(...DAYS);
+  document.getElementById('chart').innerHTML = DAYS.map((v, i) => {
+    const h = Math.max(2, Math.round((v / max) * 100));
+    const cls = v === 0 ? 'zero' : i === PEAK_I ? 'peak' : ((i % 7 === 5 || i % 7 === 6) ? 'wknd' : '');
+    const flag = i === PEAK_I ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
+    return `<div class="col ${cls}">${flag}<div class="barv" style="height:${h}%"></div></div>`;
+  }).join('');
+
+  // ── 토글 패널 ──
+  document.querySelectorAll('.mockpanel input[data-opt]').forEach((cb) => {
+    cb.addEventListener('change', () => document.body.classList.toggle('opt-' + cb.dataset.opt, cb.checked));
+  });
+  const flipTheme = () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  };
+  document.getElementById('themeBtn').addEventListener('click', flipTheme);
+  document.getElementById('themeBtn2').addEventListener('click', flipTheme);
+</script>
+</body>
+</html>

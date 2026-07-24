@@ -226,6 +226,25 @@
   .mini { display:inline-block; width:20px; height:20px; vertical-align:-5px; margin-right:6px; }
   .sentry { display:inline-block; width:26px; height:26px; vertical-align:-8px; margin-right:2px; }
 
+  /* ── 프로필: 병정 초상(주력 에이전트 군복) · 계급 · 피크 깃발 ── */
+  .portrait { position:relative; width:46px; height:46px; flex:none; align-self:flex-end; }
+  .portrait .f { position:absolute; inset:0; }
+  .portrait .f2 { opacity:0; }
+  .portrait.typing .f1 { animation:gait1 .34s linear infinite; }
+  .portrait.typing .f2 { animation:gait2 .34s linear infinite; }
+  .px-k { fill:var(--ok); }
+  .rankchip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--fg);
+    border:1px solid var(--line); border-radius:5px; padding:3px 9px; align-self:center; }
+  .p-status { font-size:11px; color:var(--faint); align-self:flex-end; margin-bottom:3px; }
+  .p-status .on { color:var(--ok); }
+  .rankline { margin:10px 0 0; font-size:12px; color:var(--dim); }
+  .rankline .gbar { letter-spacing:-1px; }
+  .rankline .gbar .on { color:var(--ok); }
+  .rankline .gbar .off { color:var(--faint); }
+  .rankline b { color:var(--fg); font-weight:600; }
+  .peakflag { position:absolute; left:calc(50% - 3px); width:16px; height:20px; pointer-events:none; }
+  .peakflag .px-f { fill:var(--ok); }
+
   .theme-toggle { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
   .theme-toggle:hover { color:var(--fg); }
 
@@ -371,8 +390,8 @@
   .chart-tip .d { font-weight:700; }
   .chart-tip .v { font-variant-numeric:tabular-nums; }
   .chart-tip .sep { opacity:0.5; margin:0 2px; }
-  .chart { display:flex; align-items:flex-end; gap:2px; height:150px; padding-top:12px; border-bottom:1px solid var(--line); cursor:crosshair; }
-  .chart .col { flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; }
+  .chart { display:flex; align-items:flex-end; gap:2px; height:150px; padding-top:24px; border-bottom:1px solid var(--line); cursor:crosshair; }
+  .chart .col { flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; position:relative; }
   .chart .col .barv { width:100%; max-width:15px; min-height:2px; background:var(--fg); border-radius:2px 2px 0 0; }
   .chart .col.zero .barv { background:var(--line); }
   .chart .col.wknd .barv { background:var(--dim); }
@@ -398,10 +417,10 @@
   .pagefoot .dot { color:var(--faint); }
   @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} .ship{flex-wrap:wrap;} }
   @media (prefers-reduced-motion:reduce){
-    .cursor,.flash,.tracer,.hit,.march-track,.marcher .f1,.marcher .f2,
-    .bearer .f1,.bearer .f2,.soldier.typer .f1,.soldier.typer .f2,.tdots b { animation:none !important; }
+    .cursor,.flash,.tracer,.hit,.march-track,.marcher .f1,.marcher .f2,.bearer .f1,.bearer .f2,
+    .soldier.typer .f1,.soldier.typer .f2,.portrait .f1,.portrait .f2,.tdots b { animation:none !important; }
     .tracer,.hit { display:none; }
-    .marcher .f2, .bearer .f2, .soldier.typer .f2 { opacity:0; }
+    .marcher .f2, .bearer .f2, .soldier.typer .f2, .portrait .f2 { opacity:0; }
   }
 </style>
 <script defer src="https://analytics.stonkradar.io/k.js" data-site="kdf_9e315b52f3f2" data-track-params="user"></script>
@@ -515,12 +534,16 @@
         <section class="box profile">
           <span class="legend" data-i18n="profile_legend">profile</span>
           <div class="p-head">
+            <span class="portrait" id="uPortrait" hidden aria-hidden="true"></span>
             <h2 class="p-nick" id="uNick">–</h2>
             <span class="cc" id="uCountry"></span>
+            <span class="rankchip" id="uRank" hidden></span>
+            <span class="p-status" id="uStatus" hidden></span>
             <button class="theme-toggle sharebtn" id="shareBtn" type="button" hidden data-i18n="share">⧉ share</button>
           </div>
           <p class="p-role" id="uRole" hidden></p>
           <p class="p-bio empty" id="uBio"></p>
+          <p class="rankline" id="uRankLine" hidden></p>
           <div class="chips" id="uLinks"></div>
           <div class="p-fields">
             <div class="field">
@@ -620,6 +643,9 @@
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
       every_5m: 'every 5m',
+      p_active: 'in action today', p_idle: 'standing by', p_last: 'last active',
+      rank_label: 'rank', rank_max: 'highest rank',
+      rank_next: (need, next) => `<b>${need}</b> prompts to ${next}`,
     },
     ko: {
       langBtn: 'EN',
@@ -652,6 +678,9 @@
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
       every_5m: '5분마다',
+      p_active: '오늘 참전 중', p_idle: '대기 중', p_last: '마지막 참전',
+      rank_label: '계급', rank_max: '최고 계급',
+      rank_next: (need, next) => `${next}까지 <b>${need}</b> prompts`,
     },
   };
   const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
@@ -933,6 +962,18 @@
       '....UU..UU......',
       '...BBB..BBB.....',
     ],
+    chartflag: [ // 차트 피크에 꽂는 소형 깃발
+      '.R......',
+      '.RFFFFFF',
+      '.RFFFFFF',
+      '.RFFFF..',
+      '.R......',
+      '.R......',
+      '.R......',
+      '.R......',
+      '.R......',
+      '.R......',
+    ],
     flag: [ // 기수(1위 뱃지용) — 깃발
       '.........RFFFFFF',
       '.........RFFFFFF',
@@ -956,15 +997,17 @@
 
   function spriteSVG(name) {
     const map = SPRITES[name];
+    const mh = map.length;
+    const mw = map[0].length;
     let rects = '';
-    for (let y = 0; y < map.length; y++) {
-      for (let x = 0; x < map[y].length; x++) {
+    for (let y = 0; y < mh; y++) {
+      for (let x = 0; x < mw; x++) {
         const ch = map[y][x];
         if (ch === '.') continue;
         rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${SPRITE_CLS[ch]}"/>`;
       }
     }
-    return `<svg class="sprite" viewBox="0 0 16 16" width="100%" height="100%" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+    return `<svg class="sprite" viewBox="0 0 ${mw} ${mh}" width="100%" height="100%" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
   }
 
   // 2프레임 걷기(행진·타건 공용). i 로 delay 를 엇갈리게.
@@ -1278,6 +1321,10 @@
   }
   function showUserError(msg) {
     $('shareBtn').hidden = true;
+    $('uPortrait').hidden = true;
+    $('uRank').hidden = true;
+    $('uStatus').hidden = true;
+    $('uRankLine').hidden = true;
     $('uChartWrap').hidden = true;
     $('uRole').hidden = true;
     $('uRole').innerHTML = '';
@@ -1309,6 +1356,10 @@
     $('cmdEcho').textContent = `GET /user?${q}`;
     $('uNick').textContent = byId ? '' : nick; // slug 는 표시명이 아님 → 응답 도착 후 채움
     $('shareBtn').hidden = true;
+    $('uPortrait').hidden = true;
+    $('uRank').hidden = true;
+    $('uStatus').hidden = true;
+    $('uRankLine').hidden = true;
     $('uCountry').textContent = '';
     $('uTz').textContent = '';
     $('uRole').hidden = true;
@@ -1422,6 +1473,7 @@
       data.city || '',
     ].filter(Boolean).join(' · ');
     renderRole(data.role, data.company);
+    renderSoldierBits(data);
     const bioEl = $('uBio');
     if (data.bio && String(data.bio).trim()) {
       bioEl.textContent = data.bio;
@@ -1439,6 +1491,107 @@
     $('uMsg').hidden = true;
     renderUserChart();
   }
+  // ── 계급(이병~장군) — 정책 원문: DESIGN.md §16. 전 기간 누적 prompts 기준, 강등 없음 ──
+  const RANKS = [
+    { ko: '이병', en: 'Private',       min: 0,         ins: ['bars', 1] },
+    { ko: '일병', en: 'PFC',           min: 200,       ins: ['bars', 2] },
+    { ko: '상병', en: 'Corporal',      min: 1000,      ins: ['bars', 3] },
+    { ko: '병장', en: 'Sergeant',      min: 3000,      ins: ['bars', 4] },
+    { ko: '하사', en: 'Staff Sgt',     min: 7000,      ins: ['chev', 1] },
+    { ko: '중사', en: 'Sgt 1st Class', min: 15000,     ins: ['chev', 2] },
+    { ko: '상사', en: 'Master Sgt',    min: 30000,     ins: ['chev', 3] },
+    { ko: '소위', en: '2nd Lt',        min: 60000,     ins: ['dia', 1] },
+    { ko: '대위', en: 'Captain',       min: 120000,    ins: ['dia', 2] },
+    { ko: '소령', en: 'Major',         min: 250000,    ins: ['dia', 3] },
+    { ko: '대령', en: 'Colonel',       min: 500000,    ins: ['dia', 4] },
+    { ko: '장군', en: 'General',       min: 1000000,   ins: ['star', 1] },
+  ];
+  function rankOf(p) {
+    let i = 0;
+    while (i + 1 < RANKS.length && p >= RANKS[i + 1].min) i++;
+    return i;
+  }
+  // 계급장 픽셀 유닛: 병=작대기, 부사관=갈매기, 장교=다이아(가로 반복), 장군=별
+  const INS_UNIT = {
+    bars: ['KKKKKKKKKK'],
+    chev: ['....KK....', '...KKKK...', '..KK..KK..'],
+    dia: ['..K..', '.KKK.', 'KKKKK', '.KKK.', '..K..'],
+    star: ['....K....', '....K....', '.KKKKKKK.', '..KKKKK..', '...KKK...', '..KK.KK..', '.K.....K.'],
+  };
+  function insigniaSVG(kind, n) {
+    let map;
+    if (kind === 'dia') {
+      map = INS_UNIT.dia.map((row) => Array(n).fill(row).join('.'));
+    } else if (kind === 'star') {
+      map = INS_UNIT.star;
+    } else {
+      map = [];
+      for (let i = 0; i < n; i++) {
+        if (i) map.push('.'.repeat(INS_UNIT[kind][0].length));
+        map.push(...INS_UNIT[kind]);
+      }
+    }
+    const mh = map.length;
+    const mw = map[0].length;
+    let rects = '';
+    for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++)
+      if (map[y][x] === 'K') rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-k"/>`;
+    return `<svg viewBox="0 0 ${mw} ${mh}" width="${mw * 2}" height="${mh * 2}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+
+  // 주력 에이전트(30일 합산 prompts 최다) → 초상 군복색
+  function dominantAgent(days) {
+    const sum = {};
+    for (const d of days || []) for (const a in d.agents || {}) sum[a] = (sum[a] || 0) + (d.agents[a].prompts || 0);
+    let best = null;
+    for (const a in sum) if (!best || sum[a] > sum[best]) best = a;
+    return best || 'claude-code';
+  }
+  const AGENT_ARMY = { 'claude-code': 'army-claude', codex: 'army-codex', opencode: 'army-opencode', pi: 'army-pi' };
+
+  // 프로필 병정 초상(활동 상태 포즈) + 계급 칩·게이지
+  function renderSoldierBits(data) {
+    const days = data.days || [];
+    const last = days[days.length - 1];
+    const todayP = last ? last.prompts || 0 : 0;
+    const por = $('uPortrait');
+    por.className = 'portrait ' + (AGENT_ARMY[dominantAgent(days)] || 'army-claude');
+    if (todayP > 0) {
+      por.classList.add('typing');
+      por.innerHTML = `<span class="f f1">${spriteSVG('typer1')}</span><span class="f f2">${spriteSVG('typer2')}</span><i class="tdots"><b></b><b></b><b></b></i>`;
+      $('uStatus').innerHTML = `<span class="on">●</span> ${t('p_active')} · ${fmt(todayP)} prompts`;
+    } else {
+      por.innerHTML = spriteSVG('march2');
+      let lastDay = null;
+      for (let j = days.length - 1; j >= 0; j--) if ((days[j].prompts || 0) > 0) { lastDay = days[j].day; break; }
+      $('uStatus').textContent = `○ ${t('p_idle')}${lastDay ? ` · ${t('p_last')} ${mmdd(lastDay)}` : ''}`;
+    }
+    por.hidden = false;
+    $('uStatus').hidden = false;
+    // 계급 — allTime 없으면(구 API 캐시 등) 표시 생략
+    const at = data.allTime && typeof data.allTime.prompts === 'number' ? data.allTime.prompts : null;
+    if (at == null) { $('uRank').hidden = true; $('uRankLine').hidden = true; return; }
+    const ri = rankOf(at);
+    const r = RANKS[ri];
+    const name = LANG === 'ko' ? r.ko : r.en;
+    $('uRank').innerHTML = `${insigniaSVG(r.ins[0], r.ins[1])}${escapeHtml(name)}`;
+    $('uRank').title = `${fmt(at)} prompts`;
+    $('uRank').hidden = false;
+    const next = RANKS[ri + 1];
+    let gauge;
+    let tail;
+    if (next) {
+      const on = Math.max(0, Math.min(10, Math.round(((at - r.min) / (next.min - r.min)) * 10)));
+      gauge = `<span class="gbar"><span class="on">${'▮'.repeat(on)}</span><span class="off">${'▯'.repeat(10 - on)}</span></span>`;
+      tail = t('rank_next')(fmt(next.min - at), LANG === 'ko' ? next.ko : next.en);
+    } else {
+      gauge = `<span class="gbar"><span class="on">${'▮'.repeat(10)}</span></span>`;
+      tail = t('rank_max');
+    }
+    $('uRankLine').innerHTML = `${t('rank_label')} <b>${escapeHtml(name)}</b> ${gauge} ${tail}`;
+    $('uRankLine').hidden = false;
+  }
+
   // 에이전트별 차트 색. claude-code 는 기본 막대색(--fg), 목록 밖 값은 --dim.
   const AGENT_ORDER = ['claude-code', 'codex', 'opencode', 'pi'];
   const AGENT_COLOR = { 'claude-code': 'var(--fg)', codex: 'var(--ag-codex)', opencode: 'var(--ag-opencode)', pi: 'var(--ag-pi)' };
@@ -1518,7 +1671,7 @@
 
     const todayStr = days.length ? days[days.length - 1].day : '';
     $('uChart').innerHTML = days
-      .map((d) => {
+      .map((d, i) => {
         const v = d[metric] || 0;
         const h = Math.max(2, Math.round((v / max) * 100));
         const dow = new Date(d.day + 'T00:00:00Z').getUTCDay();
@@ -1527,8 +1680,10 @@
         const cls = v === 0 ? 'zero' : isToday ? 'today' : isWknd ? 'wknd' : '';
         const segs = barSegs(multi, v, d.agents, agents, metric);
         const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(d.agents || {}))}"` : '';
+        // 최고 기록일 = 고지 점령 — 피크 막대 위에 픽셀 깃발
+        const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
         // data-day 는 드릴다운(그 날 시간별)용, data-lbl 은 툴팁 표시 라벨.
-        return `<div class="col ${cls}" data-day="${d.day}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}><div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        return `<div class="col ${cls}" data-day="${d.day}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 

@@ -628,6 +628,13 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     { prompts: 0, chars: 0 },
   );
 
+  // 전 기간 누적(계급 산정용). daily_stats 는 공용 UTC 롤업이지만 총합은 TZ 와 무관하다.
+  const allAgg = await env.DB.prepare(
+    'SELECT COALESCE(SUM(prompts), 0) AS p, COALESCE(SUM(chars), 0) AS c FROM daily_stats WHERE user_id = ?',
+  )
+    .bind(user.user_id)
+    .first<{ p: number; c: number }>();
+
   // 스트릭: 최근 활동일에서 뒤로 연속 카운트. 오늘이 아직 비어도 어제까지의 연속을 인정(자정 유예).
   const streakDays = recentLocalDays(now, tz, STREAK_WINDOW_DAYS);
   const isActive = (day: string) => (byDay.get(day)?.prompts ?? 0) > 0;
@@ -659,6 +666,8 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     range: { from: graphDays[0], to: graphDays[graphDays.length - 1], days: graphDays.length },
     days: series,
     totals,
+    // 전 기간 누적 — 웹·OG 가 계급(이병~장군, DESIGN.md §16) 산정에 쓴다.
+    allTime: { prompts: Number(allAgg?.p) || 0, chars: Number(allAgg?.c) || 0 },
     streak, // 연속 활동일(로컬), OG 카드가 재활용
     streakSince, // 스트릭 시작 로컬 날짜 'YYYY-MM-DD' | null
   });

@@ -8,6 +8,8 @@
   :root{
     --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
     --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441;
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55;
+    --skin:#E8C39E; --eye:#232320;
     --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box;margin:0;}
@@ -17,16 +19,33 @@
   .top{display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:22px;}
   .lights{display:flex;gap:10px;}
   .lights i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
-  .dom{font-weight:600;color:var(--fg);letter-spacing:.02em;}
+  .dom{font-weight:600;color:var(--fg);letter-spacing:.02em;display:flex;align-items:center;gap:14px;}
+
+  /* ── 픽셀 병정(랜딩과 동일 스프라이트) ── */
+  .sprite{display:block;}
+  .px-s{fill:var(--skin);} .px-e{fill:var(--eye);} .px-r{fill:var(--fg);} .px-k{fill:var(--ok);}
+  .army-claude .px-u{fill:var(--fg);}
+  .army-codex .px-u{fill:var(--ag-codex);}
+  .army-opencode .px-u{fill:var(--ag-opencode);}
+  .army-pi .px-u{fill:var(--pi);}
+  .portrait{position:relative;width:84px;height:84px;flex:none;}
+  .tdots{position:absolute;top:-8px;left:20px;display:flex;gap:5px;}
+  .tdots b{width:7px;height:7px;background:var(--faint);}
+  .tdots b:nth-child(2),.tdots b:nth-child(3){opacity:.4;}
+  .rankchip{display:inline-flex;align-items:center;gap:10px;font-size:22px;color:var(--fg);
+    border:1.5px solid var(--line);border-radius:7px;padding:7px 16px;align-self:center;}
+  .peakflag{position:absolute;left:calc(50% - 7px);bottom:100%;width:36px;height:44px;pointer-events:none;}
+  .peakflag .px-f{fill:var(--pi);}  /* 오늘 강조색(보라) 깃발 */
+  .sentry{width:48px;height:48px;flex:none;margin:-8px 0;}
 
   .cmd{margin-top:20px;color:var(--dim);font-size:22px;}
   .cmd .sig{color:var(--fg);}
   .cmd .cur{display:inline-block;width:12px;height:22px;background:var(--fg);vertical-align:-3px;margin-left:4px;}
 
-  .idrow{display:flex;align-items:baseline;gap:16px;margin-top:12px;}
+  .idrow{display:flex;align-items:center;gap:18px;margin-top:12px;}
   .nick{font-size:52px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
-  .loc{color:var(--dim);font-size:22px;}
-  .date{margin-left:auto;font-size:25px;color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+  .loc{color:var(--dim);font-size:22px;align-self:flex-end;padding-bottom:6px;}
+  .date{margin-left:auto;font-size:25px;color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em;align-self:flex-end;padding-bottom:6px;}
   .date .dow{color:var(--dim);font-weight:400;}
 
   /* 히어로: 오늘(최근 활동일) 글자수를 제일 크게 */
@@ -44,7 +63,7 @@
   /* 최근 14일 막대(높이=글자수). 스트릭 구간 초록, 오늘 보라, 그 외 활동일 흰색, 미활동 회색. */
   .graph{margin-top:auto;}
   .bars{display:flex;align-items:flex-end;gap:9px;height:120px;}
-  .bars .b{flex:1;background:var(--line);border-radius:2px;min-height:4px;}
+  .bars .b{flex:1;background:var(--line);border-radius:2px;min-height:4px;position:relative;}
   .bars .b.on{background:var(--fg);}
   .bars .b.streak{background:var(--ok);}
   .bars .b.today{background:var(--pi);}
@@ -61,13 +80,15 @@
   <div class="card">
     <div class="top">
       <div class="lights"><i></i><i></i><i></i></div>
-      <div class="dom">opencodewar.dev</div>
+      <div class="dom"><span class="sentry army-claude" id="sentrySlot" aria-hidden="true"></span>opencodewar.dev</div>
     </div>
 
     <div class="cmd"><span class="sig">you@open-code-war</span>:~$ GET /u/<span id="uNick2"></span><span class="cur"></span></div>
 
     <div class="idrow">
+      <span class="portrait" id="portrait" aria-hidden="true"></span>
       <div class="nick" id="nick">–</div>
+      <span class="rankchip" id="rankchip" style="display:none"></span>
       <div class="loc" id="loc"></div>
       <div class="date" id="date"></div>
     </div>
@@ -113,7 +134,8 @@
       {chars:24197,active:true,streak:true,today:true}
     ],
     axis: { l: "7/09", m: "7/16", r: "7/22" },
-    stamp: "2026-07-22 · KST"
+    stamp: "2026-07-22 · KST",
+    agent: "claude-code", activeToday: true, allTimePrompts: 1791
   }/*END*/;
 
   function comma(n){ return Number(n||0).toLocaleString('en-US'); }
@@ -137,13 +159,97 @@
     badge.style.display = 'none';
   }
 
-  // 최근 14일 막대(높이=글자수, 스트릭/오늘 강조)
+  // ── 픽셀 병정 스프라이트(랜딩과 동일 16×16 맵) ──
+  var SPRITES = {
+    typer1: [ // 타이핑 오퍼레이터 — 정지 화면이라 1프레임
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......'
+    ],
+    sentry: [ // 보초(소총 세워 듦)
+      '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
+      '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
+      '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU..UU......','...BBB..BBB.....'
+    ],
+    chartflag: [
+      '.R......','.RFFFFFF','.RFFFFFF','.RFFFF..','.R......','.R......','.R......','.R......','.R......','.R......'
+    ]
+  };
+  var SPRITE_CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+  function spriteSVG(name) {
+    var map = SPRITES[name], rects = '';
+    for (var y = 0; y < map.length; y++) for (var x = 0; x < map[y].length; x++) {
+      var ch = map[y][x];
+      if (ch !== '.') rects += '<rect x="' + x + '" y="' + y + '" width="1" height="1" class="px-' + SPRITE_CLS[ch] + '"/>';
+    }
+    return '<svg class="sprite" viewBox="0 0 ' + map[0].length + ' ' + map.length + '" width="100%" height="100%" shape-rendering="crispEdges">' + rects + '</svg>';
+  }
+
+  // ── 계급(정책: DESIGN.md §16, 웹 index.html 의 RANKS 와 동일 값) ──
+  var RANKS = [
+    { en:'Private', min:0, ins:['bars',1] }, { en:'PFC', min:200, ins:['bars',2] },
+    { en:'Corporal', min:1000, ins:['bars',3] }, { en:'Sergeant', min:3000, ins:['bars',4] },
+    { en:'Staff Sgt', min:7000, ins:['chev',1] }, { en:'Sgt 1st Class', min:15000, ins:['chev',2] },
+    { en:'Master Sgt', min:30000, ins:['chev',3] }, { en:'2nd Lt', min:60000, ins:['dia',1] },
+    { en:'Captain', min:120000, ins:['dia',2] }, { en:'Major', min:250000, ins:['dia',3] },
+    { en:'Colonel', min:500000, ins:['dia',4] }, { en:'General', min:1000000, ins:['star',1] }
+  ];
+  var INS_UNIT = {
+    bars: ['KKKKKKKKKK'],
+    chev: ['....KK....','...KKKK...','..KK..KK..'],
+    dia: ['..K..','.KKK.','KKKKK','.KKK.','..K..'],
+    star: ['....K....','....K....','.KKKKKKK.','..KKKKK..','...KKK...','..KK.KK..','.K.....K.']
+  };
+  function insigniaSVG(kind, n) {
+    var map, i;
+    if (kind === 'dia') {
+      map = INS_UNIT.dia.map(function(row){ return Array(n).fill(row).join('.'); });
+    } else if (kind === 'star') {
+      map = INS_UNIT.star;
+    } else {
+      map = [];
+      for (i = 0; i < n; i++) {
+        if (i) map.push('.'.repeat(INS_UNIT[kind][0].length));
+        map = map.concat(INS_UNIT[kind]);
+      }
+    }
+    var rects = '';
+    for (var y = 0; y < map.length; y++) for (var x = 0; x < map[y].length; x++)
+      if (map[y][x] === 'K') rects += '<rect x="' + x + '" y="' + y + '" width="1" height="1" class="px-k"/>';
+    var w = map[0].length, h = map.length;
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w * 2.4 + '" height="' + h * 2.4 + '" shape-rendering="crispEdges">' + rects + '</svg>';
+  }
+
+  // 초상: 주력 에이전트 군복 + 포즈(오늘 활동 → 타이핑, 아니면 보초). 구 데이터엔 필드가 없어 폴백.
+  var AGENT_ARMY = { 'claude-code':'army-claude', codex:'army-codex', opencode:'army-opencode', pi:'army-pi' };
+  var portrait = document.getElementById('portrait');
+  portrait.className = 'portrait ' + (AGENT_ARMY[d.agent] || 'army-claude');
+  var active = d.activeToday != null ? d.activeToday : !!d.heroIsToday;
+  portrait.innerHTML = active
+    ? spriteSVG('typer1') + '<i class="tdots"><b></b><b></b><b></b></i>'
+    : spriteSVG('sentry');
+
+  // 계급 칩(allTimePrompts 있을 때만 — 렌더러가 구버전이면 자동 생략)
+  if (typeof d.allTimePrompts === 'number') {
+    var ri = 0;
+    while (ri + 1 < RANKS.length && d.allTimePrompts >= RANKS[ri + 1].min) ri++;
+    var rk = RANKS[ri];
+    var chip = document.getElementById('rankchip');
+    chip.innerHTML = insigniaSVG(rk.ins[0], rk.ins[1]) + rk.en;
+    chip.style.display = 'inline-flex';
+  }
+
+  // 상단 보초
+  document.getElementById('sentrySlot').innerHTML = spriteSVG('sentry');
+
+  // 최근 14일 막대(높이=글자수, 스트릭/오늘 강조 + 오늘 막대 깃발)
   var s = d.series || [];
   var maxC = s.reduce(function(m, x){ return Math.max(m, x.chars || 0); }, 1);
   document.getElementById('bars').innerHTML = s.map(function(x){
     var h = Math.max(4, Math.round((x.chars || 0) / maxC * 120));
     var cls = !x.active ? '' : (x.today ? 'today' : (x.streak ? 'streak' : 'on'));
-    return '<div class="b ' + cls + '" style="height:' + h + 'px"></div>';
+    var flag = x.today && x.active ? '<span class="peakflag">' + spriteSVG('chartflag') + '</span>' : '';
+    return '<div class="b ' + cls + '" style="height:' + h + 'px">' + flag + '</div>';
   }).join('');
   document.getElementById('axL').textContent = d.axis.l;
   document.getElementById('axM').textContent = d.axis.m;
