@@ -70,6 +70,8 @@ export async function buildData(api, seg) {
   const sinceLocal = startIdx >= 0 ? days[startIdx].day : '';
   // 표시용 스트릭 수/시작일은 /user 값(60일 창, 더 정확) 우선. days 가 없으면 위 로컬 계산으로 폴백.
   const streak = typeof profile.streak === 'number' ? profile.streak : streakLocal;
+  // 최장 스트릭(§17)은 /user 가 전 기간 기준으로 준다. 구 캐시로 없으면 현재값으로 폴백.
+  const streakLongest = typeof profile.streakLongest === 'number' ? profile.streakLongest : streak;
   const sinceIso = profile.streakSince || sinceLocal;
 
   // 히어로 = 가장 최근 활동일의 글자수(보통 오늘, 자정 직후엔 어제) → 큰 숫자가 0으로 안 비게.
@@ -122,6 +124,7 @@ export async function buildData(api, seg) {
     heroIsToday,
     heroDayLabel: heroIsToday ? '' : monthDayLabel(hero.day),
     streak,
+    streakLongest, // 역대 최장 연속 — 현재보다 크면 카드에 '· best N' 노출
     since: sinceIso ? monthDayLabel(sinceIso) : '',
     series,
     axis,

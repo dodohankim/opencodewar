@@ -118,8 +118,9 @@ CREATE TABLE events (
   country    TEXT,                       -- cf.country, 예: 'KR'
   created_at INTEGER NOT NULL            -- 서버 수신 시각(UTC epoch ms)
 );
+-- 유저 상세(/user·/user/hours)의 유저별 events 조회용. 0002 에서 제거했다가 0011 에서 복구.
 CREATE INDEX idx_events_user_time ON events(user_id, created_at);
-CREATE INDEX idx_events_time      ON events(created_at);
+-- (idx_events_time — 전역 시간축 인덱스는 조회처가 없어 0002 에서 제거, 미복구)
 
 -- 유저 프로필
 CREATE TABLE users (
@@ -173,13 +174,14 @@ CREATE INDEX idx_daily_day ON daily_stats(day);
 
 ## 7. 집계 & 리더보드 로직
 
-### 7.1 KST 기준 날짜
-- KST = UTC+9, 서머타임 없음. 서버 수신 epoch ms `ts`로부터:
-  `dayKST = new Date(ts + 9*3600*1000).toISOString().slice(0,10)`
+### 7.1 UTC 기준 날짜 (공용 시계)
+- 리더보드의 "하루"는 전 세계가 동일해야 공정하므로 **UTC** 로 끊는다. 서버 수신 epoch ms `ts`:
+  `dayUTC = new Date(ts).toISOString().slice(0,10)` (코드: `time.ts`의 `utcToday`)
+- 개인 상세 페이지만 프로필 주인 로컬 TZ 로 재집계한다(`tz.ts`). 스트릭(§17)도 UTC 를 쓴다.
 
 ### 7.2 구간 정의
-- **일간**: `day = 오늘(KST)`
-- **주간**: 이번 주 월~일 (KST). `WHERE day BETWEEN 월요일 AND 일요일 GROUP BY user_id`
+- **일간**: `day = 오늘(UTC)`
+- **주간**: 이번 주 월~일 (UTC). `WHERE day BETWEEN 월요일 AND 일요일 GROUP BY user_id`
 - **주말(금·토·일)**: 이번 주의 금·토·일 3일. 평일에는 "다가오는 주말"이 0부터 쌓이는 형태로 노출.
 
 ```sql
@@ -313,9 +315,14 @@ GROUP BY user_id ORDER BY p DESC LIMIT :limit;
 
 ### 쓰기 절감 (프롬프트당 ~6행 → ~2–3행)
 1. **`last_seen_at` 매 track 쓰기 제거** — 가장 쉬운 큰 절감(하루 1회 이하로).
-2. **인덱스 최소화** — 인덱스도 "쓴 행"에 포함. 읽기에 꼭 필요한 것만.
+2. **인덱스 최소화** — 인덱스도 "쓴 행"에 포함. 읽기에 꼭 필요한 것만. (0002 에서 events 인덱스 전부 제거 → 0008부터 유저 상세가 events 를 유저별 조회하게 되어 0011 에서 `idx_events_user_time` 만 복구. 없으면 상세 1회 열람 = events 전체 rows_read 과금.)
 3. **`events` 원시 적재 재고** — 리더보드는 `daily_stats`만 있으면 됨. 감사 불필요하면 events 생략/샘플링/보존기간(프루닝).
 4. `daily_stats` upsert는 유지(집계 핵심).
+
+### 읽기 지연 (D1 왕복 최소화)
+- D1 은 쿼리마다 네트워크 왕복(실측 ~150–200ms). 순차 `await` N번 = N×왕복이 그대로 TTFB 에 얹힌다.
+- **유저 상세 `/user`**: 프로필·이메일·이벤트·일별 집계 4쿼리를 `DB.batch()` 하나(단일 왕복)로. 부속 쿼리는 `user_id` 를 `(SELECT user_id FROM users WHERE …)` 서브쿼리로 재조회. `/user/hours` 도 동일(TZ 를 모르는 채 넉넉한 UTC 창으로 뽑고 응답 후 정확한 로컬 하루로 필터).
+- **`/u/<nick>` HTML**: 에셋 fetch 와 OG 메타용 D1 조회를 병렬(`Promise` 동시 시작).
 
 ### 남은 것
 - Cron + 스냅샷(또는 Cache API) 구현, 웹에 "집계 시각" 표기, 간격 env화(운영 30m/테스트 1m).
@@ -502,3 +509,41 @@ OAuth 를 열면 그때 "verified" 트랙 추가.
 - 노출: 프로필(계급 칩 + 다음 계급 게이지), OG 카드(계급 칩). 리더보드 행에는 넣지 않는다
   (1위 깃발 퍼레이드와 역할 중복). 계급명은 KO/EN i18n.
 - 픽셀 계급장: 병=작대기·부사관=갈매기·장교=다이아·장군=별, 색은 `--ok`(초록) 단색.
+
+---
+
+## 17. 스트릭 (연속 기록) — UTC 기준
+
+리텐션 장치. **UTC 하루** 단위로 "친 날(qualifying day)"을 세어 연속 일수를 매긴다.
+리더보드(§7)·계급(§16)과 같은 공용 UTC 시계를 써서 "하루" 정의가 전 기능에서 하나로 통일된다.
+개인 상세의 로컬 TZ 재집계(`tz.ts`)와는 무관 — **스트릭은 로컬 보정하지 않는다**.
+
+### 17.1 "친 날" 조건 (2026-07-24 확정)
+
+한 UTC 날짜가 스트릭에 포함되려면 그 날 **두 조건을 모두(AND)** 만족해야 한다:
+
+| 조건 | 값 | 집계 |
+|---|---|---|
+| 프롬프트 수 | **10개 이상** (`≥ 10`) | `SUM(prompts)` |
+| 총 글자수 | **500자 초과** (`> 500`, 500은 미달) | `SUM(chars)` |
+
+- AND 결합이 핵심: 프롬프트 10개만으로는 "응/ok/continue" 10번 farming 이 되지만,
+  총 500자 초과 게이트가 그런 *전부-사소한-프롬프트* 세션을 걸러낸다.
+- 집계 출처는 `daily_stats`. 단 이 테이블은 `(user_id, day, agent)` 단위라
+  하루 판정은 **agent 합산**이 필요하다: `GROUP BY user_id, day` 후 SUM 비교.
+- 긴 텍스트 붙여넣기로 글자수는 뚫릴 수 있으나, 재미 기능 범위에서 허용한다.
+
+### 17.2 연속(current streak) 정의
+
+- `Q` = 위 조건을 만족하는 UTC 날짜 집합.
+- **현재 스트릭** = 오늘(UTC)로 끝나는 `Q`의 연속 길이. 단 오늘이 아직 조건 미달이면
+  "진행 중"으로 보아 어제까지의 연속을 유지한다 → 마지막 친 날이 **오늘 또는 어제**면 살아있고,
+  **이틀 전 이하**면 스트릭은 `0`으로 끊긴다.
+- **최장 스트릭(longest)** = 역대 `Q`의 최대 연속 길이. (선택 노출)
+
+### 17.3 계산 & 노출
+
+- 계산(서버, `/user` 핸들러): 유저의 `(day, SUM(prompts), SUM(chars))` 목록을 뽑아 조건 통과
+  날짜만 남긴 뒤, day-number(UTC) 연속성으로 런길이를 잰다. 결과를 `/user` 응답에 포함.
+- 노출: 프로필 상세(🔥 N일), OG 카드. 리더보드 행에는 넣지 않는다(계급·1위 깃발과 역할 중복).
+- 캐시: `/user` 응답 캐시에 함께 실린다. 스냅샷 주기 수준 정확도면 충분.
