@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — OG variants ×3</title>
+<style>
+  body{margin:0;background:#1a1a18;font-family:ui-monospace,"SF Mono",Menlo,monospace;padding:20px 20px 60px;}
+  .mocknote{max-width:960px;margin:0 auto 6px;font-size:11.5px;color:#8C8C87;}
+  .vlabel{max-width:960px;margin:26px auto 8px;font-size:13px;color:#E7E7E3;}
+  .vlabel .sub{color:#8C8C87;font-size:11.5px;margin-left:8px;}
+  .stagewrap{max-width:960px;margin:0 auto;}
+  .stage{width:1200px;transform-origin:top left;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:4px;overflow:hidden;}
+
+  /* ── 공통 카드 토큰 ── */
+  .og{
+    --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
+    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441; --hover:rgba(231,231,227,0.06);
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55;
+    --skin:#E8C39E; --eye:#232320;
+    width:1200px;height:630px;background:var(--bg);color:var(--fg);overflow:hidden;position:relative;
+    font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  .og *{box-sizing:border-box;margin:0;}
+  .sprite{display:block;}
+  .px-s{fill:var(--skin);} .px-e{fill:var(--eye);} .px-r{fill:var(--fg);} .px-k{fill:var(--ok);}
+  .army-claude .px-u,.army-claude .px-f{fill:var(--fg);}
+  .army-codex .px-u,.army-codex .px-f{fill:var(--ag-codex);}
+  .army-opencode .px-u,.army-opencode .px-f{fill:var(--ag-opencode);}
+  .army-pi .px-u,.army-pi .px-f{fill:var(--pi);}
+  .flip .sprite{transform:scaleX(-1);}
+  .lights{display:flex;gap:10px;}
+  .lights i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
+
+  /* ══ 시안 1 v2 · DAILY SORTIE (계급 카드 × 오늘의 도전장) ══ */
+  .c1{padding:46px 60px 40px;display:flex;flex-direction:column;}
+  .c1 .eyebrow{display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:21px;letter-spacing:.14em;}
+  .c1 .eyebrow b{color:var(--fg);letter-spacing:.02em;}
+  .c1 .cols{display:flex;gap:52px;margin-top:28px;flex:1;}
+  .c1 .pframe{width:320px;flex:none;border:2px solid var(--line);border-radius:10px;background:var(--hover);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px 0;}
+  .c1 .pframe .soldier{width:180px;height:180px;position:relative;}
+  .c1 .tdots{position:absolute;top:-14px;left:42px;display:flex;gap:10px;}
+  .c1 .tdots b{width:13px;height:13px;background:var(--faint);}
+  .c1 .tdots b:nth-child(2),.c1 .tdots b:nth-child(3){opacity:.4;}
+  .c1 .rankrow{display:flex;align-items:center;gap:14px;font-size:28px;font-weight:700;}
+  .c1 .right{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .c1 .idline{display:flex;align-items:baseline;gap:16px;}
+  .c1 .nick{font-size:58px;font-weight:800;letter-spacing:-0.03em;line-height:1;}
+  .c1 .loc{color:var(--dim);font-size:22px;}
+  .c1 .hero{margin-top:26px;}
+  .c1 .hero .num{font-size:100px;font-weight:800;line-height:.85;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;}
+  .c1 .hero .num .rec{color:var(--amber);}
+  .c1 .hero .lab{font-size:25px;color:var(--dim);margin-top:12px;}
+  .c1 .hero .lab b{color:var(--fg);}
+  /* 오늘의 도전: 내 최고기록 대비 게이지(앰버) — 넘으면 NEW RECORD */
+  .c1 .chal{margin-top:18px;font-size:23px;color:var(--dim);}
+  .c1 .chal .gb{letter-spacing:-1px;font-size:25px;}
+  .c1 .chal .gb .on{color:var(--amber);} .c1 .chal .gb .off{color:var(--faint);}
+  .c1 .chal b{color:var(--fg);}
+  .c1 .chal .newrec{color:var(--amber);font-weight:700;}
+  .c1 .streakline{margin-top:12px;font-size:22px;color:var(--amber);}
+  .c1 .streakline b{color:var(--fg);}
+  .c1 .streakline .since{color:var(--faint);}
+  /* 하단 요약: 누적 + 계급 진행(초록) — 장기 도전 */
+  .c1 .lifetime{margin-top:auto;border-top:2px dotted var(--line);padding-top:16px;display:grid;gap:9px;
+    font-size:20px;color:var(--dim);}
+  .c1 .lifetime b{color:var(--fg);}
+  .c1 .lifetime .k{color:var(--faint);letter-spacing:.08em;font-size:17px;margin-right:8px;}
+  .c1 .lifetime .gb{letter-spacing:-1px;}
+  .c1 .lifetime .gb .on{color:var(--ok);} .c1 .lifetime .gb .off{color:var(--faint);}
+  .c1 .foot{margin-top:20px;display:flex;justify-content:space-between;color:var(--faint);font-size:19px;}
+  .c1 .foot .live{display:flex;align-items:center;gap:10px;}
+  .c1 .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--ok);}
+  .mockpanel{position:fixed;right:14px;bottom:14px;z-index:20;background:#0E0E0D;border:1px solid #2A2A26;color:#8C8C87;
+    border-radius:8px;padding:12px 14px 10px;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.4);}
+  .mockpanel .ttl{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#5A5A56;margin-bottom:8px;}
+  .mockpanel label{display:flex;gap:7px;align-items:center;cursor:pointer;padding:2px 0;}
+  .mockpanel label:hover{color:#E7E7E3;}
+
+  /* ══ 시안 3 · COMBAT REPORT (전투 보고서) ══ */
+  .c3{padding:50px 60px 44px;display:flex;flex-direction:column;}
+  .c3 .top{display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:22px;}
+  .c3 .dom{font-weight:600;color:var(--fg);}
+  .c3 .stamp{position:absolute;right:56px;top:104px;transform:rotate(6deg);border:3px dashed var(--amber);
+    color:var(--amber);border-radius:8px;padding:10px 20px;font-size:24px;font-weight:700;letter-spacing:.12em;opacity:.9;}
+  .c3 .idrow{display:flex;align-items:center;gap:18px;margin-top:24px;}
+  .c3 .portrait{position:relative;width:76px;height:76px;flex:none;}
+  .c3 .nick{font-size:52px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
+  .c3 .rankchip{display:inline-flex;align-items:center;gap:10px;font-size:22px;color:var(--fg);
+    border:1.5px solid var(--line);border-radius:7px;padding:7px 16px;}
+  .c3 .loc{color:var(--dim);font-size:22px;align-self:flex-end;padding-bottom:6px;}
+  .c3 .hero{margin-top:20px;}
+  .c3 .hero .num{font-size:106px;font-weight:800;line-height:.8;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;}
+  .c3 .hero .lab{font-size:29px;color:var(--dim);margin-top:12px;}
+  .c3 .hero .lab b{color:var(--fg);}
+  .c3 .badge{margin-top:14px;font-size:24px;color:var(--amber);}
+  .c3 .badge b{color:var(--fg);}
+  .c3 .badge .since{color:var(--faint);}
+  .c3 .graph{margin-top:auto;}
+  .c3 .bars{display:flex;align-items:flex-end;gap:9px;height:110px;}
+  .c3 .bars .b{flex:1;background:var(--line);border-radius:2px;min-height:4px;position:relative;}
+  .c3 .bars .b.on{background:var(--fg);}
+  .c3 .bars .b.streak{background:var(--ok);}
+  .c3 .bars .b.today{background:var(--pi);}
+  .c3 .peakflag{position:absolute;left:calc(50% - 7px);bottom:100%;width:36px;height:44px;}
+  .c3 .peakflag .px-f{fill:var(--pi);}
+  .c3 .axis{display:flex;justify-content:space-between;margin-top:10px;font-size:18px;color:var(--faint);}
+  .c3 .foot{margin-top:18px;display:flex;justify-content:space-between;color:var(--faint);font-size:19px;}
+</style>
+</head>
+<body>
+  <p class="mocknote">mockup · OG 카드 시안 ×3 — 전부 1200×630 실캔버스(dododo 실데이터), 화면 폭에 맞춰 축소 표시.</p>
+
+  <div class="vlabel">시안 1 v2 · DAILY SORTIE — 상태 A <span class="sub">⭐ 올타임 하이 찍은 날 (오늘 412 &gt; 종전 최고 336)</span></div>
+  <div class="stagewrap"><div class="stage" id="c1stageA"></div></div>
+
+  <div class="vlabel">시안 1 v2 · DAILY SORTIE — 상태 B <span class="sub">평상시 · 도전 중 (오늘 178 / 최고 336 = 53%)</span></div>
+  <div class="stagewrap"><div class="stage" id="c1stageB"></div></div>
+
+  <div class="vlabel">시안 3 · COMBAT REPORT <span class="sub">전투 보고서 — 현재 카드의 밀리터리 진화(스탬프 + 계급), 리스크 최소</span></div>
+  <div class="stagewrap"><div class="stage">
+    <div class="og c3">
+      <div class="top"><div class="lights"><i></i><i></i><i></i></div><div class="dom">opencodewar.dev</div></div>
+      <div class="stamp">DAILY COMBAT REPORT</div>
+      <div class="idrow">
+        <span class="portrait army-claude" id="c3por"></span>
+        <div class="nick">dododo</div>
+        <span class="rankchip" id="c3chip"></span>
+        <div class="loc">KR 🇰🇷 · Seoul</div>
+      </div>
+      <div class="hero">
+        <div class="num">24,197</div>
+        <div class="lab"><b>chars</b> fired today · <b>178</b> prompts</div>
+      </div>
+      <div class="badge">🔥 <b>12-day campaign</b> <span class="since">· since Jul 11</span></div>
+      <div class="graph">
+        <div class="bars" id="c3bars"></div>
+        <div class="axis"><span>7/09</span><span>7/16</span><span>7/22</span></div>
+      </div>
+      <div class="foot"><span>no prompt content · character counts only</span><span>2026-07-22 Wed</span></div>
+    </div>
+  </div></div>
+
+<script>
+  // ── 스프라이트(랜딩과 동일 16×16 맵) ──
+  const SPRITES = {
+    typer1: [
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......',
+    ],
+    chartflag: [
+      '.R......','.RFFFFFF','.RFFFFFF','.RFFFF..','.R......','.R......','.R......','.R......','.R......','.R......',
+    ],
+  };
+  const CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+  function spriteSVG(name) {
+    const map = SPRITES[name];
+    const h = map.length, w = map[0].length;
+    let rects = '';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const ch = map[y][x];
+      if (ch !== '.') rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${CLS[ch]}"/>`;
+    }
+    return `<svg class="sprite" viewBox="0 0 ${w} ${h}" width="100%" height="100%" shape-rendering="crispEdges">${rects}</svg>`;
+  }
+  // 계급장(상병 = 작대기 3)
+  function bars3SVG(scale) {
+    const map = ['KKKKKKKKKK','..........','KKKKKKKKKK','..........','KKKKKKKKKK'];
+    let rects = '';
+    for (let y = 0; y < map.length; y++) for (let x = 0; x < map[y].length; x++)
+      if (map[y][x] === 'K') rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-k"/>`;
+    return `<svg viewBox="0 0 10 5" width="${10 * scale}" height="${5 * scale}" shape-rendering="crispEdges">${rects}</svg>`;
+  }
+
+  // ── 시안 1 v2 · 두 상태(신기록 / 도전 중)를 카드 2장으로 나란히 ──
+  const C1_BEST = 336; // 30일 내 개인 최고(prompts)
+  function c1Card(state) {
+    const today = state === 'record' ? 412 : 178;
+    const chars = state === 'record' ? 51230 : 24197;
+    const pct = Math.min(100, Math.round((today / C1_BEST) * 100));
+    const on = Math.min(10, Math.round(pct / 10));
+    const num = state === 'record'
+      ? `<span class="rec">${today.toLocaleString()}</span>` : today.toLocaleString();
+    const chal = state === 'record'
+      ? `<span class="newrec">⭐ NEW PERSONAL BEST</span> · previous <b>${C1_BEST}</b> <span class="gb"><span class="on">${'▮'.repeat(10)}</span></span> <b>${pct}%</b>`
+      : `vs my best <b>${C1_BEST}</b> <span class="gb"><span class="on">${'▮'.repeat(on)}</span><span class="off">${'▯'.repeat(10 - on)}</span></span> <b>${pct}%</b>`;
+    return `<div class="og c1">
+      <div class="eyebrow"><span>OPEN CODE WAR · DAILY SORTIE</span></div>
+      <div class="cols">
+        <div class="pframe">
+          <span class="soldier army-claude">${spriteSVG('typer1')}<i class="tdots"><b></b><b></b><b></b></i></span>
+          <span class="rankrow"><span>${bars3SVG(4.4)}</span>상병 <span style="color:var(--dim);font-weight:400">Corporal</span></span>
+        </div>
+        <div class="right">
+          <div class="idline"><span class="nick">dododo</span><span class="loc">KR 🇰🇷 · Seoul</span></div>
+          <div class="hero">
+            <div class="num">${num}</div>
+            <div class="lab"><b>prompts</b> fired today · <b>${chars.toLocaleString()}</b> chars</div>
+          </div>
+          <div class="chal">${chal}</div>
+          <div class="streakline">🔥 <b>12-day campaign</b> <span class="since">· since Jul 11</span></div>
+          <div class="lifetime">
+            <div><span class="k">ALL-TIME</span><b>1,832</b> prompts · <b>1.77M</b> chars</div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>no prompt content · character counts only</span><span class="live"><i></i>live</span></div>
+    </div>`;
+  }
+  document.getElementById('c1stageA').innerHTML = c1Card('record');
+  document.getElementById('c1stageB').innerHTML = c1Card('normal');
+
+  // ── 시안 2 · 전장 ──
+  // ── 시안 3 ──
+  document.getElementById('c3por').innerHTML =
+    spriteSVG('typer1');
+  document.getElementById('c3chip').innerHTML = bars3SVG(2.4) + 'Corporal';
+  const SERIES = [
+    {c:3200,cls:'on'},{c:0,cls:''},{c:5400,cls:'streak'},{c:8100,cls:'streak'},{c:12600,cls:'streak'},
+    {c:6300,cls:'streak'},{c:9200,cls:'streak'},{c:7100,cls:'streak'},{c:11800,cls:'streak'},{c:8400,cls:'streak'},
+    {c:15200,cls:'streak'},{c:9600,cls:'streak'},{c:7400,cls:'streak'},{c:24197,cls:'today'},
+  ];
+  const maxC = Math.max(...SERIES.map((x) => x.c), 1);
+  document.getElementById('c3bars').innerHTML = SERIES.map((x) => {
+    const h = Math.max(4, Math.round((x.c / maxC) * 110));
+    const flag = x.cls === 'today' ? `<span class="peakflag">${spriteSVG('chartflag')}</span>` : '';
+    return `<div class="b ${x.cls}" style="height:${h}px">${flag}</div>`;
+  }).join('');
+
+  // ── 폭 맞춤 축소 — 뷰포트 기준으로 직접 계산(레이아웃 측정 이슈 회피) ──
+  function fit() {
+    const avail = Math.min(960, document.documentElement.clientWidth - 40);
+    const s = Math.min(1, avail / 1200);
+    document.querySelectorAll('.stage').forEach((st) => {
+      st.style.transform = `scale(${s})`;
+      st.parentElement.style.height = 630 * s + 'px';
+      st.parentElement.style.width = 1200 * s + 'px';
+    });
+  }
+  fit(); addEventListener('resize', fit);
+</script>
+</body>
+</html>
