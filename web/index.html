@@ -227,6 +227,7 @@
   .bearer.herald { cursor:default; }
   .bearer.herald .flag { background:var(--bg); color:var(--fg); border:1px solid var(--fg); height:15px; line-height:15px; letter-spacing:0.06em; }
   .bearer.herald .px-u { fill:var(--dim); } /* 중립 회색 군복 — 소속 없는 표지기(px-u 기본값은 검정) */
+  .march-track .troopgap { flex:none; width:76px; } /* TOTAL·DAILY 그룹 사이 간격 — 부대 둘로 읽히게 */
 
   /* 리더보드 톱3 랭크 병정 · 푸터 보초 */
   .mini { display:inline-block; width:20px; height:20px; vertical-align:-5px; margin-right:6px; }
@@ -1098,10 +1099,12 @@
     // 행진 방향(→) 기준 표지기→1위→2위→3위 — DOM 은 후미부터라 [3위][2위][1위][표지기] 순.
     const group = (rows, label) => (rows.length ? [...rows].reverse().map(bearer).join('') + herald(label) : '');
     const track = $('marchTrack');
-    // 전체 대열(선두→후미): [TOTAL 표지기·톱3] → [DAILY 표지기·톱3] → 후미 호위.
+    // 전체 대열(선두→후미): [TOTAL 표지기·톱3] → (간격) → [DAILY 표지기·톱3] → 후미 호위.
+    // 그룹 사이엔 스페이서를 넣어 별개 부대 둘이 행진하는 느낌을 준다.
+    const groups = [group(topDay, 'DAILY·UTC'), group(topAll, 'TOTAL')].filter(Boolean);
     track.innerHTML =
       escort('army-pi', 0) + escort('army-opencode', 1) + escort('army-codex', 0) +
-      group(topDay, 'DAILY·UTC') + group(topAll, 'TOTAL') + escort('army-opencode', 1);
+      groups.join('<i class="troopgap" aria-hidden="true"></i>') + escort('army-opencode', 1);
     box.hidden = false;
     // 깃발 폭에 맞춰 유닛 간격을 동적 계산(긴 닉네임 겹침 방지) 후 마퀴 시작.
     requestAnimationFrame(() => {
