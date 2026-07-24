@@ -99,6 +99,12 @@ export async function buildData(api, seg) {
     ? { l: mdLabel(win[0].day), m: mdLabel(win[Math.floor((win.length - 1) / 2)].day), r: mdLabel(win[win.length - 1].day) }
     : { l: '', m: '', r: '' };
 
+  // 병정 초상 군복색 = 30일 합산 prompts 최다 에이전트. 없으면 null(템플릿이 claude 폴백).
+  const agentSum = {};
+  for (const d of days) for (const a in d.agents || {}) agentSum[a] = (agentSum[a] || 0) + (d.agents[a].prompts || 0);
+  let agent = null;
+  for (const a in agentSum) if (!agent || agentSum[a] > agentSum[agent]) agent = a;
+
   return {
     nick,
     country: profile.country || '',
@@ -115,6 +121,10 @@ export async function buildData(api, seg) {
     series,
     axis,
     stamp: kstStamp(),
+    // ── 픽셀 병정·계급용(신규 /user 필드 없으면 null → 템플릿이 표시 생략) ──
+    agent, // 주력 에이전트 id ('claude-code' 등)
+    activeToday: n ? isActive(days[n - 1]) : false, // 초상 포즈(타이핑/보초)
+    allTimePrompts: profile.allTime && typeof profile.allTime.prompts === 'number' ? profile.allTime.prompts : null,
   };
 }
 

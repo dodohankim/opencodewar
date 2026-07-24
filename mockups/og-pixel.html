@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — OG pixel</title>
+<style>
+  /* ── 뷰어(목업 전용) ── */
+  body{margin:0;background:#1a1a18;font-family:ui-monospace,"SF Mono",Menlo,monospace;padding:20px 20px 120px;}
+  .mocknote{max-width:960px;margin:0 auto 12px;font-size:11.5px;color:#8C8C87;}
+  .stagewrap{max-width:960px;margin:0 auto;}
+  .stage{width:1200px;transform-origin:top left;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:4px;overflow:hidden;}
+  .mockpanel{position:fixed;right:14px;bottom:14px;z-index:20;background:#0E0E0D;border:1px solid #2A2A26;color:#8C8C87;
+    border-radius:8px;padding:12px 14px 10px;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.4);}
+  .mockpanel .ttl{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#5A5A56;margin-bottom:8px;}
+  .mockpanel label{display:flex;gap:7px;align-items:center;cursor:pointer;padding:2px 0;}
+  .mockpanel label:hover{color:#E7E7E3;}
+
+  /* ── OG 카드 (실제 1200×630, og-user.html 과 동일 토큰) ── */
+  .ogroot{
+    --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
+    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441;
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55;
+    --skin:#E8C39E; --eye:#232320;
+  }
+  .ogroot *{box-sizing:border-box;margin:0;}
+  .card{width:1200px;height:630px;background:var(--bg);color:var(--fg);overflow:hidden;
+    padding:52px 60px 46px;display:flex;flex-direction:column;position:relative;}
+
+  .top{display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:22px;}
+  .lights{display:flex;gap:10px;}
+  .lights i{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
+  .dom{font-weight:600;color:var(--fg);letter-spacing:.02em;display:flex;align-items:center;gap:14px;}
+
+  .cmd{margin-top:20px;color:var(--dim);font-size:22px;}
+  .cmd .sig{color:var(--fg);}
+  .cmd .cur{display:inline-block;width:12px;height:22px;background:var(--fg);vertical-align:-3px;margin-left:4px;}
+
+  .idrow{display:flex;align-items:center;gap:20px;margin-top:14px;}
+  .nick{font-size:52px;font-weight:700;letter-spacing:-0.02em;line-height:1;}
+  .loc{color:var(--dim);font-size:22px;align-self:flex-end;padding-bottom:6px;}
+  .date{margin-left:auto;font-size:25px;color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em;align-self:flex-end;padding-bottom:6px;}
+  .date .dow{color:var(--dim);font-weight:400;}
+
+  .hero{margin-top:16px;}
+  .hero .num{font-size:112px;font-weight:800;line-height:.8;letter-spacing:-0.045em;font-variant-numeric:tabular-nums;}
+  .hero .lab{font-size:30px;color:var(--dim);margin-top:12px;}
+  .hero .lab b{color:var(--fg);}
+  .hero .lab .sep{color:var(--faint);margin:0 4px;}
+
+  .badge{margin-top:16px;font-size:24px;color:var(--amber);display:inline-flex;align-items:center;gap:8px;}
+  .badge b{color:var(--fg);font-weight:700;}
+  .badge .since{color:var(--faint);}
+
+  .graph{margin-top:auto;}
+  .bars{display:flex;align-items:flex-end;gap:9px;height:120px;}
+  .bars .b{flex:1;background:var(--line);border-radius:2px;min-height:4px;position:relative;}
+  .bars .b.on{background:var(--fg);}
+  .bars .b.streak{background:var(--ok);}
+  .bars .b.today{background:var(--pi);}
+  .axis{display:flex;justify-content:space-between;margin-top:11px;font-size:18px;color:var(--faint);font-variant-numeric:tabular-nums;}
+  .axis .mid{opacity:.7;}
+
+  .foot{margin-top:20px;display:flex;align-items:center;justify-content:space-between;color:var(--faint);font-size:19px;}
+  .foot .tagf{color:var(--dim);}
+  .foot .live{display:flex;align-items:center;gap:10px;}
+  .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--ok);display:block;}
+
+  /* ── sprites ── */
+  .sprite{display:block;}
+  .px-s{fill:var(--skin);} .px-e{fill:var(--eye);} .px-r{fill:var(--fg);} .px-k{fill:var(--ok);}
+  .army-claude .px-u, .army-claude .px-f{fill:var(--fg);}
+
+  /* 시안 A · 병정 초상 + 계급 */
+  .ogroot:not(.opt-a) .portrait, .ogroot:not(.opt-a) .rankchip{display:none;}
+  .portrait{position:relative;width:84px;height:84px;flex:none;}
+  .tdots{position:absolute;top:-8px;left:20px;display:flex;gap:5px;}
+  .tdots b{width:7px;height:7px;background:var(--faint);}
+  .tdots b:nth-child(2){opacity:.4;} .tdots b:nth-child(3){opacity:.4;}
+  .rankchip{display:inline-flex;align-items:center;gap:10px;font-size:22px;color:var(--fg);
+    border:1.5px solid var(--line);border-radius:7px;padding:7px 16px;align-self:center;}
+  .rankchip svg{width:26px;height:12px;}
+
+  /* 시안 B · 오늘 깃발 (오늘 막대 위) */
+  .ogroot:not(.opt-b) .peakflag{display:none;}
+  .peakflag{position:absolute;left:calc(50% - 7px);bottom:100%;width:36px;height:44px;pointer-events:none;}
+  .peakflag .px-f{fill:var(--pi);}  /* 오늘 강조색(보라) 깃발 */
+
+  /* 시안 C · 상단 보초 */
+  .ogroot:not(.opt-c) .sentry{display:none;}
+  .sentry{width:48px;height:48px;flex:none;margin:-8px 0;}
+</style>
+</head>
+<body>
+
+  <p class="mocknote">mockup · 유저 공유(OG) 이미지 pixel 시안 — 실제 1200×630 캔버스, 화면 폭에 맞춰 축소 표시. 오른쪽 아래 패널로 A·B·C 비교. 카톡/X 미리보기에선 이 카드가 ~절반 크기로 보입니다.</p>
+
+  <div class="stagewrap"><div class="stage" id="stage">
+    <div class="ogroot opt-a opt-b opt-c" id="ogroot">
+      <div class="card">
+        <div class="top">
+          <div class="lights"><i></i><i></i><i></i></div>
+          <div class="dom"><span class="sentry army-claude" id="sentrySlot" aria-hidden="true"></span>opencodewar.dev</div>
+        </div>
+
+        <div class="cmd"><span class="sig">you@open-code-war</span>:~$ GET /u/dododo<span class="cur"></span></div>
+
+        <div class="idrow">
+          <span class="portrait army-claude" id="portrait" aria-hidden="true"></span>
+          <div class="nick">dododo</div>
+          <span class="rankchip"><svg id="insigniaSlot" viewBox="0 0 12 5" shape-rendering="crispEdges" aria-hidden="true"></svg>Corporal</span>
+          <div class="loc">KR 🇰🇷 · Seoul</div>
+          <div class="date">2026-07-22 <span class="dow">Wed</span></div>
+        </div>
+
+        <div class="hero">
+          <div class="num">24,197</div>
+          <div class="lab"><b>chars</b> today <span class="sep">·</span> 178 prompts</div>
+        </div>
+        <div class="badge">🔥 <b>12-day streak</b> <span class="since">· since Jul 11</span></div>
+
+        <div class="graph">
+          <div class="bars" id="bars"></div>
+          <div class="axis"><span>7/09</span><span class="mid">7/16</span><span>7/22</span></div>
+        </div>
+
+        <div class="foot">
+          <div class="tagf">no prompt content · character counts only</div>
+          <div class="live"><i></i><span>live</span></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <aside class="mockpanel" aria-label="시안 토글">
+    <div class="ttl">시안 토글</div>
+    <label><input type="checkbox" data-opt="a" checked /> A · 병정 초상 + 계급</label>
+    <label><input type="checkbox" data-opt="b" checked /> B · 오늘 막대 깃발</label>
+    <label><input type="checkbox" data-opt="c" checked /> C · 상단 보초</label>
+  </aside>
+
+<script>
+  // ── 스프라이트 (랜딩과 동일 맵) ──
+  const SPRITES = {
+    typer1: [ // 타이핑 오퍼레이터 — OG는 정지 화면이라 1프레임만
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......',
+    ],
+    sentry: [
+      '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
+      '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
+      '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU..UU......','...BBB..BBB.....',
+    ],
+    chartflag: [
+      '.R......','.RFFFFFF','.RFFFFFF','.RFFFF..','.R......','.R......','.R......','.R......','.R......','.R......',
+    ],
+  };
+  const CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+  function spriteSVG(name) {
+    const map = SPRITES[name];
+    const h = map.length, w = map[0].length;
+    let rects = '';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const ch = map[y][x];
+      if (ch === '.') continue;
+      rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${CLS[ch]}"/>`;
+    }
+    return `<svg class="sprite" viewBox="0 0 ${w} ${h}" width="100%" height="100%" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+
+  // A · 초상(타이핑 1프레임 + 인디케이터 정지 컷) — 주력 에이전트(claude) 군복
+  document.getElementById('portrait').innerHTML =
+    spriteSVG('typer1') + '<i class="tdots"><b></b><b></b><b></b></i>';
+
+  // A · 계급장: 상병 = 작대기 3 (정책 확정 전 예시)
+  const BARS3 = ['.KKKKKKKKKK.','............','.KKKKKKKKKK.','............','.KKKKKKKKKK.'];
+  document.getElementById('insigniaSlot').innerHTML = BARS3.map((row, y) =>
+    [...row].map((ch, x) => ch === 'K' ? `<rect x="${x}" y="${y}" width="1" height="1" class="px-k"/>` : '').join('')
+  ).join('');
+
+  // C · 상단 보초
+  document.getElementById('sentrySlot').innerHTML = spriteSVG('sentry');
+
+  // 14일 막대 + B · 오늘 깃발
+  const SERIES = [
+    {c:3200,cls:'on'},{c:0,cls:''},{c:5400,cls:'streak'},{c:8100,cls:'streak'},{c:12600,cls:'streak'},
+    {c:6300,cls:'streak'},{c:9200,cls:'streak'},{c:7100,cls:'streak'},{c:11800,cls:'streak'},{c:8400,cls:'streak'},
+    {c:15200,cls:'streak'},{c:9600,cls:'streak'},{c:7400,cls:'streak'},{c:24197,cls:'today'},
+  ];
+  const maxC = Math.max(...SERIES.map((x) => x.c), 1);
+  document.getElementById('bars').innerHTML = SERIES.map((x) => {
+    const h = Math.max(4, Math.round((x.c / maxC) * 120));
+    const flag = x.cls === 'today' ? `<span class="peakflag">${spriteSVG('chartflag')}</span>` : '';
+    return `<div class="b ${x.cls}" style="height:${h}px">${flag}</div>`;
+  }).join('');
+
+  // ── 목업 전용: 화면 폭 맞춤 축소 + 토글 ──
+  const stage = document.getElementById('stage');
+  function fit() {
+    const s = Math.min(1, stage.parentElement.clientWidth / 1200);
+    stage.style.transform = `scale(${s})`;
+    stage.parentElement.style.height = 630 * s + 'px';
+  }
+  fit(); addEventListener('resize', fit);
+  document.querySelectorAll('.mockpanel input[data-opt]').forEach((cb) => {
+    cb.addEventListener('change', () =>
+      document.getElementById('ogroot').classList.toggle('opt-' + cb.dataset.opt, cb.checked));
+  });
+</script>
+</body>
+</html>
