@@ -169,4 +169,23 @@ describe('normalizeProjects', () => {
   it('빈 배열은 전체 해제로 허용한다', () => {
     expect(normalizeProjects([])).toEqual([]);
   });
+
+  it('main 플래그를 보존한다', () => {
+    expect(
+      normalizeProjects([{ name: 'A', main: true }, { name: 'B' }]),
+    ).toEqual([{ name: 'A', main: true }, { name: 'B' }]);
+  });
+
+  it('main 은 최대 1개만 유지한다(첫 항목 우선)', () => {
+    expect(
+      normalizeProjects([{ name: 'A', main: true }, { name: 'B', main: true }]),
+    ).toEqual([{ name: 'A', main: true }, { name: 'B' }]);
+  });
+
+  it('main:false/누락은 플래그를 붙이지 않는다', () => {
+    expect(normalizeProjects([{ name: 'A', main: false }, { name: 'B' }])).toEqual([
+      { name: 'A' },
+      { name: 'B' },
+    ]);
+  });
 });

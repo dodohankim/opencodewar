@@ -325,8 +325,12 @@
   .ships { display:grid; gap:10px; }
   .ship { display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:6px; padding:12px 14px; }
   .ship:hover { background:var(--hover); }
+  .ship.main { border-color:var(--ok); }  /* 대표 프로젝트 강조 */
   .ship-main { min-width:0; flex:1; }
   .ship-name { font-size:13.5px; font-weight:700; color:var(--fg); word-break:break-word; }
+  .ship-badge { display:inline-block; vertical-align:1px; margin-left:8px; font-size:9.5px; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase; color:var(--rev-fg); background:var(--ok);
+    border-radius:4px; padding:1px 5px; line-height:1.5; }
   .ship-desc { font-size:12.5px; color:var(--dim); margin-top:3px; word-break:break-word; }
   .ship-host { font-size:11px; color:var(--faint); margin-top:5px; word-break:break-all; }
   .visit { flex:none; font-size:12px; color:var(--fg); text-decoration:none; border:1px solid var(--line); border-radius:5px; padding:6px 12px; white-space:nowrap; }
@@ -612,7 +616,7 @@
       tz_note: (z) => `🕒 times in ${z}`,
       dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
-      no_activity: 'No activity in the last 30 days.', no_activity_day: 'No activity on this day.', visit: 'Visit ↗',
+      no_activity: 'No activity in the last 30 days.', no_activity_day: 'No activity on this day.', visit: 'Visit ↗', main_badge: 'MAIN',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
       every_5m: 'every 5m',
@@ -644,7 +648,7 @@
       tz_note: (z) => `🕒 ${z} 기준`,
       dow: ['일', '월', '화', '수', '목', '금', '토'],
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
-      no_activity: '최근 30일 활동이 없습니다.', no_activity_day: '이 날은 활동이 없습니다.', visit: '방문 ↗',
+      no_activity: '최근 30일 활동이 없습니다.', no_activity_day: '이 날은 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
       every_5m: '5분마다',
@@ -1389,8 +1393,10 @@
   }
   function renderProjects(projects) {
     const box = $('uShipBox');
-    const list = Array.isArray(projects) ? projects : [];
+    const list = Array.isArray(projects) ? projects.slice() : [];
     if (!list.length) { box.hidden = true; $('uShips').innerHTML = ''; return; }
+    // 메인으로 지정된 프로젝트를 맨 위로(안정 정렬 — 나머지는 원래 순서 유지).
+    list.sort((a, b) => (b && b.main ? 1 : 0) - (a && a.main ? 1 : 0));
     $('uShipLegend').textContent = `shipping · ${list.length}`;
     $('uShips').innerHTML = list
       .map((p) => {
@@ -1400,7 +1406,9 @@
           ? `<a class="visit" href="${escapeHtml(url)}" target="_blank" rel="nofollow noopener">${t('visit')}</a>`
           : '';
         const desc = p && p.desc ? `<div class="ship-desc">${escapeHtml(p.desc)}</div>` : '';
-        return `<div class="ship"><div class="ship-main"><div class="ship-name">${escapeHtml((p && p.name) || '')}</div>${desc}${host}</div>${visit}</div>`;
+        const isMain = !!(p && p.main);
+        const badge = isMain ? `<span class="ship-badge">${t('main_badge')}</span>` : '';
+        return `<div class="ship${isMain ? ' main' : ''}"><div class="ship-main"><div class="ship-name">${escapeHtml((p && p.name) || '')}${badge}</div>${desc}${host}</div>${visit}</div>`;
       })
       .join('');
     box.hidden = false;

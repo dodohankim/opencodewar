@@ -3,7 +3,7 @@
 // 서브커맨드:
 //   nickname <이름> | bio <소개> | role <직함> | company <회사>
 //   link <website|github|x|linkedin> <url>
-//   project add <이름> :: <설명> :: <url> | project list | project remove|delete <번호|이름> | project clear
+//   project add <이름> :: <설명> :: <url> | project list | project main <번호|이름> | project remove|delete <번호|이름> | project clear
 //   signup | login — Google 계정 연동 (DESIGN.md §14)
 //   email public|private — 연동 이메일 프로필 공개 여부 (기본 비공개)
 //   random — 등록 유저 중 무작위 한 명의 공개 프로필 카드
@@ -325,6 +325,7 @@ function projectUsage() {
     '사용법:',
     '- `/ocw project add <이름> :: <설명> :: <url>` (설명·url 선택, 최대 5개)',
     '- `/ocw project list`',
+    '- `/ocw project main <번호|이름>` — 대표 프로젝트 지정(맨 위·MAIN 표시, `none`으로 해제)',
     '- `/ocw project remove <번호|이름>` (별칭: delete)',
     '- `/ocw project clear`',
     '예) `/ocw project add Open Code War :: Claude Code 리더보드 :: https://opencodewar.dev`',
@@ -351,12 +352,15 @@ async function project(input) {
     }
     const lines = ['**Shipping — 내 프로젝트**'];
     current.forEach((p, i) => {
-      const parts = [`${i + 1}. ${p.name}`];
+      const parts = [`${i + 1}. ${p.name}${p.main ? ' ⭐ (메인)' : ''}`];
       if (p.desc) parts.push(`— ${p.desc}`);
       if (p.url) parts.push(`(${p.url})`);
       lines.push(parts.join(' '));
     });
     lines.push(`\n${current.length}/${MAX_PROJECTS} 사용 중.`);
+    if (!current.some((p) => p.main)) {
+      lines.push('메인 지정: `/ocw project main <번호|이름>`');
+    }
     return print(lines.join('\n'));
   }
 
@@ -373,6 +377,38 @@ async function project(input) {
     if (url) item.url = url;
     const next = [...current, item];
     return pushProjects(next, `✅ 프로젝트 추가: ${name} (${next.length}/${MAX_PROJECTS})`);
+  }
+
+  if (action === 'main' || action === 'primary') {
+    if (!current.length) {
+      return print('등록된 프로젝트가 없습니다.\n' + projectUsage());
+    }
+    // 기존 main 플래그를 걷어낸 사본을 만드는 헬퍼.
+    const strip = (p) => {
+      const { main, ...rest } = p;
+      return rest;
+    };
+    // `none|off|clear|해제` → 메인 지정 해제.
+    if (['none', 'off', 'clear', '해제'].includes(remainder.toLowerCase())) {
+      if (!current.some((p) => p.main)) return print('지정된 메인 프로젝트가 없습니다.');
+      return pushProjects(current.map(strip), '✅ 메인 지정을 해제했습니다.');
+    }
+    let idx = Number(remainder);
+    if (!Number.isInteger(idx) || idx < 1 || idx > current.length) {
+      // 번호가 아니면 이름으로 찾는다(대소문자 무시).
+      const byName = current.findIndex((p) => p.name.toLowerCase() === remainder.toLowerCase());
+      if (!remainder || byName === -1) {
+        return print(`사용법: \`/ocw project main <번호|이름>\` — 번호는 1~${current.length}, 해제는 \`none\`. 목록은 \`/ocw project list\`.`);
+      }
+      idx = byName + 1;
+    }
+    const chosen = current[idx - 1];
+    // 선택 항목을 메인으로 지정하고 맨 앞으로, 나머지는 메인 해제.
+    const next = [
+      { ...strip(chosen), main: true },
+      ...current.filter((_, i) => i !== idx - 1).map(strip),
+    ];
+    return pushProjects(next, `✅ 메인 지정: ${chosen.name} (맨 위 · MAIN)`);
   }
 
   if (action === 'remove' || action === 'delete' || action === 'rm') {
@@ -545,6 +581,7 @@ function help() {
       '- `/ocw city <도시>` — 내 도시 (도시 구역 랭킹 "이 구역 코드워리어")',
       '- `/ocw link <종류> <url>` — 링크 (종류: website/blog/github/x/linkedin · website·blog는 주소 표시, SNS는 아이콘)',
       '- `/ocw project add <이름> :: <설명> :: <url>` — 사이드프로젝트 (최대 5개)',
+      '- `/ocw project main <번호|이름>` — 대표 프로젝트 지정 (맨 위·MAIN)',
       '- `/ocw project list | remove|delete <번호|이름> | clear` — 프로젝트 관리',
       '- `/ocw signup` — Google 계정 연동 (계정 복구·여러 기기 합산 · 별칭: login)',
       '- `/ocw email public|private` — 연동 이메일 프로필 공개/비공개 (기본 비공개)',

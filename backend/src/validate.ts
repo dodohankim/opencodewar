@@ -118,16 +118,19 @@ export interface Project {
   name: string;
   desc?: string;
   url?: string;
+  main?: boolean; // 대표 프로젝트 1개. 유저 상세에서 맨 위로 올라가고 MAIN 배지가 붙는다.
 }
 
 /**
- * projects 배열을 검증·정규화한다. 최대 5개, 각 항목 {name, desc?, url?}.
- * 빈 desc/url 은 결과에서 생략한다. 유효하지 않으면 null, 빈 배열은 "전체 해제".
+ * projects 배열을 검증·정규화한다. 최대 5개, 각 항목 {name, desc?, url?, main?}.
+ * 빈 desc/url 은 결과에서 생략한다. main 은 최대 1개만 유지(첫 항목 우선).
+ * 유효하지 않으면 null, 빈 배열은 "전체 해제".
  */
 export function normalizeProjects(v: unknown): Project[] | null {
   if (!Array.isArray(v)) return null;
   if (v.length > MAX_PROJECTS) return null;
   const out: Project[] = [];
+  let seenMain = false;
   for (const item of v) {
     if (typeof item !== 'object' || item === null) return null;
     const rec = item as Record<string, unknown>;
@@ -143,6 +146,10 @@ export function normalizeProjects(v: unknown): Project[] | null {
     if (rec.url !== undefined && rec.url !== null && rec.url !== '') {
       if (!isValidUrl(rec.url)) return null;
       project.url = (rec.url as string).trim();
+    }
+    if (rec.main === true && !seenMain) {
+      project.main = true;
+      seenMain = true; // 메인은 1개만 — 이후 항목의 main 은 무시한다.
     }
     out.push(project);
   }
