@@ -219,7 +219,7 @@ async function sendDiscord(env: Env, payload: unknown) {
   if (!res.ok) throw new Error(`Discord 웹훅 실패: ${res.status} ${await res.text()}`);
 }
 
-async function report(env: Env) {
+async function buildUsageEmbed(env: Env) {
   const { today, sections, byScript, workersErrors } = await buildReport(env);
 
   const all = sections.flatMap(([name, ms]) => ms.map((m) => ({ ...m, section: name })));
@@ -245,36 +245,47 @@ async function report(env: Env) {
     : `✓ 전 항목 여유 — 최고 사용률: ${top.section} ${top.label} ${top.pct.toFixed(1)}%`;
   const errNote = workersErrors ? `\n🔥 Worker 오류 ${workersErrors}건 발생` : '';
 
-  // 유저 리포트는 실패해도 사용량 리포트 발송을 막지 않는다.
-  const userEmbed = await buildUserEmbed(env).catch((err) => {
-    console.error('user report failed:', err);
-    return { title: 'OCW 유저 리포트', description: `⚠ 조회 실패: ${err instanceof Error ? err.message : String(err)}`, color: 0xed4245 };
-  });
+  return {
+    title: `Cloudflare 무료 티어 사용량 — ${today} (UTC)`,
+    description: `${status}${errNote}\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
+    color,
+    footer: { text: '일일 한도 리셋 00:00 UTC (KST 09:00)' },
+    timestamp: new Date().toISOString(),
+  };
+}
 
-  await sendDiscord(env, {
-    username: 'CF Usage',
-    embeds: [
-      {
-        title: `Cloudflare 무료 티어 사용량 — ${today} (UTC)`,
-        description: `${status}${errNote}\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
-        color,
-        footer: { text: '일일 한도 리셋 00:00 UTC (KST 09:00)' },
-        timestamp: new Date().toISOString(),
-      },
-      userEmbed,
-    ],
-  });
+type ReportKind = 'all' | 'usage' | 'user';
+
+const errorEmbed = (title: string, err: unknown) => ({
+  title,
+  description: `⚠ 조회 실패: ${err instanceof Error ? err.message : String(err)}`,
+  color: 0xed4245,
+});
+
+// 리포트별 독립 발송 — 한쪽 조회가 실패해도 다른 쪽은 정상 발송.
+async function report(env: Env, kind: ReportKind) {
+  const embeds: unknown[] = [];
+  if (kind !== 'user') {
+    embeds.push(await buildUsageEmbed(env).catch((err) => errorEmbed('Cloudflare 무료 티어 사용량', err)));
+  }
+  if (kind !== 'usage') {
+    embeds.push(await buildUserEmbed(env).catch((err) => errorEmbed('OCW 유저 리포트', err)));
+  }
+  await sendDiscord(env, { username: 'CF Usage', embeds });
 }
 
 export default {
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // 로컬 트리거(send-now.sh)는 cron 문자열로 리포트를 선택한다: "usage" | "user" | 그 외 = 전체.
+    // 프로덕션 크론("50 23 * * *")은 항상 전체 발송.
+    const kind: ReportKind = event.cron === 'usage' ? 'usage' : event.cron === 'user' ? 'user' : 'all';
     ctx.waitUntil(
-      report(env).catch(async (err) => {
-        // 수집 실패도 침묵하지 않고 웹훅으로 알린다(웹훅 자체 실패면 로그로만 남음).
-        console.error('usage report failed:', err);
+      report(env, kind).catch(async (err) => {
+        // 발송 실패도 침묵하지 않고 웹훅으로 알린다(웹훅 자체 실패면 로그로만 남음).
+        console.error('report failed:', err);
         await sendDiscord(env, {
           username: 'CF Usage',
-          content: `⚠ 사용량 리포트 생성 실패: ${err instanceof Error ? err.message : String(err)}`,
+          content: `⚠ 리포트 발송 실패(${kind}): ${err instanceof Error ? err.message : String(err)}`,
         }).catch(() => {});
       }),
     );

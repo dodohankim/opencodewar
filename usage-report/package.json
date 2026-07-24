@@ -4,6 +4,8 @@
   "scripts": {
     "dev": "wrangler dev --test-scheduled",
     "send": "sh send-now.sh",
+    "send:usage": "sh send-now.sh usage",
+    "send:user": "sh send-now.sh user",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
