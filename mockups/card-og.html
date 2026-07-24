@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — OG 카드 + 공유 태그 개편</title>
+<style>
+  :root{
+    --page-bg:#050504; --panel:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
+    --ok:#6DA875; --amber:#D9A441;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,"D2Coding",monospace;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;margin:0;}
+  body{background:var(--page-bg);color:var(--fg);font-family:var(--mono);font-size:14px;line-height:1.5;
+    padding:clamp(12px,3vw,32px) clamp(12px,3vw,32px) 80px;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1040px;margin:0 auto;}
+  .mocknote{font-size:12px;color:var(--faint);line-height:1.75;margin-bottom:20px;}
+  .mocknote b{color:var(--dim);}
+  h3{font-size:12px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin:34px 0 12px;font-weight:600;}
+  h3:first-of-type{margin-top:0;}
+  .sub{font-size:11.5px;color:var(--faint);margin:-6px 0 12px;}
+
+  /* ── OG 카드 (1200×630, 0.833 축소) ── */
+  .cardwrap{width:1000px;max-width:100%;aspect-ratio:1200/630;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .scale{width:1200px;height:630px;transform:scale(.83333);transform-origin:top left;}
+  @media(max-width:1040px){ .cardwrap{aspect-ratio:1200/630;} .scale{transform:scale(calc((100vw - 24px)/1200));} }
+
+  .ogcard{--bg:#0E0E0D;--c-fg:#E7E7E3;--c-dim:#8C8C87;--c-faint:#5A5A56;--c-line:#2A2A26;--c-ok:#6DA875;--c-amber:#D9A441;--skin:#E8C39E;--eye:#232320;
+    width:1200px;height:630px;background:var(--bg);color:var(--c-fg);font-family:var(--mono);}
+  .card{width:1200px;height:630px;padding:44px 60px 38px;display:flex;flex-direction:column;position:relative;}
+  .px-s{fill:var(--skin);} .px-e{fill:var(--eye);} .px-r{fill:var(--c-fg);} .px-u{fill:var(--c-fg);} .px-k{fill:var(--c-ok);}
+
+  .eyebrow{color:var(--c-dim);font-size:21px;letter-spacing:.14em;}
+
+  .cols{display:flex;gap:48px;margin-top:26px;flex:1;min-height:0;}
+  .pframe{width:300px;flex:none;border:2px solid var(--c-line);border-radius:10px;background:rgba(231,231,227,0.05);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:22px 0;}
+  .pframe .soldier{width:172px;height:172px;position:relative;}
+  /* 계급 줄: (top-3면) 메달 + 계급장. 메달이 'Corporal 자리'에 온다. */
+  .pframe .rankrow{display:flex;align-items:center;gap:14px;}
+  .pframe .medal{font-size:44px;line-height:1;}
+  .tdots{position:absolute;top:-14px;left:42px;display:flex;gap:10px;}
+  .tdots i{width:13px;height:13px;background:var(--c-faint);display:block;}
+  .tdots i:nth-child(2),.tdots i:nth-child(3){opacity:.4;}
+
+  .right{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .idline{display:flex;align-items:baseline;gap:16px;}
+  .nick{font-size:56px;font-weight:800;letter-spacing:-.03em;line-height:1;}
+  .loc{color:var(--c-dim);font-size:21px;}
+  /* 자기소개 — 프로필처럼 좌측 액센트로 존재감(카드에도 정체성 한 줄) */
+  .bio{margin-top:14px;padding-left:12px;border-left:2px solid var(--c-ok);color:var(--c-fg);font-size:20px;line-height:1.35;}
+  .hero{margin-top:20px;}
+  .hero .num{font-size:88px;font-weight:800;line-height:.85;letter-spacing:-.045em;font-variant-numeric:tabular-nums;}
+  .hero .num.rec{color:var(--c-amber);}
+  .hero .lab{font-size:24px;color:var(--c-dim);margin-top:12px;}
+  .hero .lab b{color:var(--c-fg);}
+  .chal{margin-top:16px;font-size:22px;color:var(--c-dim);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .chal b{color:var(--c-fg);}
+  .gaugebar{display:inline-flex;gap:4px;}
+  .gaugebar i{width:13px;height:22px;background:var(--c-faint);display:block;border-radius:2px;}
+  .gaugebar i.on{background:var(--c-amber);}
+  .streakline{margin-top:11px;font-size:21px;color:var(--c-amber);}
+  .streakline b{color:var(--c-fg);}
+  .streakline .since{color:var(--c-faint);}
+  .lifetime{margin-top:auto;border-top:2px dotted var(--c-line);padding-top:14px;font-size:20px;color:var(--c-dim);
+    display:flex;align-items:baseline;justify-content:space-between;gap:20px;}
+  .lifetime b{color:var(--c-fg);}
+  .lifetime .k{color:var(--c-faint);letter-spacing:.08em;font-size:16px;margin-right:8px;}
+  .lifetime .when{color:var(--c-faint);letter-spacing:.04em;white-space:nowrap;}
+
+  .foot{margin-top:16px;display:flex;align-items:center;justify-content:space-between;color:var(--c-faint);font-size:18px;}
+  .foot .live{display:flex;align-items:center;gap:10px;}
+  .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--c-ok);display:block;}
+
+  /* ── 공유 링크 미리보기(og 태그) ── */
+  .lp{max-width:560px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel);}
+  .lp .thumb{aspect-ratio:1200/630;background:linear-gradient(135deg,#111 0,#0b0b0a 100%);display:flex;align-items:center;justify-content:center;
+    color:var(--faint);font-size:12px;border-bottom:1px solid var(--line);}
+  .lp .lp-body{padding:13px 15px;}
+  .lp .lp-url{font-size:11.5px;color:var(--faint);letter-spacing:.02em;}
+  .lp .lp-title{font-size:15px;font-weight:700;color:var(--fg);margin-top:4px;}
+  .lp .lp-desc{font-size:12.5px;color:var(--dim);margin-top:5px;line-height:1.5;}
+
+  .cmp{margin-top:16px;display:grid;gap:10px;}
+  .row{border:1px solid var(--line);border-radius:8px;padding:12px 14px;}
+  .row .tag{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);}
+  .row .old{color:var(--dim);font-size:13px;margin-top:6px;}
+  .row .new{color:var(--fg);font-size:13px;margin-top:6px;}
+  .row .new b{color:var(--amber);}
+  .row.pick{border-color:var(--ok);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="mocknote">
+    mockup · <b>OG 카드 + 공유 링크(og 태그) 개편 시안</b> — 프로필 헤더 개편을 카드에도 반영:
+    ① <b>top-3 만</b> 병정 아래 <b>계급장 자리에 메달</b>(🥇🥈🥉, 4위↓는 메달 없음·인원수 표기 안 함) · ② <b>자기소개 한 줄</b> 을 좌측 액센트로 카드에도(정체성) ·
+    ③ 계급은 계급장만(이미 반영) · ④ 공유 링크의 <b>og:title / og:description</b> 에 순위(top-3)·계급·오늘 기록.
+    <br>※ 카드는 렌더 서비스(Coolify)라 확정 시 재배포 필요. 값은 실제 dododo(전체 1위=🥇, 상병, 오늘 216).
+  </p>
+
+  <h3>OG 카드 (1200 × 630)</h3>
+  <div class="sub">top-3 메달을 계급장 자리에(병정 아래) · 닉네임 아래 bio 한 줄 · 우상단 배지·인원수 제거 · 나머지 현행 유지</div>
+  <div class="cardwrap">
+    <div class="scale">
+      <div class="ogcard"><div class="card">
+        <div class="eyebrow">OPEN CODE WAR · DAILY SORTIE</div>
+        <div class="cols">
+          <div class="pframe">
+            <span class="soldier js-portrait"></span>
+            <div class="rankrow"><span class="medal">🥇</span><span class="js-insignia"></span></div>
+          </div>
+          <div class="right">
+            <div class="idline"><span class="nick">dododo</span><span class="loc">KR 🇰🇷 · Seoul</span></div>
+            <div class="bio">A developer aiming to become a solopreneur.</div>
+            <div class="hero">
+              <div class="num">216</div>
+              <div class="lab"><b>prompts</b> fired today · <b>91,214</b> chars</div>
+            </div>
+            <div class="chal">
+              <span>vs my best <b>336</b></span>
+              <span class="gaugebar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span>
+              <b>63%</b>
+            </div>
+            <div class="streakline">🔥 <b>5-day campaign</b> <span class="since">· best 7 · since Jul 20</span></div>
+            <div class="lifetime">
+              <span><span class="k">ALL-TIME</span><b>1,934</b> prompts · <b>1.82M</b> chars</span>
+              <span class="when">2026-07-24 Fri</span>
+            </div>
+          </div>
+        </div>
+        <div class="foot">
+          <div>no prompt content · character counts only</div>
+          <div class="live"><i></i><span>live</span></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <h3>공유 링크 미리보기 (og 태그)</h3>
+  <div class="sub">카톡·슬랙·X 등에 링크를 붙였을 때 나오는 카드 — 제목·설명에 순위/계급/오늘 기록 반영</div>
+  <div class="lp">
+    <div class="thumb">▣ 위 OG 카드 이미지 (og:image)</div>
+    <div class="lp-body">
+      <div class="lp-url">opencodewar.dev</div>
+      <div class="lp-title">dododo · #1 on Open Code War</div>
+      <div class="lp-desc">Corporal · #1 global · 216 prompts today · 5-day streak — coding agent activity, char counts only.</div>
+    </div>
+  </div>
+
+  <div class="cmp">
+    <div class="row">
+      <div class="tag">og:title — 현재</div>
+      <div class="old">dododo · Open Code War</div>
+    </div>
+    <div class="row pick">
+      <div class="tag">og:title — 제안</div>
+      <div class="new">dododo · <b>#1</b> on Open Code War</div>
+    </div>
+    <div class="row">
+      <div class="tag">og:description — 현재</div>
+      <div class="old">A developer aiming to become a solopreneur. — coding agent activity on Open Code War.</div>
+    </div>
+    <div class="row pick">
+      <div class="tag">og:description — 제안</div>
+      <div class="new">Corporal · <b>#1 global</b> · 216 prompts today · 5-day streak — coding agent activity, char counts only.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var TYPER=['................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+    '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+    '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......'];
+  var CLS={H:'u',U:'u',S:'s',E:'e',R:'r',B:'r',M:'r',K:'r'};
+  function spriteSVG(map){var r='';for(var y=0;y<map.length;y++)for(var x=0;x<map[y].length;x++){var c=map[y][x];
+    if(c!=='.')r+='<rect x="'+x+'" y="'+y+'" width="1" height="1" class="px-'+CLS[c]+'"/>';}
+    return '<svg viewBox="0 0 '+map[0].length+' '+map.length+'" width="100%" height="100%" shape-rendering="crispEdges">'+r+'</svg>';}
+  function barsSVG(n,scale){var u='KKKKKKKKKK',map=[];for(var i=0;i<n;i++){if(i)map.push('.'.repeat(u.length));map.push(u);}
+    var r='';for(var y=0;y<map.length;y++)for(var x=0;x<map[y].length;x++)if(map[y][x]==='K')r+='<rect x="'+x+'" y="'+y+'" width="1" height="1" class="px-k"/>';
+    return '<svg viewBox="0 0 '+map[0].length+' '+map.length+'" width="'+map[0].length*scale+'" height="'+map.length*scale+'" shape-rendering="crispEdges">'+r+'</svg>';}
+  document.querySelectorAll('.js-portrait').forEach(function(e){e.innerHTML=spriteSVG(TYPER)+'<span class="tdots"><i></i><i></i><i></i></span>';});
+  document.querySelectorAll('.js-insignia').forEach(function(e){e.innerHTML=barsSVG(3,7);}); // 상병=작대기3
+</script>
+</body>
+</html>
