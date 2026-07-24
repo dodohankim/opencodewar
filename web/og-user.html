@@ -102,7 +102,7 @@
     nick: "dododo", country: "KR", flag: "🇰🇷", city: "Seoul",
     date: "2026-07-22", dow: "Wed",
     heroChars: 24197, heroPrompts: 178, heroIsToday: true, heroDayLabel: "",
-    streak: 12, since: "Jul 11",
+    streak: 12, streakLongest: 30, since: "Jul 11",
     series: [], axis: { l: "", m: "", r: "" },
     stamp: "2026-07-22 · KST",
     agent: "claude-code", activeToday: true,
@@ -229,10 +229,11 @@
     chal.style.display = 'flex';
   }
 
-  // 스트릭
+  // 스트릭 — 현재 캠페인(진행 중일 때만) + 최장 기록(현재보다 클 때만 · best N)
   if (d.streak > 0) {
     var badge = document.getElementById('badge');
-    badge.innerHTML = '🔥 <b>' + d.streak + '-day campaign</b>' + (d.since ? ' <span class="since">· since ' + d.since + '</span>' : '');
+    var best = (d.streakLongest && d.streakLongest > d.streak) ? ' <span class="since">· best ' + d.streakLongest + '</span>' : '';
+    badge.innerHTML = '🔥 <b>' + d.streak + '-day campaign</b>' + best + (d.since ? ' <span class="since">· since ' + d.since + '</span>' : '');
     badge.style.display = 'block';
   }
 

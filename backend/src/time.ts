@@ -18,6 +18,12 @@ export function utcToday(ts: number): string {
   return dayStr(utcDayNum(ts));
 }
 
+/** UTC 'YYYY-MM-DD' → 1970-01-01 부터의 일수. dayStr 의 역함수. */
+export function dayNumFromStr(day: string): number {
+  const [y, m, d] = day.split('-').map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / DAY_MS);
+}
+
 /** day-number의 요일. 0=일 .. 6=토. (1970-01-01은 목요일=4) */
 export function dowOf(dayNum: number): number {
   return (((dayNum % 7) + 4) % 7 + 7) % 7;

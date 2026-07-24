@@ -5,11 +5,32 @@
 
 const DAY_MS = 86_400_000;
 
-/** IANA 타임존 문자열이 유효한지(Intl 이 인식하는지). */
+// Intl.DateTimeFormat 은 생성 비용이 커서(이벤트 행마다 만들면 CPU 예산을 잠식 — 무료 티어 10ms)
+// TZ별로 한 번만 만들어 재사용한다. TZ 값은 cf.timezone/users.timezone 유래라 종류가 유한하다.
+const dtfCache = new Map<string, Intl.DateTimeFormat>();
+function dtf(tz: string): Intl.DateTimeFormat {
+  let f = dtfCache.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    dtfCache.set(tz, f);
+  }
+  return f;
+}
+
+/** IANA 타임존 문자열이 유효한지(Intl 이 인식하는지). 유효하면 포매터도 캐시에 남는다. */
 export function isValidTimezone(tz: unknown): tz is string {
   if (typeof tz !== 'string' || !tz) return false;
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    dtf(tz);
     return true;
   } catch {
     return false;
@@ -18,16 +39,7 @@ export function isValidTimezone(tz: unknown): tz is string {
 
 /** 순간 ts(UTC ms)에서 tz 의 (로컬 벽시계 − UTC) 오프셋 ms. local = UTC + offset. DST 반영. */
 export function tzOffsetMs(ts: number, tz: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date(ts));
+  const parts = dtf(tz).formatToParts(new Date(ts));
   const g = (t: string) => Number(parts.find((p) => p.type === t)!.value);
   let h = g('hour');
   if (h === 24) h = 0; // 일부 환경의 자정 표기 방어

@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { json, readJson } from './http';
 import { utcToday } from './time';
+import { computeStreak } from './streak';
 import { isValidTimezone, localDay, localHour, recentLocalDays, zonedDayRange } from './tz';
 import {
   clampChars,
@@ -29,8 +30,6 @@ import { cityKey, cleanCity, countryFlag } from './zones';
 
 /** 유저 상세 페이지 그래프가 보여주는 최근 사용량 구간(로컬 일수). */
 const PROFILE_WINDOW_DAYS = 30;
-/** 스트릭(연속 활동일) 계산을 위한 뒤로보기 상한(로컬 일수). 이 창을 넘는 연속은 값이 캡된다. */
-const STREAK_WINDOW_DAYS = 60;
 
 /** links/projects 는 users 테이블에 JSON 문자열로 저장된다. 파싱 실패 시 기본값 반환. */
 function parseLinks(raw: string | null): Links {
@@ -531,23 +530,21 @@ export async function handleRandom(env: Env): Promise<Response> {
 }
 
 /**
- * ?id=<public_id> | ?nickname=<등록닉> 로 유저를 찾는 준비된 쿼리를 만든다(cols는 SELECT ~ FROM users).
+ * ?id=<public_id> | ?nickname=<등록닉> 로 유저를 찾는 users WHERE 절과 바인딩 값을 만든다.
  * id 우선(익명 유저 slug 진입 경로), 없으면 nickname. 파라미터가 유효하지 않으면 그대로 반환할
- * 에러 Response 를 준다 — 호출부는 { query } | { error } 로 분기한다. (/user 와 /user/hours 공용)
+ * 에러 Response 를 준다 — 호출부는 { where, bind } | { error } 로 분기한다. (/user 와 /user/hours 공용)
+ * D1 은 쿼리마다 네트워크 왕복이라, 부속 쿼리들은 이 WHERE 를
+ * (SELECT user_id FROM users WHERE …) 서브쿼리로 재사용해 batch 한 번(단일 왕복)에 묶는다.
  */
-function buildUserQuery(
-  env: Env,
-  url: URL,
-  cols: string,
-): { query: D1PreparedStatement } | { error: Response } {
+function userWhere(url: URL): { where: string; bind: string } | { error: Response } {
   const idParam = url.searchParams.get('id');
   const nicknameParam = url.searchParams.get('nickname');
   if (idParam != null) {
     if (!isValidPublicId(idParam)) return { error: json({ error: 'invalid_id' }, 400) };
-    return { query: env.DB.prepare(`${cols} WHERE public_id = ?`).bind(idParam) };
+    return { where: 'public_id = ?', bind: idParam };
   }
   if (!isValidNickname(nicknameParam)) return { error: json({ error: 'invalid_nickname' }, 400) };
-  return { query: env.DB.prepare(`${cols} WHERE nickname = ?`).bind((nicknameParam as string).trim()) };
+  return { where: 'nickname = ?', bind: (nicknameParam as string).trim() };
 }
 
 /**
@@ -556,54 +553,65 @@ function buildUserQuery(
  * user_id(비밀키)는 어느 경우에도 반환하지 않는다.
  */
 export async function handleUser(url: URL, env: Env): Promise<Response> {
-  const cols =
-    'SELECT user_id, nickname, bio, role, company, links, projects, email, country, city, timezone, created_at FROM users';
-  const built = buildUserQuery(env, url, cols);
+  const built = userWhere(url);
   if ('error' in built) return built.error;
+  const { where, bind } = built;
 
-  const user = await built.query.first<{
-    user_id: string;
-    nickname: string | null;
-    bio: string | null;
-    role: string | null;
-    company: string | null;
-    links: string | null;
-    projects: string | null;
-    email: string | null;
-    country: string | null;
-    city: string | null;
-    timezone: string | null;
-    created_at: number;
-  }>();
+  const now = Date.now();
+  const DAY_MS = 86_400_000;
+  // 원시 events 를 유저 로컬 일자로 재집계한다(daily_stats 는 공용 UTC 라 로컬 경계와 안 맞음).
+  // 상세 그래프(30일)용. 경계 보정 위해 +1일 여유. 규모 커지면 유저-TZ 롤업 캐시 고려.
+  // (스트릭은 로컬이 아니라 공용 UTC 이므로 아래 daily_stats 에서 별도 계산한다 — §17)
+  const sinceUtc = now - (PROFILE_WINDOW_DAYS + 1) * DAY_MS;
+
+  // D1 은 쿼리마다 네트워크 왕복(실측 ~150-200ms)이므로 프로필·이메일·이벤트·일별 집계를
+  // batch 하나(단일 왕복)로 묶는다. 2~4번째 쿼리는 user_id 를 서브쿼리로 재조회(인덱스 조회라 비용 무시 가능).
+  const sub = `(SELECT user_id FROM users WHERE ${where})`;
+  const [userRes, acctRes, eventRes, statRes] = await env.DB.batch([
+    env.DB.prepare(
+      `SELECT user_id, nickname, bio, role, company, links, projects, country, city, timezone, created_at
+         FROM users WHERE ${where}`,
+    ).bind(bind),
+    env.DB.prepare(`SELECT email, email_public FROM accounts WHERE user_id = ${sub} LIMIT 1`).bind(bind),
+    env.DB.prepare(`SELECT created_at, agent, chars FROM events WHERE user_id = ${sub} AND created_at >= ?`).bind(
+      bind,
+      sinceUtc,
+    ),
+    env.DB.prepare(
+      `SELECT day, SUM(prompts) AS prompts, SUM(chars) AS chars FROM daily_stats WHERE user_id = ${sub} GROUP BY day`,
+    ).bind(bind),
+  ]);
+
+  const user = userRes.results[0] as
+    | {
+        user_id: string;
+        nickname: string | null;
+        bio: string | null;
+        role: string | null;
+        company: string | null;
+        links: string | null;
+        projects: string | null;
+        country: string | null;
+        city: string | null;
+        timezone: string | null;
+        created_at: number;
+      }
+    | undefined;
 
   if (!user) {
     return json({ error: 'user_not_found' }, 404);
   }
 
   // 공개 이메일: Google 연동 + 본인이 공개 옵트인(/ocw email public)한 경우에만 노출.
-  // (users.email 은 로그인 도입 전 예약 컬럼 — 항상 NULL, 사용하지 않는다.)
-  const acct = await env.DB.prepare('SELECT email, email_public FROM accounts WHERE user_id = ? LIMIT 1')
-    .bind(user.user_id)
-    .first<{ email: string | null; email_public: number }>();
+  const acct = acctRes.results[0] as { email: string | null; email_public: number } | undefined;
   const publicEmail = acct && acct.email_public ? (acct.email ?? null) : null;
 
   // 상세 페이지는 "그 유저의 로컬 시간"으로 본다(리더보드의 공용 UTC 와 별개). TZ 미상이면 UTC 폴백.
   const tz = isValidTimezone(user.timezone) ? user.timezone : 'UTC';
-  const now = Date.now();
-  const DAY_MS = 86_400_000;
-
-  // 원시 events 를 유저 로컬 일자로 재집계한다(daily_stats 는 공용 UTC 라 로컬 경계와 안 맞음).
-  // 스트릭 창(60일)까지 넉넉히 조회 후 JS 에서 로컬 일자로 버킷팅. 규모 커지면 유저-TZ 롤업 캐시 고려.
-  const sinceUtc = now - (STREAK_WINDOW_DAYS + 1) * DAY_MS;
-  const rows = await env.DB.prepare(
-    'SELECT created_at, agent, chars FROM events WHERE user_id = ? AND created_at >= ?',
-  )
-    .bind(user.user_id, sinceUtc)
-    .all<{ created_at: number; agent: string; chars: number }>();
 
   type DayAgg = { prompts: number; chars: number; agents: Record<string, { prompts: number; chars: number }> };
   const byDay = new Map<string, DayAgg>();
-  for (const r of rows.results) {
+  for (const r of eventRes.results as Array<{ created_at: number; agent: string; chars: number }>) {
     const day = localDay(Number(r.created_at), tz);
     let d = byDay.get(day);
     if (!d) {
@@ -628,26 +636,23 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     { prompts: 0, chars: 0 },
   );
 
-  // 전 기간 누적(계급 산정용). daily_stats 는 공용 UTC 롤업이지만 총합은 TZ 와 무관하다.
-  const allAgg = await env.DB.prepare(
-    'SELECT COALESCE(SUM(prompts), 0) AS p, COALESCE(SUM(chars), 0) AS c FROM daily_stats WHERE user_id = ?',
-  )
-    .bind(user.user_id)
-    .first<{ p: number; c: number }>();
+  // 유저의 UTC 일자별 집계(daily_stats 를 day 단위로 agent 합산, 위 batch 4번째 쿼리).
+  // 계급용 전 기간 누적과 스트릭(§17)을 함께 구한다. 스트릭 최장은 전 기간이 필요하다.
+  const dayStats = (statRes.results as Array<{ day: string; prompts: number; chars: number }>).map((r) => ({
+    day: r.day,
+    prompts: Number(r.prompts) || 0,
+    chars: Number(r.chars) || 0,
+  }));
 
-  // 스트릭: 최근 활동일에서 뒤로 연속 카운트. 오늘이 아직 비어도 어제까지의 연속을 인정(자정 유예).
-  const streakDays = recentLocalDays(now, tz, STREAK_WINDOW_DAYS);
-  const isActive = (day: string) => (byDay.get(day)?.prompts ?? 0) > 0;
-  let end = streakDays.length - 1;
-  if (!isActive(streakDays[end])) end -= 1;
-  let streak = 0;
-  let streakSince: string | null = null;
-  for (let j = end; j >= 0; j--) {
-    if (isActive(streakDays[j])) {
-      streak += 1;
-      streakSince = streakDays[j];
-    } else break;
-  }
+  // 전 기간 누적(계급 산정용, §16). 공용 UTC 롤업이지만 총합은 TZ 와 무관하다.
+  const allTime = dayStats.reduce(
+    (acc, s) => ({ prompts: acc.prompts + s.prompts, chars: acc.chars + s.chars }),
+    { prompts: 0, chars: 0 },
+  );
+
+  // 스트릭(§17): 공용 UTC 하루 기준(로컬 보정 안 함). "친 날" = prompts≥10 AND chars>500.
+  // current(오늘/어제까지 자정 유예) + longest(역대 최장).
+  const streakInfo = computeStreak(dayStats, now);
 
   return json({
     // 익명 유저는 저장된 닉네임이 없으므로 userId 파생 자동 닉네임으로 표시한다.
@@ -667,9 +672,10 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     days: series,
     totals,
     // 전 기간 누적 — 웹·OG 가 계급(이병~장군, DESIGN.md §16) 산정에 쓴다.
-    allTime: { prompts: Number(allAgg?.p) || 0, chars: Number(allAgg?.c) || 0 },
-    streak, // 연속 활동일(로컬), OG 카드가 재활용
-    streakSince, // 스트릭 시작 로컬 날짜 'YYYY-MM-DD' | null
+    allTime,
+    streak: streakInfo.current, // 현재 연속 "친 날"(공용 UTC, §17). 웹·OG 카드가 재활용
+    streakLongest: streakInfo.longest, // 역대 최장 연속
+    streakSince: streakInfo.since, // 현재 연속 시작 UTC 날짜 'YYYY-MM-DD' | null
   });
 }
 
@@ -681,32 +687,57 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
  * 응답은 항상 24칸(활동 없는 시각은 0)으로 채워, 웹은 일별 차트와 같은 렌더 경로를 재사용한다.
  */
 export async function handleUserHours(url: URL, env: Env): Promise<Response> {
-  const built = buildUserQuery(env, url, 'SELECT user_id, timezone FROM users');
+  const built = userWhere(url);
   if ('error' in built) return built.error;
-  const user = await built.query.first<{ user_id: string; timezone: string | null }>();
+  const { where, bind } = built;
+
+  const now = Date.now();
+  const dayParam = url.searchParams.get('day');
+  if (dayParam !== null && !isValidDay(dayParam)) {
+    return json({ error: 'invalid_day' }, 400);
+  }
+
+  // 단일 왕복을 위해 유저 TZ(users 행)를 알기 전에 이벤트도 같은 batch 로 뽑는다:
+  // 어떤 IANA TZ(UTC-12~+14)의 로컬 하루도 덮는 넉넉한 UTC 창으로 가져온 뒤,
+  // 응답 후 그 유저 TZ 의 정확한 하루 범위(zonedDayRange, DST 23/25h 정확)로 거른다.
+  const HOUR_MS = 3_600_000;
+  const DAY_MS = 86_400_000;
+  let winStart: number;
+  let winEnd: number;
+  if (dayParam) {
+    const [y, m, d] = dayParam.split('-').map(Number);
+    const utcMidnight = Date.UTC(y, m - 1, d);
+    winStart = utcMidnight - 14 * HOUR_MS; // UTC+14 의 로컬 자정까지 커버
+    winEnd = utcMidnight + DAY_MS + 12 * HOUR_MS; // UTC-12 의 로컬 하루 끝까지 커버
+  } else {
+    // 로컬 '오늘'은 어떤 TZ 든 now-24h 이후에 시작하고, 이벤트는 미래가 없다(+1h 는 여유).
+    winStart = now - DAY_MS - HOUR_MS;
+    winEnd = now + HOUR_MS;
+  }
+
+  const sub = `(SELECT user_id FROM users WHERE ${where})`;
+  const [userRes, eventRes] = await env.DB.batch([
+    env.DB.prepare(`SELECT user_id, timezone FROM users WHERE ${where}`).bind(bind),
+    env.DB.prepare(
+      `SELECT created_at, agent, chars FROM events WHERE user_id = ${sub} AND created_at >= ? AND created_at < ?`,
+    ).bind(bind, winStart, winEnd),
+  ]);
+  const user = userRes.results[0] as { user_id: string; timezone: string | null } | undefined;
   if (!user) {
     return json({ error: 'user_not_found' }, 404);
   }
 
   const tz = isValidTimezone(user.timezone) ? user.timezone : 'UTC';
-  const now = Date.now();
-  const dayParam = url.searchParams.get('day');
   const day = dayParam ?? localDay(now, tz); // 그 유저의 로컬 오늘
-  if (!isValidDay(day)) {
-    return json({ error: 'invalid_day' }, 400);
-  }
-  // 로컬 하루의 UTC 범위로 이벤트를 뽑고, 각 이벤트를 유저 로컬 시로 버킷팅(:30 오프셋 TZ 도 정확).
+  // 넓은 창에서 이 유저 로컬 하루의 정확한 UTC 범위만 남기고, 로컬 시로 버킷팅(:30 오프셋 TZ 도 정확).
   const range = zonedDayRange(day, tz);
-  const rows = await env.DB.prepare(
-    'SELECT created_at, agent, chars FROM events WHERE user_id = ? AND created_at >= ? AND created_at < ?',
-  )
-    .bind(user.user_id, range.start, range.end)
-    .all<{ created_at: number; agent: string; chars: number }>();
 
   type HourAgg = { prompts: number; chars: number; agents: Record<string, { prompts: number; chars: number }> };
   const byHour = new Map<number, HourAgg>();
-  for (const r of rows.results) {
-    const h = localHour(Number(r.created_at), tz);
+  for (const r of eventRes.results as Array<{ created_at: number; agent: string; chars: number }>) {
+    const ts = Number(r.created_at);
+    if (ts < range.start || ts >= range.end) continue;
+    const h = localHour(ts, tz);
     let b = byHour.get(h);
     if (!b) {
       b = { prompts: 0, chars: 0, agents: {} };

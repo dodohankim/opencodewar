@@ -70,5 +70,5 @@ execFileSync(
 
 console.log(`rendered: ${OUT}`);
 console.log(
-  `  ${data.nick} · ${data.heroChars}c/${data.heroPrompts}p ${data.heroIsToday ? 'today' : data.heroDayLabel} · 🔥${data.streak}${data.since ? ' since ' + data.since : ''}`,
+  `  ${data.nick} · ${data.heroChars}c/${data.heroPrompts}p ${data.heroIsToday ? 'today' : data.heroDayLabel} · 🔥${data.streak}${data.streakLongest > data.streak ? '/best' + data.streakLongest : ''}${data.since ? ' since ' + data.since : ''}`,
 );

@@ -190,31 +190,45 @@ export async function handleProfilePage(
 ): Promise<Response> {
   // /u/<seg> 는 정적 에셋이 아니므로 루트(index.html)를 대신 가져온다.
   const assetReq = url.pathname === '/' ? request : new Request(new URL('/', url), request);
-  const assetRes = await env.ASSETS.fetch(assetReq);
   // 방문자 국가는 프로필 유무와 무관하게 항상 심는다(루트 '/' 도 이 경로로 들어온다).
   const country = visitorCountry(request);
 
   // seg 는 등록 닉네임이거나 공개 slug(public_id). 둘 다 아니면 재작성 없이 에셋 그대로(fail open).
   const byNick = isValidNickname(seg);
   const byId = !byNick && isValidPublicId(seg);
+
+  type MetaLookupRow = {
+    nickname: string | null;
+    bio: string | null;
+    role: string | null;
+    company: string | null;
+    public_id: string | null;
+    user_id?: string;
+  };
+  // 에셋 fetch 와 메타 재작성용 D1 조회를 병렬로 — 직렬이면 D1 왕복(~150ms)만큼 첫 바이트가 늦어진다.
+  // 조회 실패는 'error' 센티널로 구분한다(null 은 "유저 없음" → 404, 실패는 재작성 없이 fail open).
+  const assetPromise = env.ASSETS.fetch(assetReq);
+  const rowPromise: Promise<MetaLookupRow | null | 'error'> =
+    byNick || byId
+      ? (byNick
+          ? env.DB.prepare('SELECT nickname, bio, role, company, public_id FROM users WHERE nickname = ?')
+              .bind((seg as string).trim())
+              .first<MetaLookupRow>()
+          : env.DB.prepare('SELECT user_id, nickname, bio, role, company, public_id FROM users WHERE public_id = ?')
+              .bind(seg as string)
+              .first<MetaLookupRow>()
+        ).catch((err) => {
+          console.error(JSON.stringify({ level: 'error', msg: 'og_lookup_failed', err: String(err) }));
+          return 'error' as const;
+        })
+      : Promise.resolve(null);
+
+  const assetRes = await assetPromise;
   const contentType = assetRes.headers.get('Content-Type') ?? '';
   if ((!byNick && !byId) || !contentType.includes('text/html')) return withVisitorCountry(assetRes, country);
 
-  let row:
-    | { nickname: string | null; bio: string | null; role: string | null; company: string | null; public_id: string | null; user_id?: string }
-    | null = null;
-  try {
-    row = byNick
-      ? await env.DB.prepare('SELECT nickname, bio, role, company, public_id FROM users WHERE nickname = ?')
-          .bind((seg as string).trim())
-          .first()
-      : await env.DB.prepare('SELECT user_id, nickname, bio, role, company, public_id FROM users WHERE public_id = ?')
-          .bind(seg as string)
-          .first();
-  } catch (err) {
-    console.error(JSON.stringify({ level: 'error', msg: 'og_lookup_failed', err: String(err) }));
-    return withVisitorCountry(assetRes, country);
-  }
+  const row = await rowPromise;
+  if (row === 'error') return withVisitorCountry(assetRes, country);
   // 없는 프로필은 앱 UI(“User not found.”)를 그대로 보여주되 상태코드는 404 —
   // 크롤러가 존재하지 않는 유저 주소를 색인하지 않도록(soft 404 방지).
   if (!row) {
