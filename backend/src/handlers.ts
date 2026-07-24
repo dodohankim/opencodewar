@@ -569,7 +569,7 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   const sub = `(SELECT user_id FROM users WHERE ${where})`;
   const [userRes, acctRes, eventRes, statRes] = await env.DB.batch([
     env.DB.prepare(
-      `SELECT user_id, nickname, bio, role, company, links, projects, country, city, timezone, created_at
+      `SELECT user_id, public_id, nickname, bio, role, company, links, projects, country, city, timezone, created_at
          FROM users WHERE ${where}`,
     ).bind(bind),
     env.DB.prepare(`SELECT email, email_public FROM accounts WHERE user_id = ${sub} LIMIT 1`).bind(bind),
@@ -585,6 +585,7 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   const user = userRes.results[0] as
     | {
         user_id: string;
+        public_id: string | null;
         nickname: string | null;
         bio: string | null;
         role: string | null;
@@ -657,6 +658,8 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   return json({
     // 익명 유저는 저장된 닉네임이 없으므로 userId 파생 자동 닉네임으로 표시한다.
     nickname: displayNickname(user.nickname, user.user_id),
+    // 공개 slug — 웹의 '카드 저장'이 유저별 OG 이미지(/og/<public_id>.png)를 가리키는 데 쓴다. user_id(비밀키) 아님.
+    publicId: user.public_id ?? null,
     bio: user.bio ?? null,
     role: user.role ?? null,
     company: user.company ?? null,

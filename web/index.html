@@ -331,7 +331,26 @@
   /* ── 유저 상세 페이지 ── */
   .backbtn { margin-top:2px; }
   .profile .p-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
-  .sharebtn { margin-left:auto; }
+  .headbtns { margin-left:auto; align-self:center; position:relative; display:inline-flex; gap:6px; }
+  .cardbtn.active { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  /* 카드 저장 팝오버 — 카드 버튼 기준 우측 정렬로 아래에 뜬다. */
+  .cardpop { position:absolute; top:calc(100% + 10px); right:0; z-index:12; width:420px; max-width:min(92vw,420px);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px; box-shadow:0 10px 36px rgba(0,0,0,.5); }
+  .cardpop[hidden] { display:none; }
+  .cardpop .cp-title { font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase; margin-bottom:10px;
+    display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .cardpop .cp-close { border:0; background:none; color:var(--faint); font:inherit; cursor:pointer; padding:0; }
+  .cardpop .cp-close:hover { color:var(--fg); }
+  .cardpop .cp-frame { position:relative; aspect-ratio:1200/630; border-radius:5px; border:1px solid var(--line); overflow:hidden; background:var(--backdrop); }
+  .cardpop .cp-frame img { width:100%; height:100%; object-fit:cover; display:block; }
+  .cardpop .cp-frame .cp-load { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--faint); }
+  .cardpop .cp-btns { display:flex; gap:8px; margin-top:12px; }
+  .cardpop .cp-btns button { flex:1; font:inherit; font-size:12.5px; border:1px solid var(--line); background:var(--bg);
+    color:var(--fg); padding:8px 0; border-radius:5px; cursor:pointer; }
+  .cardpop .cp-btns button:hover:not(:disabled) { border-color:var(--fg); }
+  .cardpop .cp-btns button:disabled { opacity:.5; cursor:default; }
+  .cardpop .cp-btns button.ok { color:var(--ok); border-color:var(--ok); }
+  .cardpop .cp-hint { margin-top:10px; font-size:11px; color:var(--faint); text-align:center; }
   .profile .p-nick { font-size:clamp(19px,3.6vw,26px); font-weight:700; letter-spacing:0.02em; margin:2px 0 0; word-break:break-all; }
   .profile .p-bio { margin:10px 0 0; color:var(--dim); font-size:13.5px; line-height:1.55; word-break:break-word; white-space:pre-wrap; }
   .profile .p-bio.empty { color:var(--faint); font-style:italic; }
@@ -552,7 +571,19 @@
             <span class="cc" id="uCountry"></span>
             <span class="rankchip" id="uRank" hidden></span>
             <span class="p-status" id="uStatus" hidden></span>
-            <button class="theme-toggle sharebtn" id="shareBtn" type="button" hidden data-i18n="share">⧉ share</button>
+            <span class="headbtns" id="headBtns">
+              <button class="theme-toggle cardbtn" id="cardBtn" type="button" hidden data-i18n="card" aria-haspopup="dialog" aria-expanded="false">🖼 card</button>
+              <button class="theme-toggle sharebtn" id="shareBtn" type="button" hidden data-i18n="share">⧉ share</button>
+              <div class="cardpop" id="cardPop" role="dialog" aria-label="save card" hidden>
+                <div class="cp-title"><span id="cardPopTitle" data-i18n="card_title">today's card</span><button class="cp-close" id="cardClose" type="button" data-i18n="card_close">✕ close</button></div>
+                <div class="cp-frame"><span class="cp-load" id="cardLoad" data-i18n="card_loading">rendering…</span><img id="cardImg" alt="" hidden /></div>
+                <div class="cp-btns">
+                  <button id="cardCopy" type="button" data-i18n="card_copy">⧉ copy image</button>
+                  <button id="cardSave" type="button" data-i18n="card_save">⬇ save PNG</button>
+                </div>
+                <div class="cp-hint" id="cardHint" data-i18n="card_hint">shareable card · updates daily</div>
+              </div>
+            </span>
           </div>
           <p class="p-role" id="uRole" hidden></p>
           <p class="p-bio empty" id="uBio"></p>
@@ -656,6 +687,10 @@
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', no_activity_day: 'No activity on this day.', visit: 'Visit ↗', main_badge: 'MAIN',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
+      card: '🖼 card', card_title: "TODAY'S CARD", card_close: '✕ close',
+      card_copy: '⧉ copy image', card_save: '⬇ save PNG', card_loading: 'rendering…',
+      card_copied: '✓ image copied', card_copy_fail: '✗ copy failed', card_saved: '✓ saved',
+      card_hint: 'shareable card · updates daily',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
       every_5m: 'every 5m',
       p_active: 'in action today', p_idle: 'standing by', p_last: 'last active',
@@ -694,6 +729,10 @@
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', no_activity_day: '이 날은 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
+      card: '🖼 카드', card_title: '오늘의 카드', card_close: '✕ 닫기',
+      card_copy: '⧉ 이미지 복사', card_save: '⬇ PNG 저장', card_loading: '카드 굽는 중…',
+      card_copied: '✓ 이미지 복사됨', card_copy_fail: '✗ 복사 실패', card_saved: '✓ 저장됨',
+      card_hint: '공유용 카드 · 매일 갱신',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
       every_5m: '5분마다',
       p_active: '오늘 참전 중', p_idle: '대기 중', p_last: '마지막 참전',
@@ -1370,6 +1409,8 @@
   }
   function showUserError(msg) {
     $('shareBtn').hidden = true;
+    $('cardBtn').hidden = true;
+    closeCardPop();
     $('uPortrait').hidden = true;
     $('uRank').hidden = true;
     $('uStatus').hidden = true;
@@ -1405,6 +1446,9 @@
     $('cmdEcho').textContent = `GET /user?${q}`;
     $('uNick').textContent = byId ? '' : nick; // slug 는 표시명이 아님 → 응답 도착 후 채움
     $('shareBtn').hidden = true;
+    $('cardBtn').hidden = true;
+    closeCardPop();
+    invalidateCardBlob(); // 다른 유저로 이동 → 캐시된 카드 이미지 폐기
     $('uPortrait').hidden = true;
     $('uRank').hidden = true;
     $('uStatus').hidden = true;
@@ -1517,6 +1561,8 @@
     $('uNick').textContent = data.nickname;
     document.title = `${data.nickname} · Open Code War`; // slug 진입 시 자동 닉네임으로 제목 확정
     $('shareBtn').hidden = false;
+    // 카드 저장 버튼: 유저별 OG 이미지가 public_id 기준이라 slug 있는 유저에게만 노출(구 데이터는 없음).
+    $('cardBtn').hidden = !data.publicId;
     $('uCountry').textContent = [
       data.country ? `${data.country} ${flagOf(data.country)}` : '',
       data.city || '',
@@ -1924,6 +1970,109 @@
     }
     flashShareBtn((await copyText(url)) ? t('copied') : t('copy_fail'));
   });
+
+  // ── 카드 저장: 유저별 OG 이미지(/og/<public_id>.png)를 팝오버로 미리보고 이미지 복사 / PNG 저장 ──
+  // 이미지는 프로필과 같은 오리진(Worker /og/ 라우트)에서 서빙 → fetch(blob)·clipboard·download 모두 동일 오리진이라 동작.
+  let cardBlob = null;    // 현재 팝오버에 로드된 PNG blob(복사·저장이 재사용)
+  let cardBlobUrl = null; // cardBlob 을 만든 이미지 URL(유저·날짜가 바뀌면 무효)
+  let cardMsgTimer = null;
+  function invalidateCardBlob() { cardBlob = null; cardBlobUrl = null; }
+  function cardImageUrl() {
+    if (!uData || !uData.publicId) return null;
+    // ?d=YYYYMMDD — 데일리 카드 컨셉(플랫폼 캐시 일 단위 우회)과 동일 규칙. /og 라우팅은 경로만 본다.
+    const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `${location.origin}/og/${uData.publicId}.png?d=${d}`;
+  }
+  function cardFilename() {
+    const name = (uData && uData.nickname) || curUser || 'card';
+    const slug = String(name).replace(/[^\w가-힣.-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'card';
+    const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `ocw-${slug}-${d}.png`;
+  }
+  function flashCardBtn(btn, key) {
+    btn.textContent = t(key);
+    clearTimeout(cardMsgTimer);
+    cardMsgTimer = setTimeout(() => { btn.textContent = t(btn.dataset.i18n); }, 1600);
+  }
+  async function ensureCardBlob() {
+    const url = cardImageUrl();
+    if (!url) return null;
+    if (cardBlob && cardBlobUrl === url) return cardBlob; // 같은 유저·같은 날 → 재요청 안 함
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    cardBlob = blob;
+    cardBlobUrl = url;
+    return blob;
+  }
+  function openCardPop() {
+    const url = cardImageUrl();
+    if (!url) return;
+    const img = $('cardImg'), load = $('cardLoad');
+    $('cardPop').hidden = false;
+    $('cardBtn').classList.add('active');
+    $('cardBtn').setAttribute('aria-expanded', 'true');
+    // 미리보기는 서버 렌더된 실제 PNG. 로드 전엔 'card_loading', 실패 시 안내.
+    img.hidden = true;
+    load.hidden = false;
+    load.textContent = t('card_loading');
+    img.onload = () => { img.hidden = false; load.hidden = true; };
+    img.onerror = () => { load.textContent = t('card_copy_fail'); };
+    img.src = url;
+  }
+  function closeCardPop() {
+    const pop = $('cardPop');
+    if (!pop) return;
+    pop.hidden = true;
+    const b = $('cardBtn');
+    b.classList.remove('active');
+    b.setAttribute('aria-expanded', 'false');
+  }
+  $('cardBtn').addEventListener('click', () => {
+    if ($('cardPop').hidden) openCardPop();
+    else closeCardPop();
+  });
+  $('cardClose').addEventListener('click', closeCardPop);
+  $('cardCopy').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    try {
+      const blob = await ensureCardBlob();
+      if (!blob) return;
+      // PNG 를 클립보드 이미지로 그대로 복사(붙여넣기 = 이미지). https·localhost 등 보안 컨텍스트 필요.
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      flashCardBtn(btn, 'card_copied');
+    } catch {
+      flashCardBtn(btn, 'card_copy_fail'); // 미지원/거부 → PNG 저장으로 유도
+    }
+  });
+  $('cardSave').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    try {
+      const blob = await ensureCardBlob();
+      if (!blob) return;
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = cardFilename();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objUrl), 4000);
+      flashCardBtn(btn, 'card_saved');
+    } catch {
+      flashCardBtn(btn, 'card_copy_fail');
+    }
+  });
+  // 팝오버 바깥 클릭·Esc 로 닫기(헤더 버튼 영역 클릭은 유지).
+  // isTrusted 로 실제 유저 클릭만 처리 — PNG 저장의 합성 a.click() 이 버블링돼 팝오버가 닫히는 것 방지.
+  document.addEventListener('click', (e) => {
+    if (!e.isTrusted || $('cardPop').hidden) return;
+    if (!$('headBtns').contains(e.target)) closeCardPop();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('cardPop').hidden) closeCardPop();
+  });
+
   document.querySelectorAll('.usort').forEach((b) =>
     b.addEventListener('click', () => {
       uMetric = b.dataset.metric;
