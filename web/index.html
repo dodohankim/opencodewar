@@ -440,7 +440,8 @@
   .chart .col:hover .barv { opacity:0.6; }
   /* 에이전트 2종 이상일 때: 막대를 에이전트별 세그먼트로 스택(아래→위) */
   .chart .col .barv.stack { background:transparent; display:flex; flex-direction:column-reverse; overflow:hidden; }
-  .chart .col .barv.stack .seg { width:100%; min-height:1px; }
+  /* 프로필 카드 공통 .seg 와 이름이 겹치면 border·radius·padding 이 새어 들어오므로 bseg 로 구분 */
+  .chart .col .barv.stack .bseg { width:100%; min-height:1px; }
   .ag-legend { display:block; margin-top:10px; font-size:11px; color:var(--dim); }
   .ag-legend:empty { display:none; }  /* 단일 에이전트면 비어 있으니 여백도 없앤다 */
   .ag-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin:0 4px 0 10px; vertical-align:-1px; }
@@ -1767,7 +1768,7 @@
     return agents
       .map((a) => ({ a, val: (agentsMap && agentsMap[a] && agentsMap[a][metric]) || 0 }))
       .filter((s) => s.val > 0)
-      .map((s) => `<div class="seg" style="height:${(s.val / v) * 100}%;background:${agColor(s.a)}"></div>`)
+      .map((s) => `<div class="bseg" style="height:${(s.val / v) * 100}%;background:${agColor(s.a)}"></div>`)
       .join('');
   }
 
