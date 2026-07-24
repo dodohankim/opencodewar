@@ -89,7 +89,7 @@
   :root {
     --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
     --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
-    --ok:#4F8258; --err:#B0553F;
+    --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
     /* 에이전트별 차트 색 (claude-code 는 기본 막대색 --fg 사용) */
     --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
     /* 픽셀 병정 공통색 — 라이트/다크 동일 */
@@ -103,14 +103,14 @@
     :root:not([data-theme="light"]) {
       --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
       --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
-      --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+      --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
       --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
     }
   }
   :root[data-theme="dark"] {
     --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
     --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
-    --ok:#6DA875; --err:#E0785C; color-scheme: dark;
+    --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
     --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
   }
   :root[data-theme="light"] { color-scheme: light; }
@@ -242,13 +242,28 @@
   .px-k { fill:var(--ok); }
   .rankchip { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--fg);
     border:1px solid var(--line); border-radius:5px; padding:3px 9px; align-self:center; }
-  .p-status { font-size:11px; color:var(--faint); align-self:flex-end; margin-bottom:3px; }
-  .p-status .on { color:var(--ok); }
-  .rankline { margin:10px 0 0; font-size:12px; color:var(--dim); }
-  .rankline .gbar { letter-spacing:-1px; }
-  .rankline .gbar .on { color:var(--ok); }
-  .rankline .gbar .off { color:var(--faint); }
-  .rankline b { color:var(--fg); font-weight:600; }
+  /* 상태줄 — 이름 아래 독립 줄(넓은 화면서 헤더에 붙어 처지던 문제 해결) */
+  .profile .p-status { margin:9px 0 0; font-size:13px; color:var(--dim); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .profile .p-status .on { color:var(--ok); }
+  .profile .p-status b { color:var(--fg); font-weight:600; }
+  /* 전체순위 / 다음계급 / 스트릭 3분할 스탠딩 */
+  .standing { margin-top:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .standing[hidden] { display:none; }
+  @media (max-width:560px){ .standing { grid-template-columns:1fr; } }
+  .seg { border:1px solid var(--line); border-radius:7px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; min-height:90px; }
+  .seg[hidden] { display:none; }
+  .seg .lbl { font-size:10.5px; letter-spacing:.13em; color:var(--faint); text-transform:uppercase; }
+  .seg .big { font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1; }
+  .seg .big .rk { color:var(--amber); }
+  .seg .big .u { font-size:14px; font-weight:600; color:var(--dim); }
+  .seg .sub { font-size:12px; color:var(--dim); margin-top:auto; }
+  .seg .sub b { color:var(--fg); font-weight:600; }
+  .seg .gaugerow { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .seg .gaugebar { display:inline-flex; gap:3px; }
+  .seg .gaugebar i { width:9px; height:16px; border-radius:2px; background:var(--faint); display:block; }
+  .seg .gaugebar i.on { background:var(--amber); }
+  .seg .to { font-size:14px; font-weight:700; color:var(--fg); }
+  .seg .to .arr { color:var(--faint); font-weight:400; }
   .peakflag { position:absolute; left:calc(50% - 3px); width:16px; height:20px; pointer-events:none; }
   .peakflag .px-f { fill:var(--ok); }
 
@@ -330,7 +345,7 @@
 
   /* ── 유저 상세 페이지 ── */
   .backbtn { margin-top:2px; }
-  .profile .p-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .profile .p-head { display:flex; align-items:center; gap:10px 12px; flex-wrap:wrap; }
   .headbtns { margin-left:auto; align-self:center; position:relative; display:inline-flex; gap:6px; }
   .cardbtn.active { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
   /* 카드 저장 팝오버 — 카드 버튼 기준 우측 정렬로 아래에 뜬다. */
@@ -354,8 +369,10 @@
   .cardpop .cp-btns button.ok { color:var(--ok); border-color:var(--ok); }
   .cardpop .cp-hint { margin-top:10px; font-size:11px; color:var(--faint); text-align:center; }
   .profile .p-nick { font-size:clamp(19px,3.6vw,26px); font-weight:700; letter-spacing:0.02em; margin:2px 0 0; word-break:break-all; }
-  .profile .p-bio { margin:10px 0 0; color:var(--dim); font-size:13.5px; line-height:1.55; word-break:break-word; white-space:pre-wrap; }
-  .profile .p-bio.empty { color:var(--faint); font-style:italic; }
+  /* 자기소개 — 좌측 액센트 + 본문색 + 큰 글씨로 강조(흐릿하던 문제 해결) */
+  .profile .p-bio { margin:16px 0 0; padding:5px 0 5px 14px; border-left:2px solid var(--ok);
+    color:var(--fg); font-size:15px; line-height:1.55; word-break:break-word; white-space:pre-wrap; }
+  .profile .p-bio.empty { color:var(--faint); font-style:italic; font-size:13.5px; border-left-color:var(--line); }
   .p-role { margin:10px 0 0; color:var(--fg); font-size:13.5px; }
   .p-role .at { color:var(--faint); }
   .chips { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
@@ -404,13 +421,6 @@
   .uview, .usort { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; white-space:nowrap; }
   .uview:hover, .usort:hover { color:var(--fg); }
   .uview[aria-pressed="true"], .usort[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
-  /* 하루(시간별) 뷰 날짜 이동 */
-  .udaynav { display:flex; align-items:center; justify-content:center; gap:14px; margin-top:12px; }
-  .udaynav[hidden] { display:none; }  /* display:flex 가 UA의 [hidden]{display:none}를 덮어써서 명시 필요 */
-  .udaystep { font:inherit; font-size:12px; line-height:1; border:1px solid var(--line); background:var(--bg); color:var(--dim); width:30px; height:27px; border-radius:5px; cursor:pointer; }
-  .udaystep:hover:not(:disabled) { color:var(--fg); border-color:var(--fg); }
-  .udaystep:disabled { opacity:0.3; cursor:default; }
-  .udaylabel { font-size:13px; color:var(--fg); font-variant-numeric:tabular-nums; min-width:118px; text-align:center; }
   .chart-wrap { margin-top:16px; position:relative; }
   .chart-tip { position:absolute; z-index:5; pointer-events:none; transform:translate(-50%,-100%);
     background:var(--rev-bg); color:var(--rev-fg); border-radius:5px; padding:6px 9px; font-size:11.5px;
@@ -426,8 +436,8 @@
   .chart .col.wknd .barv { background:var(--dim); }
   .chart .col.today .barv { background:var(--ok); }
   .chart .col.peak .barv { background:var(--ok); }  /* 하루 뷰: 가장 많이 입력한 시각 강조 */
+  .chart .col.dsplit { border-left:1px dashed var(--line); }  /* 2일 뷰: 어제/오늘 날짜 경계 */
   .chart .col:hover .barv { opacity:0.6; }
-  .chart.drill .col { cursor:pointer; }  /* 30일 막대 클릭 → 그 날 시간별 드릴다운 */
   /* 에이전트 2종 이상일 때: 막대를 에이전트별 세그먼트로 스택(아래→위) */
   .chart .col .barv.stack { background:transparent; display:flex; flex-direction:column-reverse; overflow:hidden; }
   .chart .col .barv.stack .seg { width:100%; min-height:1px; }
@@ -572,7 +582,6 @@
             <h2 class="p-nick" id="uNick">–</h2>
             <span class="cc" id="uCountry"></span>
             <span class="rankchip" id="uRank" hidden></span>
-            <span class="p-status" id="uStatus" hidden></span>
             <span class="headbtns" id="headBtns">
               <button class="theme-toggle cardbtn" id="cardBtn" type="button" hidden data-i18n="card" aria-haspopup="dialog" aria-expanded="false">🖼 card</button>
               <button class="theme-toggle sharebtn" id="shareBtn" type="button" hidden data-i18n="share">⧉ share</button>
@@ -587,10 +596,26 @@
               </div>
             </span>
           </div>
+          <div class="p-status" id="uStatus" hidden></div>
           <p class="p-role" id="uRole" hidden></p>
           <p class="p-bio empty" id="uBio"></p>
-          <p class="rankline" id="uRankLine" hidden></p>
-          <p class="rankline" id="uStreakLine" hidden></p>
+          <div class="standing" id="uStanding" hidden>
+            <div class="seg" id="segStanding" hidden>
+              <div class="lbl" data-i18n="std_global">global rank</div>
+              <div class="big" id="segStandingBig"></div>
+              <div class="sub" id="segStandingSub"></div>
+            </div>
+            <div class="seg" id="segNext" hidden>
+              <div class="lbl" data-i18n="std_next">next rank</div>
+              <div class="gaugerow" id="segNextGauge"></div>
+              <div class="sub" id="segNextSub"></div>
+            </div>
+            <div class="seg" id="segStreak" hidden>
+              <div class="lbl" data-i18n="std_streak">streak</div>
+              <div class="big" id="segStreakBig"></div>
+              <div class="sub" id="segStreakSub"></div>
+            </div>
+          </div>
           <div class="chips" id="uLinks"></div>
           <div class="p-fields">
             <div class="field">
@@ -621,11 +646,6 @@
               <button class="usort" data-metric="prompts" aria-pressed="true">prompts</button>
               <button class="usort" data-metric="chars" aria-pressed="false">chars</button>
             </div>
-          </div>
-          <div class="udaynav" id="uDayNav" hidden>
-            <button class="udaystep" id="uDayPrev" type="button" aria-label="previous day">◀</button>
-            <span class="udaylabel" id="uDayLabel"></span>
-            <button class="udaystep" id="uDayNext" type="button" aria-label="next day">▶</button>
           </div>
           <span class="ag-legend" id="uAgentLegend"></span>
           <div class="ustats" id="uStats"></div>
@@ -683,11 +703,10 @@
       email_label: 'email', email_ph: 'private', member_since: 'member since',
       bio_empty: 'No bio yet.', chart_30d: 'last 30 days',
       u_active: 'active days', u_peak: 'peak', u_total_sub: '30-day total',
-      view_30d: '30d', view_day: 'day', u_hours: 'active hours', u_day_sub: 'day total',
+      view_30d: '30d', view_day: 'day', u_hours: 'active hours', u_2d_sub: '2-day total', chart_2d: 'last 2 days',
       tz_note: (z) => `🕒 times in ${z}`,
-      dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
-      no_activity: 'No activity in the last 30 days.', no_activity_day: 'No activity on this day.', visit: 'Visit ↗', main_badge: 'MAIN',
+      no_activity: 'No activity in the last 30 days.', no_activity_2d: 'No activity in the last 2 days.', visit: 'Visit ↗', main_badge: 'MAIN',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
       card: '🖼 card', card_title: "TODAY'S CARD", card_close: '✕ close',
       card_copy: '⧉ copy image', card_save: '⬇ save PNG', card_loading: 'rendering…',
@@ -700,6 +719,8 @@
       rank_next: (need, next) => `<b>${need}</b> prompts to ${next}`,
       streak_cur: (n) => `${n}-day streak`, streak_none: 'no active streak',
       streak_best: (n) => `best ${n}`, streak_since: (d) => `since ${d}`,
+      std_global: 'global rank', std_next: 'next rank', std_streak: 'streak',
+      std_of: (n) => `of ${n}`, std_togo: (n) => `<b>${n}</b> prompts to go`, std_days: 'days',
     },
     ko: {
       langBtn: 'EN',
@@ -725,11 +746,10 @@
       email_label: '이메일', email_ph: '비공개', member_since: '가입일',
       bio_empty: '아직 자기소개가 없습니다.', chart_30d: '최근 30일',
       u_active: '활동일', u_peak: '최고', u_total_sub: '30일 합계',
-      view_30d: '30일', view_day: '하루', u_hours: '활동시간', u_day_sub: '하루 합계',
+      view_30d: '30일', view_day: '하루', u_hours: '활동시간', u_2d_sub: '2일 합계', chart_2d: '최근 2일',
       tz_note: (z) => `🕒 ${z} 기준`,
-      dow: ['일', '월', '화', '수', '목', '금', '토'],
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
-      no_activity: '최근 30일 활동이 없습니다.', no_activity_day: '이 날은 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
+      no_activity: '최근 30일 활동이 없습니다.', no_activity_2d: '최근 2일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
       card: '🖼 카드', card_title: '오늘의 카드', card_close: '✕ 닫기',
       card_copy: '⧉ 이미지 복사', card_save: '⬇ PNG 저장', card_loading: '카드 굽는 중…',
@@ -742,6 +762,8 @@
       rank_next: (need, next) => `${next}까지 <b>${need}</b> prompts`,
       streak_cur: (n) => `연속 ${n}일`, streak_none: '진행 중인 연속 없음',
       streak_best: (n) => `최장 ${n}일`, streak_since: (d) => `${d}부터`,
+      std_global: '전체 순위', std_next: '다음 계급', std_streak: '스트릭',
+      std_of: (n) => `${n}명 중`, std_togo: (n) => `<b>${n}</b> prompts 남음`, std_days: '일',
     },
   };
   const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
@@ -770,8 +792,7 @@
   let curUser = null;   // 현재 열람 중인 닉네임(없으면 리더보드)
   let uMetric = 'prompts';
   let uData = null;     // 마지막으로 받은 /user 응답
-  let uView = '30d';    // 차트 뷰: '30d'(일별) | 'day'(시간별)
-  let uDay = null;      // day 뷰에서 보고 있는 'YYYY-MM-DD'
+  let uView = '30d';    // 차트 뷰: '30d'(일별) | 'day'(최근 2일 시간별)
   const uHoursCache = new Map(); // day -> /user/hours 응답 (재요청 방지)
 
   const $ = (id) => document.getElementById(id);
@@ -1390,12 +1411,6 @@
   function syncViewButtons() {
     document.querySelectorAll('.uview').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === uView));
   }
-  // 'YYYY-MM-DD' → 'MM-DD (요일)'. 하루 뷰 네비/레전드 라벨.
-  const dayLabel = (s) => {
-    if (typeof s !== 'string' || s.length < 10) return '';
-    const dow = t('dow')[new Date(s + 'T00:00:00Z').getUTCDay()] || '';
-    return `${mmdd(s)} (${dow})`;
-  };
   const hhLabel = (h) => `${String(h).padStart(2, '0')}:00`;
   // items(각 원소에 .agents) 안에 등장하는 에이전트를 고정 순서로. 2종 이상이면 스택 렌더.
   function agentsIn(items) {
@@ -1416,7 +1431,7 @@
     $('uPortrait').hidden = true;
     $('uRank').hidden = true;
     $('uStatus').hidden = true;
-    $('uRankLine').hidden = true;
+    $('uStanding').hidden = true;
     $('uChartWrap').hidden = true;
     $('uRole').hidden = true;
     $('uRole').innerHTML = '';
@@ -1438,9 +1453,7 @@
     uMetric = 'prompts';
     uData = null;
     uView = '30d';
-    uDay = null;
     uHoursCache.clear();
-    $('uDayNav').hidden = true;
     syncUsortButtons();
     syncViewButtons();
     const byId = isPid(nick);
@@ -1454,7 +1467,7 @@
     $('uPortrait').hidden = true;
     $('uRank').hidden = true;
     $('uStatus').hidden = true;
-    $('uRankLine').hidden = true;
+    $('uStanding').hidden = true;
     $('uCountry').textContent = '';
     $('uTz').textContent = '';
     $('uRole').hidden = true;
@@ -1647,6 +1660,11 @@
   const AGENT_ARMY = { 'claude-code': 'army-claude', codex: 'army-codex', opencode: 'army-opencode', pi: 'army-pi' };
 
   // 프로필 병정 초상(활동 상태 포즈) + 계급 칩·게이지
+  function gaugeCells(on) {
+    let s = '<span class="gaugebar">';
+    for (let i = 0; i < 10; i++) s += `<i${i < on ? ' class="on"' : ''}></i>`;
+    return s + '</span>';
+  }
   function renderSoldierBits(data) {
     const days = data.days || [];
     const last = days[days.length - 1];
@@ -1656,49 +1674,81 @@
     if (todayP > 0) {
       por.classList.add('typing');
       por.innerHTML = `<span class="f f1">${spriteSVG('typer1')}</span><span class="f f2">${spriteSVG('typer2')}</span><i class="tdots"><b></b><b></b><b></b></i>`;
-      $('uStatus').innerHTML = `<span class="on">●</span> ${t('p_active')} · ${fmt(todayP)} prompts`;
+      $('uStatus').innerHTML = `<span class="on">●</span> ${t('p_active')} · <b>${fmt(todayP)}</b> prompts`;
     } else {
       por.innerHTML = spriteSVG('march2');
       let lastDay = null;
       for (let j = days.length - 1; j >= 0; j--) if ((days[j].prompts || 0) > 0) { lastDay = days[j].day; break; }
-      $('uStatus').textContent = `○ ${t('p_idle')}${lastDay ? ` · ${t('p_last')} ${mmdd(lastDay)}` : ''}`;
+      $('uStatus').innerHTML = `<span>○</span> ${t('p_idle')}${lastDay ? ` · ${t('p_last')} ${mmdd(lastDay)}` : ''}`;
     }
     por.hidden = false;
     $('uStatus').hidden = false;
-    // 스트릭(§17) — 현재 연속(🔥) + 최장. streak 필드 없으면(구 API 캐시) 라인 생략.
+
+    // allTime 누적 prompts(계급·다음계급 게이지의 기준). 없으면(구 API 캐시) 관련 seg 생략.
+    const at = data.allTime && typeof data.allTime.prompts === 'number' ? data.allTime.prompts : null;
+    let anySeg = false;
+
+    // 계급 칩(현재 계급만 — 다음 계급 진행은 아래 seg 로 분리해 'Corporal' 중복 표기 제거)
+    if (at != null) {
+      const r = RANKS[rankOf(at)];
+      $('uRank').innerHTML = `${insigniaSVG(r.ins[0], r.ins[1])}${escapeHtml(LANG === 'ko' ? r.ko : r.en)}`;
+      $('uRank').title = `${fmt(at)} prompts`;
+      $('uRank').hidden = false;
+    } else {
+      $('uRank').hidden = true;
+    }
+
+    // seg1: 전체 순위(#N) + 국가 순위. rank 없으면(활동 0·구 API) 생략.
+    if (typeof data.rank === 'number' && data.rank > 0) {
+      $('segStandingBig').innerHTML = `<span class="rk">#${fmt(data.rank)}</span>`;
+      const sub = [];
+      if (data.rankTotal) sub.push(t('std_of')(fmt(data.rankTotal)));
+      if (typeof data.countryRank === 'number' && data.countryRank > 0 && data.country) {
+        sub.push(`${escapeHtml(data.country)} ${flagOf(data.country)} #${fmt(data.countryRank)}`);
+      }
+      $('segStandingSub').innerHTML = sub.join(' · ') || '&nbsp;';
+      $('segStanding').hidden = false; anySeg = true;
+    } else {
+      $('segStanding').hidden = true;
+    }
+
+    // seg2: 다음 계급 게이지(기존 'rank Corporal … to Sergeant' 대체 — 다음 계급만)
+    if (at != null) {
+      const ri = rankOf(at);
+      const r = RANKS[ri];
+      const next = RANKS[ri + 1];
+      if (next) {
+        const on = Math.max(0, Math.min(10, Math.round(((at - r.min) / (next.min - r.min)) * 10)));
+        $('segNextGauge').innerHTML = gaugeCells(on) + `<span class="to"><span class="arr">→</span> ${escapeHtml(LANG === 'ko' ? next.ko : next.en)}</span>`;
+        $('segNextSub').innerHTML = t('std_togo')(fmt(next.min - at));
+      } else {
+        $('segNextGauge').innerHTML = gaugeCells(10) + `<span class="to">${t('rank_max')}</span>`;
+        $('segNextSub').innerHTML = '&nbsp;';
+      }
+      $('segNext').hidden = false; anySeg = true;
+    } else {
+      $('segNext').hidden = true;
+    }
+
+    // seg3: 스트릭(§17)
     const sCur = typeof data.streak === 'number' ? data.streak : null;
     const sBest = typeof data.streakLongest === 'number' ? data.streakLongest : null;
-    if (sCur == null && sBest == null) {
-      $('uStreakLine').hidden = true;
-    } else {
+    if (sCur != null || sBest != null) {
       const best = sBest != null ? sBest : sCur;
-      const parts = [sCur > 0 ? `🔥 ${t('streak_cur')(sCur)}` : t('streak_none'), t('streak_best')(best)];
-      if (sCur > 0 && data.streakSince) parts.push(t('streak_since')(mmdd(data.streakSince)));
-      $('uStreakLine').innerHTML = parts.join(' · ');
-      $('uStreakLine').hidden = false;
-    }
-    // 계급 — allTime 없으면(구 API 캐시 등) 표시 생략
-    const at = data.allTime && typeof data.allTime.prompts === 'number' ? data.allTime.prompts : null;
-    if (at == null) { $('uRank').hidden = true; $('uRankLine').hidden = true; return; }
-    const ri = rankOf(at);
-    const r = RANKS[ri];
-    const name = LANG === 'ko' ? r.ko : r.en;
-    $('uRank').innerHTML = `${insigniaSVG(r.ins[0], r.ins[1])}${escapeHtml(name)}`;
-    $('uRank').title = `${fmt(at)} prompts`;
-    $('uRank').hidden = false;
-    const next = RANKS[ri + 1];
-    let gauge;
-    let tail;
-    if (next) {
-      const on = Math.max(0, Math.min(10, Math.round(((at - r.min) / (next.min - r.min)) * 10)));
-      gauge = `<span class="gbar"><span class="on">${'▮'.repeat(on)}</span><span class="off">${'▯'.repeat(10 - on)}</span></span>`;
-      tail = t('rank_next')(fmt(next.min - at), LANG === 'ko' ? next.ko : next.en);
+      if (sCur > 0) {
+        $('segStreakBig').innerHTML = `🔥 ${sCur}<span class="u">${LANG === 'ko' ? '' : ' '}${t('std_days')}</span>`;
+      } else {
+        $('segStreakBig').innerHTML = `<span style="color:var(--faint);font-size:14px;font-weight:600">${t('streak_none')}</span>`;
+      }
+      const sub = [t('streak_best')(best)];
+      if (sCur > 0 && data.streakSince) sub.push(t('streak_since')(mmdd(data.streakSince)));
+      $('segStreakSub').innerHTML = sub.join(' · ');
+      $('segStreak').hidden = false; anySeg = true;
     } else {
-      gauge = `<span class="gbar"><span class="on">${'▮'.repeat(10)}</span></span>`;
-      tail = t('rank_max');
+      $('segStreak').hidden = true;
     }
-    $('uRankLine').innerHTML = `${t('rank_label')} <b>${escapeHtml(name)}</b> ${gauge} ${tail}`;
-    $('uRankLine').hidden = false;
+
+    $('uStanding').hidden = !anySeg;
   }
 
   // 에이전트별 차트 색. claude-code 는 기본 막대색(--fg), 목록 밖 값은 --dim.
@@ -1721,19 +1771,11 @@
       .join('');
   }
 
-  // 뷰(30d/day)에 맞춰 차트를 그린다. 공통 상단(토글·날짜 네비·드릴 커서)만 여기서 처리하고
-  // 실제 렌더는 각 뷰 함수에 위임한다.
+  // 뷰(30d/day)에 맞춰 차트를 그린다. 공통 상단(토글)만 여기서 처리하고 실제 렌더는 각 뷰 함수에 위임한다.
   function renderUserChart() {
     if (!uData) return;
-    // day 뷰 기본 날짜 = 오늘(30일 창의 마지막). 데이터 로드 전 토글을 눌러도 여기서 확정된다.
-    if (uView === 'day' && !uDay) {
-      const list = dayList();
-      uDay = list.length ? list[list.length - 1] : null;
-    }
     syncUsortButtons();
     syncViewButtons();
-    $('uDayNav').hidden = uView !== 'day';
-    $('uChart').classList.toggle('drill', uView === '30d'); // 30일 막대만 클릭 드릴다운
     if (uView === 'day') renderHourChart();
     else render30dChart();
   }
@@ -1791,8 +1833,7 @@
         const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(d.agents || {}))}"` : '';
         // 최고 기록일 = 고지 점령 — 피크 막대 위에 픽셀 깃발
         const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
-        // data-day 는 드릴다운(그 날 시간별)용, data-lbl 은 툴팁 표시 라벨.
-        return `<div class="col ${cls}" data-day="${d.day}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        return `<div class="col ${cls}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
@@ -1801,16 +1842,15 @@
     $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${mmdd(days[peakIdx].day)} · ${fmt(max)}` : '';
   }
 
-  // ── 뷰 2: 하루 · 시간별(0~23시) 막대 ── (데이터는 /user/hours 온디맨드 로드·캐시)
+  // ── 뷰 2: 최근 2일 · 시간별(어제 00시 → 오늘 23시, 48칸) 막대 ── (데이터는 /user/hours 를 날짜별 온디맨드 로드·캐시)
   async function renderHourChart() {
-    const day = uDay;
-    if (!day) return;
-    updateDayNav();
+    // 최근 2일 = 30일 창(uData.days)의 마지막 두 날짜.
+    const days2 = (uData.days || []).slice(-2).map((d) => d.day);
+    if (!days2.length) return;
 
-    let data = uHoursCache.get(day);
-    if (!data) {
-      // 로딩 상태로 전환하고, 요청 컨텍스트(유저·뷰·날짜)를 잡아 레이스를 가드한다.
-      $('uChartLegend').textContent = `${dayLabel(day)} · ${uMetric}`;
+    if (!days2.every((d) => uHoursCache.has(d))) {
+      // 로딩 상태로 전환하고, 요청 컨텍스트(유저·뷰)를 잡아 레이스를 가드한다.
+      $('uChartLegend').textContent = `${t('chart_2d')} · ${uMetric}`;
       $('uStats').innerHTML = '';
       $('uAgentLegend').innerHTML = '';
       $('uChartWrap').hidden = true;
@@ -1819,19 +1859,19 @@
       $('uMsg').textContent = t('loading');
       const reqUser = curUser;
       try {
-        data = await ensureHours(day);
+        await Promise.all(days2.map(ensureHours));
       } catch {
-        if (curUser === reqUser && uView === 'day' && uDay === day) {
+        if (curUser === reqUser && uView === 'day') {
           $('uMsg').hidden = false;
           $('uMsg').classList.add('err');
           $('uMsg').textContent = t('user_error');
         }
         return;
       }
-      // 응답 대기 사이 다른 유저/뷰/날짜로 이동했으면 폐기(오래된 응답 무시).
-      if (curUser !== reqUser || uView !== 'day' || uDay !== day) return;
+      // 응답 대기 사이 다른 유저/뷰로 이동했으면 폐기(오래된 응답 무시).
+      if (curUser !== reqUser || uView !== 'day') return;
     }
-    paintHours(day, data);
+    paintHours(days2);
   }
 
   async function ensureHours(day) {
@@ -1841,82 +1881,71 @@
     const res = await fetch(`${API}/user/hours?${base}&day=${encodeURIComponent(day)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    uHoursCache.set(day, data);
+    if (curUser === ref) uHoursCache.set(day, data); // 응답 대기 중 유저가 바뀌었으면 새 유저 캐시를 오염시키지 않는다
     return data;
   }
 
-  function paintHours(day, data) {
+  function paintHours(days2) {
     const metric = uMetric;
-    const hours = (data && data.hours) || [];
-    $('uChartLegend').textContent = `${dayLabel(day)} · ${metric}`;
+    // 날짜별 24칸을 이어붙여 연속 뷰로. 각 칸은 { day, h(시각), prompts, chars, agents }.
+    const cols = [];
+    for (const day of days2) {
+      const hours = ((uHoursCache.get(day) || {}).hours || []);
+      hours.forEach((hh, h) => cols.push({ day, h, ...hh }));
+    }
+    const colLbl = (c) => `${mmdd(c.day)} ${hhLabel(c.h)}`;
+    $('uChartLegend').textContent = `${t('chart_2d')} · ${metric}`;
 
-    const agents = agentsIn(hours);
+    const agents = agentsIn(cols);
     const multi = agents.length >= 2;
     $('uAgentLegend').innerHTML = multi
       ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
       : '';
 
-    const vals = hours.map((hh) => hh[metric] || 0);
+    const vals = cols.map((c) => c[metric] || 0);
     const total = vals.reduce((a, b) => a + b, 0);
-    const sumP = hours.reduce((s, hh) => s + (hh.prompts || 0), 0);
-    const sumC = hours.reduce((s, hh) => s + (hh.chars || 0), 0);
+    const sumP = cols.reduce((s, c) => s + (c.prompts || 0), 0);
+    const sumC = cols.reduce((s, c) => s + (c.chars || 0), 0);
     const activeHours = vals.filter((v) => v > 0).length;
     const peakVal = Math.max(0, ...vals);
     const peakIdx = peakVal > 0 ? vals.indexOf(peakVal) : -1;
     const max = Math.max(peakVal, 1);
-    const pct = Math.round((activeHours / 24) * 100);
+    const pct = cols.length ? Math.round((activeHours / cols.length) * 100) : 0;
 
-    // 지표 타일 4칸: prompts·chars(현재 metric 강조) · active hours · peak(시각)
+    // 지표 타일 4칸: prompts·chars(현재 metric 강조) · active hours · peak(날짜+시각)
     $('uStats').innerHTML =
-      statTileHtml('prompts', sumP, metric, t('u_day_sub')) +
-      statTileHtml('chars', sumC, metric, t('u_day_sub')) +
-      `<div class="tile"><div class="tnum">${activeHours}<span class="den">/24</span></div><div class="tlab">${t('u_hours')}</div><div class="tsub">${pct}%</div></div>` +
-      `<div class="tile"><div class="tnum">${peakVal > 0 ? fmtCompact(peakVal) : '–'}</div><div class="tlab">${t('u_peak')}</div><div class="tsub">${peakIdx >= 0 ? hhLabel(peakIdx) : '–'}</div></div>`;
+      statTileHtml('prompts', sumP, metric, t('u_2d_sub')) +
+      statTileHtml('chars', sumC, metric, t('u_2d_sub')) +
+      `<div class="tile"><div class="tnum">${activeHours}<span class="den">/${cols.length}</span></div><div class="tlab">${t('u_hours')}</div><div class="tsub">${pct}%</div></div>` +
+      `<div class="tile"><div class="tnum">${peakVal > 0 ? fmtCompact(peakVal) : '–'}</div><div class="tlab">${t('u_peak')}</div><div class="tsub">${peakIdx >= 0 ? colLbl(cols[peakIdx]) : '–'}</div></div>`;
 
     if (total === 0) {
       $('uChartWrap').hidden = true;
       $('uMsg').hidden = false;
       $('uMsg').classList.remove('err');
-      $('uMsg').textContent = t('no_activity_day');
+      $('uMsg').textContent = t('no_activity_2d');
       return;
     }
     $('uMsg').hidden = true;
     $('uChartWrap').hidden = false;
 
-    $('uChart').innerHTML = hours
-      .map((hh, i) => {
-        const v = hh[metric] || 0;
+    $('uChart').innerHTML = cols
+      .map((c, i) => {
+        const v = c[metric] || 0;
         const h = Math.max(2, Math.round((v / max) * 100));
-        const cls = v === 0 ? 'zero' : i === peakIdx ? 'peak' : '';
-        const segs = barSegs(multi, v, hh.agents, agents, metric);
-        const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(hh.agents || {}))}"` : '';
+        // 둘째 날 00시에 날짜 경계 점선(dsplit)
+        const cls = [v === 0 ? 'zero' : i === peakIdx ? 'peak' : '', c.h === 0 && i > 0 ? 'dsplit' : ''].filter(Boolean).join(' ');
+        const segs = barSegs(multi, v, c.agents, agents, metric);
+        const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(c.agents || {}))}"` : '';
         // 30일 뷰와 동일하게 — 피크 시각 막대 위에 픽셀 깃발
         const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
-        return `<div class="col ${cls}" data-lbl="${hhLabel(i)}" data-p="${hh.prompts}" data-c="${hh.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        return `<div class="col ${cls}" data-lbl="${colLbl(c)}" data-p="${c.prompts}" data-c="${c.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
-    $('uXfrom').textContent = hhLabel(0);
-    $('uXto').textContent = hhLabel(23);
-    $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${hhLabel(peakIdx)} · ${fmt(peakVal)}` : '';
-  }
-
-  // 하루 뷰 날짜 이동(◀ ▶) — 30일 창(uData.days) 안에서만.
-  const dayList = () => (uData && uData.days ? uData.days : []).map((d) => d.day);
-  function updateDayNav() {
-    const list = dayList();
-    const i = list.indexOf(uDay);
-    $('uDayPrev').disabled = i <= 0;
-    $('uDayNext').disabled = i < 0 || i >= list.length - 1;
-    $('uDayLabel').textContent = dayLabel(uDay);
-  }
-  function stepDay(delta) {
-    const list = dayList();
-    const i = list.indexOf(uDay);
-    const j = i + delta;
-    if (i < 0 || j < 0 || j >= list.length) return;
-    uDay = list[j];
-    renderUserChart();
+    $('uXfrom').textContent = cols.length ? colLbl(cols[0]) : '';
+    $('uXto').textContent = cols.length ? colLbl(cols[cols.length - 1]) : '';
+    $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${colLbl(cols[peakIdx])} · ${fmt(peakVal)}` : '';
   }
 
   // 코더 이름 클릭 → 상세 (리더보드 행 + 챔피언 칩 + 퍼레이드 기수 모두 위임 처리)
@@ -2084,7 +2113,7 @@
     }),
   );
 
-  // 뷰 토글(30d / day). day 기본 날짜(오늘)는 renderUserChart 가 확정한다.
+  // 뷰 토글(30d / day).
   document.querySelectorAll('.uview').forEach((b) =>
     b.addEventListener('click', () => {
       if (b.dataset.view === uView) return;
@@ -2092,19 +2121,6 @@
       renderUserChart();
     }),
   );
-  // 하루 뷰 날짜 이동(◀ ▶).
-  $('uDayPrev').addEventListener('click', () => stepDay(-1));
-  $('uDayNext').addEventListener('click', () => stepDay(1));
-  // 30일 막대 클릭 → 그 날 시간별로 드릴다운.
-  $('uChart').addEventListener('click', (e) => {
-    if (uView !== '30d') return;
-    const col = e.target.closest && e.target.closest('.col');
-    if (!col || !col.dataset.day) return;
-    uDay = col.dataset.day;
-    uView = 'day';
-    $('uTip').classList.remove('on'); // 클릭 재렌더 시 남는 이전(일별) 툴팁 제거 — 다음 mousemove까지 대기 안 함
-    renderUserChart();
-  });
 
   // 차트 바 호버 → 커스텀 툴팁(날짜/시각 · 프롬프트 · 글자수). #uChart 에 위임해 리렌더에도 유지.
   (function setupChartTip() {

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — 프로필 헤더 개편</title>
+<style>
+  :root{
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --amber:#D9A441;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,"D2Coding",monospace;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"]{
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --amber:#B7862E; color-scheme: light;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--backdrop);font-family:var(--mono);color:var(--fg);font-size:14px;line-height:1.5;
+    padding:clamp(10px,3vw,30px) clamp(10px,3vw,30px) 90px;-webkit-font-smoothing:antialiased;}
+  .mocknote{max-width:1040px;margin:0 auto 12px;font-size:12px;color:var(--faint);line-height:1.7;}
+  .mocknote b{color:var(--dim);}
+  .term{max-width:1040px;margin:0 auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .titlebar{display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim);}
+  .lights{display:flex;gap:7px;}
+  .lights i{width:11px;height:11px;border-radius:50%;border:1px solid var(--faint);display:block;}
+  .titlebar .name{flex:1;text-align:center;}
+  .screen{padding:clamp(14px,2.5vw,26px);display:flex;flex-direction:column;gap:26px;}
+
+  .box{position:relative;border:1px solid var(--line);border-radius:6px;padding:24px 20px 20px;}
+  .box>.legend{position:absolute;top:-0.72em;left:14px;background:var(--bg);padding:0 8px;font-size:11px;color:var(--dim);letter-spacing:.06em;}
+  .box.after>.legend{color:var(--ok);}
+  .box.before{opacity:.9;}
+
+  /* 픽셀 병정 스프라이트 */
+  .px-s{fill:#E8C39E;} .px-e{fill:#232320;} .px-r{fill:var(--fg);} .px-u{fill:var(--fg);} .px-k{fill:var(--ok);}
+  .portrait{width:46px;height:46px;flex:none;border:1px solid var(--line);border-radius:6px;background:var(--hover);padding:5px;}
+  .portrait svg{width:100%;height:100%;display:block;}
+
+  .rankchip{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--fg);
+    border:1px solid var(--line);border-radius:5px;padding:3px 9px;white-space:nowrap;}
+  .rankchip svg{display:block;}
+
+  .hbtns{margin-left:auto;display:inline-flex;gap:6px;}
+  .hbtn{border:1px solid var(--line);background:var(--bg);color:var(--dim);font:inherit;font-size:12px;padding:4px 10px;border-radius:5px;cursor:pointer;white-space:nowrap;}
+
+  /* ── BEFORE (현재) ── */
+  .b-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .b-nick{font-size:26px;font-weight:700;letter-spacing:.02em;margin:0;}
+  .b-loc{color:var(--faint);font-size:12px;}
+  .b-status{font-size:11px;color:var(--faint);align-self:flex-end;margin-bottom:3px;}
+  .b-status .on{color:var(--ok);}
+  .b-bio{margin:10px 0 0;color:var(--dim);font-size:13.5px;font-style:italic;}
+  .b-rankline{margin:10px 0 0;font-size:12px;color:var(--dim);}
+  .b-rankline b{color:var(--fg);font-weight:600;}
+  .b-gbar .on{color:var(--ok);} .b-gbar .off{color:var(--faint);}
+  .b-streak{margin:8px 0 0;font-size:12px;color:var(--dim);}
+  .flag-note{margin-top:12px;font-size:11px;color:var(--amber);line-height:1.7;}
+  .flag-note b{color:var(--fg);}
+
+  /* ── AFTER (제안) ── */
+  .a-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .a-nick{font-size:clamp(22px,3.4vw,28px);font-weight:800;letter-spacing:.01em;margin:0;}
+  .a-loc{color:var(--faint);font-size:13px;}
+  .a-status{margin:8px 0 0;font-size:13px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .a-status .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block;flex:none;}
+  .a-status b{color:var(--fg);font-weight:600;}
+  /* bio 강조 — 좌측 액센트 + 본문색 + 큰 글씨 */
+  .a-bio{margin:16px 0 0;padding:6px 0 6px 14px;border-left:2px solid var(--ok);
+    color:var(--fg);font-size:15.5px;line-height:1.55;}
+  /* standing 3분할 */
+  .standing{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  @media(max-width:560px){.standing{grid-template-columns:1fr;}}
+  .seg{border:1px solid var(--line);border-radius:7px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:92px;}
+  .seg .lbl{font-size:10.5px;letter-spacing:.13em;color:var(--faint);text-transform:uppercase;}
+  .seg .big{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1;}
+  .seg .big .rk{color:var(--amber);}
+  .seg .sub{font-size:12px;color:var(--dim);margin-top:auto;}
+  .seg .sub b{color:var(--fg);font-weight:600;}
+  .gaugerow{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .gaugebar{display:inline-flex;gap:3px;}
+  .gaugebar i{width:9px;height:16px;border-radius:2px;background:var(--faint);display:block;}
+  .gaugebar i.on{background:var(--amber);}
+  .gaugerow .to{font-size:14px;font-weight:700;color:var(--fg);}
+  .gaugerow .to .arr{color:var(--faint);font-weight:400;}
+
+  .chips{margin-top:16px;display:flex;gap:8px;}
+  .chip{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--line);border-radius:6px;color:var(--dim);}
+  .chip svg{width:17px;height:17px;display:block;}
+
+  .meta{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:640px;}
+  .meta .k{font-size:10.5px;letter-spacing:.13em;color:var(--faint);text-transform:uppercase;}
+  .meta .v{margin-top:6px;font-size:14px;color:var(--fg);}
+  .meta .v.priv{color:var(--faint);border:1px solid var(--line);border-radius:5px;padding:9px 12px;background:var(--hover);}
+
+  .mockpanel{position:fixed;right:14px;bottom:14px;z-index:20;background:var(--bg);border:1px solid var(--line);
+    border-radius:8px;padding:10px 12px;box-shadow:0 4px 18px rgba(0,0,0,.4);}
+  .theme-toggle{border:1px solid var(--line);background:var(--bg);color:var(--dim);font:inherit;font-size:12px;padding:5px 11px;border-radius:5px;cursor:pointer;}
+  .theme-toggle:hover{color:var(--fg);}
+</style>
+</head>
+<body>
+  <p class="mocknote">
+    mockup · <b>프로필 헤더 개편 시안</b> — ① <b>상태줄</b>(● in action today) 을 이름 아래 전용 줄로 내려 정렬 정리(넓은 화면에서 처지는 문제 해결)
+    · ② 칩에 이미 있는 <b>Corporal 중복 제거</b> — 진행바는 <b>다음 계급(→ Sergeant)</b> 만 표기
+    · ③ <b>전체 순위(#1)</b> 카드 추가 · ④ <b>자기소개(bio)</b> 를 좌측 액센트+본문색+큰 글씨로 강조.
+    <br>※ 전체 순위는 현재 <b>/user</b> 응답에 없어 구현 시 백엔드 추가 필요(값은 실제 dododo = 전체 1위).
+  </p>
+
+  <div class="term">
+    <div class="titlebar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="name">ocw — profile header 시안</span>
+      <span style="width:54px"></span>
+    </div>
+    <div class="screen">
+
+      <!-- BEFORE -->
+      <div class="box before">
+        <span class="legend">BEFORE · 현재</span>
+        <div class="b-head">
+          <span class="portrait js-portrait"></span>
+          <h2 class="b-nick">dododo</h2>
+          <span class="b-loc">KR 🇰🇷 · Seoul</span>
+          <span class="rankchip"><span class="js-insignia"></span>Corporal</span>
+          <span class="b-status"><span class="on">●</span> in action today · 210 prompts</span>
+          <span class="hbtns"><button class="hbtn">🖼 card</button><button class="hbtn">⧉ share</button></span>
+        </div>
+        <p class="b-bio">A developer aiming to become a solopreneur.</p>
+        <p class="b-rankline">rank <b>Corporal</b>
+          <span class="b-gbar"><span class="on">▮▮▮▮▮</span><span class="off">▯▯▯▯▯</span></span>
+          <b>1,066</b> prompts to Sergeant</p>
+        <p class="b-streak">🔥 5-day streak · best 7 · since 07-20</p>
+        <p class="flag-note">↑ 문제: <b>상태줄이 우측서 baseline 정렬</b>돼 넓은 화면서 처져 보임 · <b>Corporal 두 번</b> · <b>전체 순위 없음</b> · <b>bio 가 흐릿</b></p>
+      </div>
+
+      <!-- AFTER -->
+      <div class="box after">
+        <span class="legend">AFTER · 제안</span>
+        <div class="a-head">
+          <span class="portrait js-portrait"></span>
+          <h2 class="a-nick">dododo</h2>
+          <span class="a-loc">KR 🇰🇷 · Seoul</span>
+          <span class="rankchip"><span class="js-insignia"></span>Corporal</span>
+          <span class="hbtns"><button class="hbtn">🖼 card</button><button class="hbtn">⧉ share</button></span>
+        </div>
+        <div class="a-status"><span class="dot"></span><span>in action today · <b>210</b> prompts</span></div>
+
+        <p class="a-bio">A developer aiming to become a solopreneur.</p>
+
+        <div class="standing">
+          <div class="seg">
+            <div class="lbl">Global standing</div>
+            <div class="big"><span class="rk">#1</span></div>
+            <div class="sub">top rank · <b>KR #1</b></div>
+          </div>
+          <div class="seg">
+            <div class="lbl">Next rank</div>
+            <div class="gaugerow">
+              <span class="gaugebar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></span>
+              <span class="to"><span class="arr">→</span> Sergeant</span>
+            </div>
+            <div class="sub"><b>1,066</b> prompts to go</div>
+          </div>
+          <div class="seg">
+            <div class="lbl">Streak</div>
+            <div class="big">🔥 5<span style="font-size:14px;font-weight:600;color:var(--dim)"> days</span></div>
+            <div class="sub">best <b>7</b> · since 07-20</div>
+          </div>
+        </div>
+
+        <div class="chips">
+          <span class="chip" title="GitHub">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><div class="k">Email</div><div class="v priv">private</div></div>
+          <div><div class="k">Member since</div><div class="v">2026-07-10</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mockpanel"><button class="theme-toggle" id="themeBtn" type="button">◐ theme</button></div>
+
+<script>
+  // ── 픽셀 병정(카드/랜딩과 동일 스프라이트) ──
+  var TYPER = [
+    '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+    '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+    '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......'
+  ];
+  var CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', M:'r', K:'r' };
+  function spriteSVG(map){
+    var rects='';
+    for(var y=0;y<map.length;y++)for(var x=0;x<map[y].length;x++){
+      var ch=map[y][x];
+      if(ch!=='.') rects+='<rect x="'+x+'" y="'+y+'" width="1" height="1" class="px-'+CLS[ch]+'"/>';
+    }
+    return '<svg viewBox="0 0 '+map[0].length+' '+map.length+'" width="100%" height="100%" shape-rendering="crispEdges">'+rects+'</svg>';
+  }
+  // 계급장(bars×3)
+  function barsSVG(n,scale){
+    var unit='KKKKKKKKKK', map=[];
+    for(var i=0;i<n;i++){ if(i)map.push('.'.repeat(unit.length)); map.push(unit); }
+    var rects='';
+    for(var y=0;y<map.length;y++)for(var x=0;x<map[y].length;x++)
+      if(map[y][x]==='K') rects+='<rect x="'+x+'" y="'+y+'" width="1" height="1" class="px-k"/>';
+    return '<svg viewBox="0 0 '+map[0].length+' '+map.length+'" width="'+map[0].length*scale+'" height="'+map.length*scale+'" shape-rendering="crispEdges">'+rects+'</svg>';
+  }
+  document.querySelectorAll('.js-portrait').forEach(function(el){ el.innerHTML = spriteSVG(TYPER); });
+  document.querySelectorAll('.js-insignia').forEach(function(el){ el.innerHTML = barsSVG(3,2); });
+
+  // 테마 토글
+  document.getElementById('themeBtn').addEventListener('click', function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme', r.getAttribute('data-theme')==='light'?'dark':'light');
+  });
+</script>
+</body>
+</html>
