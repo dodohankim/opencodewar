@@ -316,5 +316,6 @@ export async function handleProfilePage(
     .on('meta[name="twitter:description"]', setContent(desc))
     .on('meta[name="twitter:image"]', setContent(imageUrl))
     .transform(pageRes);
-  return country ? asPrivate(rewritten) : rewritten;
+  const out = asUtf8Html(rewritten);
+  return country ? asPrivate(out) : out;
 }
