@@ -10,7 +10,7 @@
       "name": "open-code-war",
       "source": "./plugin",
       "description": "코딩 에이전트 입력량을 익명 집계하는 리더보드 플러그인. Claude Code 훅으로 집계하며 코덱스·오픈코드·파이는 어댑터로 합산됩니다. 프롬프트 내용은 수집하지 않습니다.",
-      "homepage": "https://opencodewar.dev/?ref=plugin",
+      "homepage": "https://opencodewar.dev",
       "repository": "https://github.com/dodohankim/opencodewar",
       "license": "BUSL-1.1",
       "category": "productivity",

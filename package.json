@@ -10,7 +10,7 @@
     "telemetry",
     "coding-agent"
   ],
-  "homepage": "https://opencodewar.dev/?ref=npm",
+  "homepage": "https://opencodewar.dev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dodohankim/opencodewar.git"

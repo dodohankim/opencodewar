@@ -6,7 +6,7 @@
 
 > **프롬프트 내용은 수집하지 않는다.** 글자 수(숫자)만 전송한다.
 
-리더보드: **https://opencodewar.dev/?ref=npm**
+리더보드: **https://opencodewar.dev**
 
 ---
 

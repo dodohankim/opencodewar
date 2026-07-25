@@ -24,16 +24,6 @@ const endpoint = endpointOf(cfg);
 const LINK_KEYS = ['website', 'blog', 'github', 'x', 'linkedin'];
 const MAX_PROJECTS = 5;
 
-/**
- * CLI 가 출력하는 웹 링크. 밖으로 내보내는 우리 링크에는 유입 표식 ?ref= 를 붙인다(DESIGN.md §18).
- * 터미널에서 붙여넣어 여는 링크는 referrer 가 없어 전부 'Direct' 로 잡히므로,
- * 이 표식이 있어야 "CLI 를 보고 웹에 들어온 유저"를 분리해 볼 수 있다.
- * @param {string} path `/u/nick` 처럼 슬래시로 시작하는 경로
- */
-function pageUrl(path) {
-  return `${endpoint}${path}?ref=cli`;
-}
-
 // 직함/회사/자기소개/도시 공통 텍스트 필드 메타.
 const TEXT_FIELDS = {
   bio: { max: 160, label: '자기소개' },
@@ -220,7 +210,7 @@ async function randomUser() {
     const zone = [u.country ? `${u.flag || ''} ${u.country}`.trim() : null, u.city].filter(Boolean).join(' · ');
     if (zone) lines.push(`- 구역: ${zone}`);
     lines.push(`- 전체: ${u.prompts} 프롬프트 · ${u.chars} 글자`);
-    lines.push(`- 페이지: ${pageUrl(`/u/${encodeURIComponent(u.nickname)}`)}`);
+    lines.push(`- 페이지: ${endpoint}/u/${encodeURIComponent(u.nickname)}`);
     return print(lines.join('\n'));
   } catch {
     return print('❌ 서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.');
@@ -244,7 +234,7 @@ async function registerNickname(name) {
       cfg.nickname = data.nickname;
       saveConfig(cfg);
       return print(
-        `✅ 닉네임 등록 완료: **${data.nickname}**\n리더보드에 이 이름으로 표시됩니다.\n내 프로필: ${pageUrl(`/u/${encodeURIComponent(data.nickname)}`)}`,
+        `✅ 닉네임 등록 완료: **${data.nickname}**\n리더보드에 이 이름으로 표시됩니다.\n내 프로필: ${endpoint}/u/${encodeURIComponent(data.nickname)}`,
       );
     }
     if (res.status === 409 || data.error === 'nickname_taken') {
@@ -573,7 +563,7 @@ async function status() {
   // 내 프로필 페이지 링크. 닉네임 미등록이면 페이지가 없으므로 생략.
   const nickForUrl = (me && me.nickname) || cfg.nickname || null;
   if (nickForUrl) {
-    lines.push(`- 내 페이지: ${pageUrl(`/u/${encodeURIComponent(nickForUrl)}`)}`);
+    lines.push(`- 내 페이지: ${endpoint}/u/${encodeURIComponent(nickForUrl)}`);
   }
 
   lines.push('\n전체 명령 보기 → `/ocw help`');
@@ -603,8 +593,7 @@ function help() {
       '',
       '값을 비우려면 인자 없이 실행하세요 (예: `/ocw bio`, `/ocw link github`).',
       '프롬프트 내용은 수집하지 않습니다. 글자 수만 집계합니다.',
-      // 로컬 엔드포인트로 개발 중이어도 방침 링크는 항상 운영 문서를 가리켜야 하므로 pageUrl 을 쓰지 않는다.
-      '개인정보처리방침: https://opencodewar.dev/privacy?ref=cli · 문의: contact@opencodewar.dev',
+      '개인정보처리방침: https://opencodewar.dev/privacy · 문의: contact@opencodewar.dev',
     ].join('\n'),
   );
 }

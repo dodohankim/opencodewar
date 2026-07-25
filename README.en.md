@@ -8,7 +8,7 @@ An agent hook counts your input activity anonymously → stores it on Cloudflare
 
 **English** · [한국어](README.md)
 
-[![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev/?ref=github)
+[![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev)
 [![status](https://img.shields.io/badge/status-early%20development-e08a2e?style=for-the-badge)](#-roadmap)
 [![agents](https://img.shields.io/badge/Claude%20Code%20·%20Codex%20·%20OpenCode%20·%20pi-supported-6c5ce7?style=for-the-badge)](#-install-the-plugin)
 [![npm](https://img.shields.io/npm/v/open-code-war?style=for-the-badge&color=cb3837&logo=npm)](https://www.npmjs.com/package/open-code-war)
@@ -222,5 +222,5 @@ See [`DESIGN.md`](./DESIGN.md) for detailed design and decisions.
 > BSL is not an OSI-approved open-source license; it is 'source-available'. The name/logo (Open Code War, opencodewar) and the domain trademark are protected independently of the license.
 
 <div align="center">
-<sub>Made for the coding agent community · <a href="https://opencodewar.dev/?ref=github">opencodewar.dev</a></sub>
+<sub>Made for the coding agent community · <a href="https://opencodewar.dev">opencodewar.dev</a></sub>
 </div>
