@@ -1,0 +1,311 @@
+<!doctype html>
+<!-- 유저 공유(OG) 카드 v2 시안 ×5 — 좌측 대형 캐릭터 제거, "오늘 얼마나 했다" 숫자 중심.
+     단일 카드 1200×630 원본 보기/스크린샷: og-user-v2.html?card=1..5
+     확정안은 web/og-user.html 로 이식(렌더 서비스 템플릿 → Coolify 재배포 필요). -->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — 유저 OG v2 ×5 (number-first)</title>
+<style>
+  /* ── 뷰어(목업 전용) ── */
+  body{margin:0;background:#1a1a18;font-family:ui-monospace,"SF Mono",Menlo,monospace;padding:20px 20px 80px;}
+  .mocknote{max-width:960px;margin:0 auto 6px;font-size:11.5px;color:#8C8C87;line-height:1.6;}
+  .vlabel{max-width:960px;margin:30px auto 8px;font-size:13px;color:#E7E7E3;}
+  .vlabel .sub{color:#8C8C87;font-size:11.5px;margin-left:8px;}
+  .stagewrap{max-width:960px;margin:0 auto;}
+  .stage{width:1200px;transform-origin:top left;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:4px;overflow:hidden;}
+  body.solo{padding:0;background:#0E0E0D;}
+  body.solo .mocknote,body.solo .vlabel{display:none;}
+  body.solo .stagewrap{max-width:none;margin:0;}
+  body.solo .stage{transform:none !important;box-shadow:none;border-radius:0;}
+
+  /* ── 공통 카드 토큰 (og-user.html 과 동일, 단일 다크 고정) ── */
+  .og{
+    --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
+    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441; --hover:rgba(231,231,227,0.06);
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55;
+    --skin:#E8C39E; --eye:#232320;
+    box-sizing:border-box;width:1200px;height:630px;background:var(--bg);color:var(--fg);overflow:hidden;position:relative;
+    font-family:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .og *{box-sizing:border-box;margin:0;}
+  .sprite{display:block;width:100%;height:100%;}
+  .px-s{fill:var(--skin);} .px-e{fill:var(--eye);} .px-r{fill:var(--fg);}
+  .army-claude .px-u,.army-claude .px-f{fill:var(--fg);}
+  .army-codex .px-u,.army-codex .px-f{fill:var(--ag-codex);}
+  .army-opencode .px-u,.army-opencode .px-f{fill:var(--ag-opencode);}
+  .army-pi .px-u,.army-pi .px-f{fill:var(--pi);}
+  .sd{position:absolute;}
+
+  .lights{display:flex;gap:11px;}
+  .lights i{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
+  .prompt{color:var(--dim);font-size:22px;}
+  .prompt .sig{color:var(--fg);}
+  .prompt .cur{display:inline-block;width:11px;height:1.05em;background:var(--ok);vertical-align:text-bottom;margin-left:4px;}
+  .domtop{color:var(--dim);font-size:22px;}
+  .foot{display:flex;justify-content:space-between;align-items:center;color:var(--faint);font-size:19px;}
+  .foot .live{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:20px;}
+  .foot .live i{width:11px;height:11px;border-radius:50%;background:var(--ok);display:block;}
+  .num{font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:-0.05em;}
+
+  /* ══ 시안 1 · 자이언트 숫자 ══ */
+  .u1{padding:44px 60px 38px;display:flex;flex-direction:column;}
+  .u1 .top{display:flex;justify-content:space-between;align-items:center;}
+  .u1 .prompt{margin-top:18px;}
+  .u1 .idrow{display:flex;align-items:baseline;gap:18px;margin-top:22px;}
+  .u1 .nick{font-size:46px;font-weight:800;letter-spacing:-0.02em;}
+  .u1 .loc{color:var(--dim);font-size:22px;}
+  .u1 .date{margin-left:auto;color:var(--dim);font-size:22px;font-variant-numeric:tabular-nums;}
+  .u1 .big{font-size:250px;line-height:.85;margin-top:20px;margin-left:-8px;}
+  .u1 .lab{font-size:30px;color:var(--dim);margin-top:16px;}
+  .u1 .lab b{color:var(--fg);}
+  .u1 .streak{font-size:24px;color:var(--amber);margin-top:12px;}
+  .u1 .streak b{color:var(--fg);}
+  .u1 .streak .rank{color:var(--fg);font-weight:700;}
+  .u1 .foot{margin-top:auto;}
+  /* 작은 병정 — 오늘 활동 시 타이핑 오퍼레이터(+typing dots), 우하단 장식 */
+  .u1 .soldier{position:absolute;right:64px;bottom:104px;width:76px;height:76px;}
+  .u1 .sground{position:absolute;right:46px;bottom:102px;width:114px;border-bottom:2px dotted var(--line);}
+  .u1 .tdots{position:absolute;top:-13px;left:14px;display:flex;gap:5px;}
+  .u1 .tdots i{width:8px;height:8px;background:var(--faint);display:block;}
+  .u1 .tdots i+i{opacity:.4;}
+
+  /* ══ 시안 2 · 터미널 리포트 ══ */
+  .u2{padding:44px 60px 38px;display:flex;flex-direction:column;}
+  .u2 .top{display:flex;justify-content:space-between;align-items:center;}
+  .u2 .prompt{margin-top:18px;font-size:24px;}
+  .u2 .bigrow{display:flex;align-items:baseline;gap:22px;margin-top:26px;}
+  .u2 .big{font-size:190px;line-height:.85;margin-left:-6px;}
+  .u2 .unit{font-size:36px;color:var(--dim);font-weight:600;}
+  .u2 .rows{margin-top:26px;display:flex;flex-direction:column;gap:10px;font-size:26px;}
+  .u2 .r{display:flex;gap:0;}
+  .u2 .r .k{color:var(--faint);width:220px;flex:none;}
+  .u2 .r .v{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums;}
+  .u2 .r .x{color:var(--dim);font-weight:400;}
+  .u2 .foot{margin-top:auto;}
+
+  /* ══ 시안 3 · 최고기록 도전 게이지 ══ */
+  .u3{padding:44px 60px 38px;display:flex;flex-direction:column;}
+  .u3 .top{display:flex;justify-content:space-between;align-items:center;}
+  .u3 .idrow{display:flex;align-items:baseline;gap:18px;margin-top:20px;}
+  .u3 .nick{font-size:44px;font-weight:800;letter-spacing:-0.02em;}
+  .u3 .loc{color:var(--dim);font-size:22px;}
+  .u3 .date{margin-left:auto;color:var(--dim);font-size:22px;font-variant-numeric:tabular-nums;}
+  .u3 .big{font-size:200px;line-height:.85;margin-top:22px;margin-left:-7px;}
+  .u3 .lab{font-size:28px;color:var(--dim);margin-top:14px;}
+  .u3 .lab b{color:var(--fg);}
+  .u3 .gauge{margin-top:24px;display:flex;gap:6px;}
+  .u3 .gauge i{flex:1;height:30px;background:var(--line);border-radius:3px;display:block;}
+  .u3 .gauge i.on{background:var(--amber);}
+  .u3 .chal{margin-top:12px;font-size:22px;color:var(--dim);}
+  .u3 .chal b{color:var(--amber);}
+  .u3 .foot{margin-top:auto;}
+
+  /* ══ 시안 4 · 14일 차트 동반 ══ */
+  .u4{padding:44px 60px 38px;display:flex;flex-direction:column;}
+  .u4 .top{display:flex;justify-content:space-between;align-items:center;}
+  .u4 .idrow{display:flex;align-items:baseline;gap:18px;margin-top:18px;}
+  .u4 .nick{font-size:42px;font-weight:800;letter-spacing:-0.02em;}
+  .u4 .loc{color:var(--dim);font-size:21px;}
+  .u4 .date{margin-left:auto;color:var(--dim);font-size:21px;font-variant-numeric:tabular-nums;}
+  .u4 .big{font-size:170px;line-height:.85;margin-top:16px;margin-left:-6px;}
+  .u4 .lab{font-size:26px;color:var(--dim);margin-top:12px;}
+  .u4 .lab b{color:var(--fg);}
+  .u4 .lab .fire{color:var(--amber);}
+  .u4 .graph{margin-top:auto;}
+  .u4 .bars{display:flex;align-items:flex-end;gap:9px;height:120px;}
+  .u4 .bars .b{flex:1;background:var(--line);border-radius:2px;min-height:5px;position:relative;}
+  .u4 .bars .b.on{background:var(--fg);}
+  .u4 .bars .b.streak{background:var(--ok);}
+  .u4 .bars .b.today{background:var(--pi);}
+  .u4 .peakflag{position:absolute;left:calc(50% - 5px);bottom:100%;width:30px;height:38px;}
+  .u4 .peakflag .px-f{fill:var(--pi);}
+  .u4 .axis{display:flex;justify-content:space-between;margin-top:10px;font-size:17px;color:var(--faint);font-variant-numeric:tabular-nums;}
+  .u4 .foot{margin-top:18px;}
+
+  /* ══ 시안 5 · 중앙 포스터 + 미니 행진 ══ */
+  .u5{padding:42px 60px 34px;display:flex;flex-direction:column;text-align:center;}
+  .u5 .eyebrow{color:var(--dim);font-size:20px;letter-spacing:.14em;}
+  .u5 .nick{font-size:52px;font-weight:800;letter-spacing:-0.02em;margin-top:16px;}
+  .u5 .loc{color:var(--dim);font-size:21px;margin-top:8px;}
+  .u5 .big{font-size:220px;line-height:.85;margin-top:20px;}
+  .u5 .lab{font-size:28px;color:var(--dim);margin-top:14px;}
+  .u5 .lab b{color:var(--fg);}
+  .u5 .streak{font-size:23px;color:var(--amber);margin-top:10px;}
+  .u5 .streak b{color:var(--fg);}
+  .u5 .parade{position:relative;margin-top:auto;height:64px;}
+  .u5 .parade .ground{position:absolute;left:40px;right:40px;bottom:0;border-bottom:2px dotted var(--line);}
+  .u5 .dom{font-size:23px;font-weight:600;letter-spacing:.02em;margin-top:14px;}
+</style>
+</head>
+<body>
+
+  <p class="mocknote">mockup · 유저 공유(OG) 카드 v2 시안 ×5 — 좌측 대형 캐릭터 제거, "오늘 얼마나 했다"가 한눈에 박히는 숫자 중심.
+    실물 1200×630, 화면 폭에 맞춰 축소 표시. 원본 보기: <code>?card=1..5</code>. 데이터는 og-user.html 샘플(DATA)과 동일.</p>
+
+  <div class="vlabel">시안 1 · 자이언트 숫자<span class="sub">오늘 chars 초대형(250px) — 가장 미니멀, 숫자가 곧 카드</span></div>
+  <div class="stagewrap" data-card="1"><div class="stage">
+    <div class="og u1">
+      <div class="top"><div class="lights"><i></i><i></i><i></i></div><div class="domtop">opencodewar.dev</div></div>
+      <div class="prompt"><span class="sig">you@open-code-war</span>:~$ GET /u/dododo<span class="cur"></span></div>
+      <div class="idrow"><span class="nick">dododo</span><span class="loc">KR 🇰🇷 Seoul</span><span class="date">2026-07-22 Wed</span></div>
+      <div class="big num">24,197</div>
+      <div class="lab"><b>chars</b> today · <b>178</b> prompts</div>
+      <div class="streak">🔥 <b>12-day streak</b> · <span class="rank">#1</span> global</div>
+      <i class="sground"></i>
+      <span class="soldier army-claude" id="soldier1"></span>
+      <div class="foot"><span>no prompt content · character counts only</span><span class="live"><i></i>live</span></div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 2 · 터미널 리포트<span class="sub">ocw today 명령 출력 — 숫자 + 스탯 4줄, 개발자 감성</span></div>
+  <div class="stagewrap" data-card="2"><div class="stage">
+    <div class="og u2">
+      <div class="top"><div class="lights"><i></i><i></i><i></i></div><div class="domtop">opencodewar.dev</div></div>
+      <div class="prompt"><span class="sig">dododo@open-code-war</span>:~$ ocw today<span class="cur"></span></div>
+      <div class="bigrow"><span class="big num">24,197</span><span class="unit">chars</span></div>
+      <div class="rows">
+        <div class="r"><span class="k">prompts</span><span class="v">178</span></div>
+        <div class="r"><span class="k">streak</span><span class="v">12 days 🔥 <span class="x">· since Jul 11</span></span></div>
+        <div class="r"><span class="k">rank</span><span class="v">#1 <span class="x">· global</span></span></div>
+        <div class="r"><span class="k">date</span><span class="v">2026-07-22 Wed <span class="x">· Seoul KR 🇰🇷</span></span></div>
+      </div>
+      <div class="foot"><span>no prompt content · character counts only</span><span class="live"><i></i>live</span></div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 3 · 최고기록 도전 게이지<span class="sub">숫자 + 내 최고 대비 앰버 게이지 — "오늘 나 자신을 넘었나"</span></div>
+  <div class="stagewrap" data-card="3"><div class="stage">
+    <div class="og u3">
+      <div class="top"><div class="lights"><i></i><i></i><i></i></div><div class="domtop">opencodewar.dev</div></div>
+      <div class="idrow"><span class="nick">dododo</span><span class="loc">KR 🇰🇷 Seoul</span><span class="date">2026-07-22 Wed</span></div>
+      <div class="big num">24,197</div>
+      <div class="lab"><b>chars</b> today · <b>178</b> prompts · 🔥 <b>12-day</b> streak</div>
+      <div class="gauge" id="gauge3"></div>
+      <div class="chal">personal best <b>336 prompts</b> — today <b>53%</b> of the way</div>
+      <div class="foot"><span>no prompt content · character counts only</span><span class="live"><i></i>live</span></div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 4 · 14일 차트 동반<span class="sub">현행 골격 유지·캐릭터만 제거 — 숫자 확대 + 오늘 막대 깃발</span></div>
+  <div class="stagewrap" data-card="4"><div class="stage">
+    <div class="og u4">
+      <div class="top"><div class="lights"><i></i><i></i><i></i></div><div class="domtop">opencodewar.dev</div></div>
+      <div class="idrow"><span class="nick">dododo</span><span class="loc">KR 🇰🇷 Seoul</span><span class="date">2026-07-22 Wed</span></div>
+      <div class="big num">24,197</div>
+      <div class="lab"><b>chars</b> today · <b>178</b> prompts · <span class="fire">🔥 12-day streak</span> · <b>#1</b> global</div>
+      <div class="graph">
+        <div class="bars" id="bars4"></div>
+        <div class="axis"><span>7/09</span><span>7/16</span><span>7/22</span></div>
+      </div>
+      <div class="foot"><span>no prompt content · character counts only</span><span class="live"><i></i>live</span></div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 5 · 중앙 포스터 + 미니 행진<span class="sub">가운데 정렬 포스터 — 병정은 하단에 아주 작게(36px) 장식으로만</span></div>
+  <div class="stagewrap" data-card="5"><div class="stage">
+    <div class="og u5">
+      <div class="eyebrow">OPEN CODE WAR · DAILY REPORT · 2026-07-22 WED</div>
+      <div class="nick">dododo</div>
+      <div class="loc">KR 🇰🇷 Seoul · #1 global</div>
+      <div class="big num">24,197</div>
+      <div class="lab"><b>chars</b> fed to the machine today · <b>178</b> prompts</div>
+      <div class="streak">🔥 <b>12-day streak</b> · since Jul 11</div>
+      <div class="parade" id="parade5"></div>
+      <div class="dom">opencodewar.dev</div>
+    </div>
+  </div></div>
+
+<script>
+  // ── 16×16 스프라이트 (랜딩과 동일 맵, 필요분만) ──
+  const SPRITES = {
+    typer1: [
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......',
+    ],
+    march1: [
+      '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
+      '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
+      '....UUUU........','....UUUU........','...UU..UU.......','..UU....UU......','.UU......UU.....','BBB......BBB....',
+    ],
+    march2: [
+      '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
+      '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
+      '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU..UU......','...BBB..BBB.....',
+    ],
+    flag: [
+      '.........RFFFFFF','.........RFFFFFF','...HHHHHHRFFFFFF','..HHHHHHHRFFFF..','..HHHHHHHR......',
+      '...SSSESSR......','...SSSSS.R......','..UUUUUUSR......','..UUUUUUSR......','..U.UUUU.R......',
+      '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU.UU.......','...BBB.BBB......',
+    ],
+    chartflag: [
+      '.R......','.RFFFFFF','.RFFFFFF','.RFFFF..','.R......','.R......','.R......','.R......','.R......','.R......',
+    ],
+  };
+  const CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+  function spriteSVG(name) {
+    const map = SPRITES[name];
+    const h = map.length, w = map[0].length;
+    let rects = '';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const ch = map[y][x];
+      if (ch === '.') continue;
+      rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${CLS[ch]}"/>`;
+    }
+    return `<svg class="sprite" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+
+  // 시안 1 · 작은 병정: 활동일이면 타이핑 오퍼레이터 + typing dots
+  document.getElementById('soldier1').innerHTML =
+    spriteSVG('typer1') + '<span class="tdots"><i></i><i></i><i></i></span>';
+
+  // 시안 3 · 게이지: 24칸 중 53% ≈ 13칸 on
+  document.getElementById('gauge3').innerHTML =
+    Array.from({ length: 24 }, (_, i) => `<i class="${i < 13 ? 'on' : ''}"></i>`).join('');
+
+  // 시안 4 · 14일 막대 + 오늘 깃발 (og-user.html 샘플과 동일 곡선)
+  const SERIES = [
+    { c: 3200, cls: 'on' }, { c: 0, cls: '' }, { c: 5400, cls: 'streak' }, { c: 8100, cls: 'streak' },
+    { c: 12600, cls: 'streak' }, { c: 6300, cls: 'streak' }, { c: 9200, cls: 'streak' }, { c: 7100, cls: 'streak' },
+    { c: 11800, cls: 'streak' }, { c: 8400, cls: 'streak' }, { c: 15200, cls: 'streak' }, { c: 9600, cls: 'streak' },
+    { c: 7400, cls: 'streak' }, { c: 24197, cls: 'today' },
+  ];
+  const maxC = Math.max(...SERIES.map((x) => x.c), 1);
+  document.getElementById('bars4').innerHTML = SERIES.map((x) => {
+    const h = Math.max(5, Math.round((x.c / maxC) * 120));
+    const flag = x.cls === 'today' ? `<span class="peakflag">${spriteSVG('chartflag')}</span>` : '';
+    return `<div class="b ${x.cls}" style="height:${h}px">${flag}</div>`;
+  }).join('');
+
+  // 시안 5 · 미니 행진 (36px — 장식 수준, 1위 기수 + 호위)
+  const mini = (army, sprite, left) =>
+    `<span class="sd ${army}" style="left:${left}px;bottom:2px;width:36px;height:36px;">${spriteSVG(sprite)}</span>`;
+  document.getElementById('parade5').innerHTML =
+    `<i class="ground"></i>` +
+    mini('army-pi', 'march1', 430) +
+    mini('army-codex', 'march2', 490) +
+    mini('army-claude', 'flag', 550) +
+    mini('army-opencode', 'march1', 610) +
+    mini('army-claude', 'march2', 670);
+
+  // ── 뷰어: 축소 표시 / ?card=N 단일 원본 모드 ──
+  const solo = new URLSearchParams(location.search).get('card');
+  if (solo) {
+    document.body.classList.add('solo');
+    document.querySelectorAll('.stagewrap').forEach((w) => {
+      if (w.dataset.card !== solo) w.style.display = 'none';
+    });
+  } else {
+    const fit = () => document.querySelectorAll('.stage').forEach((st) => {
+      const s = Math.min(1, st.parentElement.clientWidth / 1200);
+      st.style.transform = `scale(${s})`;
+      st.parentElement.style.height = 630 * s + 'px';
+    });
+    fit(); addEventListener('resize', fit);
+  }
+</script>
+</body>
+</html>
