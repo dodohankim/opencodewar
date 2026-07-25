@@ -1,0 +1,370 @@
+<!doctype html>
+<!-- 메인페이지 OG 시안 ×5 (pixel soldiers). 최종 선정안은 og.html 로 승격 후 web/og.png 재생성.
+     단일 카드 1200×630 원본 보기/스크린샷: og-main.html?card=1..5
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
+       --force-device-scale-factor=1 --window-size=1200,630 \
+       --screenshot=/tmp/og.png 'file://.../mockups/og-main.html?card=1' -->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCW 시안 — 메인 OG ×5 (pixel soldiers)</title>
+<style>
+  /* ── 뷰어(목업 전용) ── */
+  body{margin:0;background:#1a1a18;font-family:ui-monospace,"SF Mono",Menlo,monospace;padding:20px 20px 80px;}
+  .mocknote{max-width:960px;margin:0 auto 6px;font-size:11.5px;color:#8C8C87;line-height:1.6;}
+  .vlabel{max-width:960px;margin:30px auto 8px;font-size:13px;color:#E7E7E3;}
+  .vlabel .sub{color:#8C8C87;font-size:11.5px;margin-left:8px;}
+  .stagewrap{max-width:960px;margin:0 auto;}
+  .stage{width:1200px;transform-origin:top left;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:4px;overflow:hidden;}
+  body.solo{padding:0;background:#0E0E0D;}
+  body.solo .mocknote,body.solo .vlabel{display:none;}
+  body.solo .stagewrap{max-width:none;margin:0;}
+  body.solo .stage{transform:none !important;box-shadow:none;border-radius:0;}
+
+  /* ── 공통 카드 토큰 (og-user.html 과 동일, 단일 다크 고정) ── */
+  .og{
+    --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
+    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441; --hover:rgba(231,231,227,0.06);
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55;
+    --skin:#E8C39E; --eye:#232320;
+    box-sizing:border-box;width:1200px;height:630px;background:var(--bg);color:var(--fg);overflow:hidden;position:relative;
+    font-family:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .og *{box-sizing:border-box;margin:0;}
+  .sprite{display:block;width:100%;height:100%;}
+  .px-s{fill:var(--skin);} .px-e{fill:var(--eye);} .px-r{fill:var(--fg);}
+  .army-claude .px-u,.army-claude .px-f{fill:var(--fg);}
+  .army-codex .px-u,.army-codex .px-f{fill:var(--ag-codex);}
+  .army-opencode .px-u,.army-opencode .px-f{fill:var(--ag-opencode);}
+  .army-pi .px-u,.army-pi .px-f{fill:var(--pi);}
+  .flip .sprite{transform:scaleX(-1);}
+  .sd{position:absolute;}
+
+  .lights{display:flex;gap:11px;}
+  .lights i{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--faint);display:block;}
+  .prompt{color:var(--dim);font-size:22px;letter-spacing:.01em;}
+  .prompt .sig{color:var(--fg);}
+  .prompt .cur{display:inline-block;width:11px;height:1.05em;background:var(--ok);vertical-align:text-bottom;margin-left:4px;}
+  .dom{font-size:29px;font-weight:600;letter-spacing:.02em;color:var(--fg);}
+  .live{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:22px;}
+  .live i{width:12px;height:12px;border-radius:50%;background:var(--ok);display:block;}
+  .tag{color:var(--dim);}
+  .tag b{color:var(--fg);font-weight:600;}
+
+  /* ══ 시안 1 · 전장 헤드라인 ══ */
+  .c1{padding:42px 60px 40px;display:flex;flex-direction:column;}
+  .c1 .prompt{margin-top:20px;}
+  .c1 .big{font-size:92px;font-weight:700;letter-spacing:.03em;line-height:1.02;margin-top:14px;}
+  .c1 .bf{position:relative;height:118px;margin-top:10px;border-bottom:3px dotted var(--line);}
+  .c1 .tag{margin-top:18px;font-size:25px;line-height:1.42;max-width:1050px;}
+  .c1 .status{margin-top:14px;display:flex;align-items:center;gap:10px;color:var(--dim);font-size:22px;}
+  .c1 .status b{color:var(--fg);}
+  .c1 .status .dotlive{width:12px;height:12px;border-radius:50%;background:var(--ok);}
+  .c1 .status .sep{color:var(--faint);margin:0 6px;}
+  .c1 .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;}
+  .c1 .tracer{position:absolute;width:16px;height:4px;}
+  .c1 .hit{position:absolute;font-size:20px;color:var(--faint);font-weight:400;}
+  .c1 .flash{position:absolute;width:9px;height:9px;background:var(--fg);}
+  .c1 .td{position:absolute;display:flex;gap:5px;}
+  .c1 .td i{width:8px;height:8px;background:var(--faint);display:block;}
+  .c1 .td i+i{opacity:.4;}
+
+  /* ══ 시안 2 · 승전 퍼레이드 ══ */
+  .c2{padding:42px 60px 40px;display:flex;flex-direction:column;}
+  .c2 .prompt{margin-top:20px;}
+  .c2 .big{font-size:88px;font-weight:700;letter-spacing:.03em;line-height:1.02;margin-top:14px;}
+  .c2 .tag{margin-top:16px;font-size:25px;line-height:1.42;max-width:1050px;}
+  .c2 .parade{position:relative;flex:1;margin-top:4px;}
+  .c2 .ground{position:absolute;left:0;right:0;bottom:30px;border-bottom:3px dotted var(--line);}
+  .c2 .mr{position:absolute;bottom:32px;width:96px;height:96px;}
+  .c2 .br{position:absolute;bottom:32px;width:96px;height:158px;}
+  .c2 .br .body{position:absolute;left:0;bottom:0;width:96px;height:96px;}
+  .c2 .br .pole{position:absolute;left:54px;top:10px;width:6px;height:56px;background:var(--fg);}
+  .c2 .br .flag{position:absolute;right:36px;top:8px;height:32px;line-height:32px;padding:0 12px 0 22px;
+    font-size:19px;font-weight:700;letter-spacing:.02em;white-space:nowrap;color:var(--bg);
+    clip-path:polygon(0 0,100% 0,100% 100%,0 100%,12px 50%);}
+  .c2 .br.army-claude .flag{background:var(--fg);}
+  .c2 .br.army-codex .flag{background:var(--ag-codex);}
+  .c2 .br.army-opencode .flag{background:var(--ag-opencode);}
+  .c2 .br.army-pi .flag{background:var(--pi);}
+  .c2 .foot{display:flex;justify-content:space-between;align-items:center;}
+
+  /* ══ 시안 3 · 대치 포스터 ══ */
+  .c3 .lights{position:absolute;top:44px;left:60px;}
+  .c3 .big{text-align:center;font-size:106px;font-weight:700;letter-spacing:.04em;line-height:1;padding-top:128px;}
+  .c3 .tag{text-align:center;font-size:25px;line-height:1.42;max-width:980px;margin:26px auto 0;}
+  .c3 .field{position:absolute;inset:0;}
+  .c3 .ground{position:absolute;left:60px;right:60px;bottom:104px;border-bottom:3px dotted var(--line);}
+  .c3 .tracer{position:absolute;width:18px;height:4px;}
+  .c3 .hit{position:absolute;font-size:22px;color:var(--faint);}
+  .c3 .flash{position:absolute;width:10px;height:10px;background:var(--fg);}
+  .c3 .foot{position:absolute;left:0;right:0;bottom:34px;text-align:center;}
+  .c3 .foot .dom{font-size:27px;}
+  .c3 .foot .sub{margin-top:9px;color:var(--faint);font-size:19px;}
+
+  /* ══ 시안 4 · 랭크 병정 리더보드 ══ */
+  .c4{padding:44px 60px 40px;display:flex;flex-direction:column;}
+  .c4 .prompt{margin-top:20px;}
+  .c4 .big{font-size:78px;font-weight:700;letter-spacing:.03em;line-height:1.02;margin-top:14px;}
+  .c4 .tag{margin-top:14px;font-size:24px;line-height:1.42;}
+  .c4 .rows{margin-top:24px;display:flex;flex-direction:column;gap:12px;}
+  .c4 .row{display:flex;align-items:center;gap:20px;font-size:27px;}
+  .c4 .rk{width:40px;text-align:center;font-weight:700;flex:none;}
+  .c4 .rk.one{background:var(--fg);color:var(--bg);border-radius:6px;}
+  .c4 .mini{width:52px;height:52px;flex:none;}
+  .c4 .nk{width:300px;color:var(--fg);}
+  .c4 .bar{letter-spacing:-2px;font-size:26px;white-space:nowrap;}
+  .c4 .bar .on{color:var(--fg);} .c4 .bar .off{color:var(--faint);}
+  .c4 .n{color:var(--dim);margin-left:8px;font-variant-numeric:tabular-nums;}
+  .c4 .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;}
+  .c4 .domwrap{display:flex;align-items:center;gap:16px;}
+  .c4 .sentry{width:54px;height:54px;margin:-8px 0;}
+
+  /* ══ 시안 5 · 오퍼레이터 마스코트 ══ */
+  .c5{display:flex;}
+  .c5 .left{flex:1;min-width:0;padding:44px 0 40px 60px;display:flex;flex-direction:column;}
+  .c5 .prompt{margin-top:20px;}
+  .c5 .big{font-size:110px;font-weight:700;letter-spacing:.03em;line-height:1.03;margin-top:16px;}
+  .c5 .tag{margin-top:16px;font-size:24px;line-height:1.45;max-width:620px;}
+  .c5 .foot{margin-top:auto;display:flex;align-items:center;gap:26px;}
+  .c5 .right{width:440px;flex:none;position:relative;}
+  .c5 .ground{position:absolute;left:0;right:60px;bottom:88px;border-bottom:3px dotted var(--line);}
+  .c5 .typer{position:absolute;right:48px;bottom:90px;width:340px;height:340px;}
+  .c5 .td{position:absolute;top:-30px;left:74px;display:flex;gap:12px;}
+  .c5 .td i{width:17px;height:17px;background:var(--faint);display:block;}
+  .c5 .td i+i{opacity:.35;}
+  .c5 .plus{position:absolute;right:64px;bottom:286px;font-size:27px;color:var(--dim);}
+</style>
+</head>
+<body>
+
+  <p class="mocknote">mockup · 메인페이지 OG(1200×630) pixel soldiers 시안 ×5 — 실물 크기 캔버스를 화면 폭에 맞춰 축소 표시.
+    카톡/X 미리보기에선 ~절반 크기로 보이므로 병정은 랜딩(56px)보다 크게(92~340px) 씁니다. 전부 정지 화면(og.png은 스크린샷).
+    원본 보기: <code>?card=1..5</code></p>
+
+  <div class="vlabel">시안 1 · 전장 헤드라인<span class="sub">현행 OG 골격 유지 + 타이틀 아래 랜딩 히어로의 교전 스트립(양군 대치·예광탄·+1)</span></div>
+  <div class="stagewrap" data-card="1"><div class="stage">
+    <div class="og c1">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="prompt"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard<span class="cur"></span></div>
+      <div class="big">OPEN CODE WAR</div>
+      <div class="bf" id="bf1"></div>
+      <div class="tag">The leaderboard for who types the most into their <b>coding agent</b> — Claude Code, Codex, OpenCode, pi.</div>
+      <div class="status"><i class="dotlive"></i>Live<span class="sep">·</span><b>128</b> coders enlisted<span class="sep">·</span>#1 <b>dohan</b></div>
+      <div class="foot">
+        <div class="dom">opencodewar.dev</div>
+        <div class="live"><i></i>live</div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 2 · 승전 퍼레이드<span class="sub">톱3 기수(닉네임 깃발) + 호위 행진 — 리더보드를 병정으로 은유</span></div>
+  <div class="stagewrap" data-card="2"><div class="stage">
+    <div class="og c2">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="prompt"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard<span class="cur"></span></div>
+      <div class="big">OPEN CODE WAR</div>
+      <div class="tag">The leaderboard for who types the most into their <b>coding agent</b> — Claude Code, Codex, OpenCode, pi.</div>
+      <div class="parade" id="parade2"></div>
+      <div class="foot">
+        <div class="dom">opencodewar.dev</div>
+        <div class="live"><i></i>live</div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 3 · 대치 포스터<span class="sub">중앙 타이틀 + 좌우 4군 대치 — 터미널 크롬 최소화, 포스터 무드</span></div>
+  <div class="stagewrap" data-card="3"><div class="stage">
+    <div class="og c3">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="big">OPEN CODE WAR</div>
+      <div class="tag">Who types the most into their <b>coding agent</b>?<br/>Win the war — conquer the world with <b>your product</b>.</div>
+      <div class="field" id="field3"></div>
+      <div class="foot">
+        <div class="dom">opencodewar.dev</div>
+        <div class="sub">128 coders enlisted · one all-time board</div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 4 · 랭크 병정 리더보드<span class="sub">현행 톱3 리더보드에 군복 병정·기수 스프라이트 + 보초 푸터</span></div>
+  <div class="stagewrap" data-card="4"><div class="stage">
+    <div class="og c4">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="prompt"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard<span class="cur"></span></div>
+      <div class="big">OPEN CODE WAR</div>
+      <div class="tag">The leaderboard for who types the most into their <b>coding agent</b>.</div>
+      <div class="rows" id="rows4"></div>
+      <div class="foot">
+        <div class="domwrap"><span class="sentry army-claude" id="sentry4"></span><span class="dom">opencodewar.dev</span></div>
+        <div class="live"><i></i>live</div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="vlabel">시안 5 · 오퍼레이터 마스코트<span class="sub">"네가 타이핑하면 병정이 싸운다" — 타이핑 병정 원포인트, 미리보기 축소에 가장 강함</span></div>
+  <div class="stagewrap" data-card="5"><div class="stage">
+    <div class="og c5">
+      <div class="left">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="prompt"><span class="sig">you@open-code-war</span>:~$ <span class="cur"></span></div>
+        <div class="big">OPEN<br/>CODE<br/>WAR</div>
+        <div class="tag">The leaderboard for who types the most into their <b>coding agent</b>.</div>
+        <div class="foot">
+          <span class="dom">opencodewar.dev</span>
+          <span class="live"><i></i>live</span>
+        </div>
+      </div>
+      <div class="right" id="right5">
+        <i class="ground"></i>
+        <span class="plus">+1</span>
+        <span class="typer army-claude" id="typer5"></span>
+      </div>
+    </div>
+  </div></div>
+
+<script>
+  // ── 16×16 스프라이트 맵 (랜딩 web/index.html 과 동일) ──
+  const SPRITES = {
+    aim: [
+      '................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......','...SSSESS.......',
+      '...SSSSS........','..UUUUUU........','.UUUUUUUSRRRRRRR','.U..UUUUSRR.....','.U..UUUU........',
+      '....UUUU........','....UUUU........','....UU.UU.......','....UU.UU.......','....UU.UU.......','...BBB.BBB......',
+    ],
+    kneel: [
+      '................','................','................','...HHHHHH.......','..HHHHHHHH......',
+      '..HHHHHHHH......','...SSSESS.......','...SSSSS........','..UUUUUU........','.UUUUUUUSRRRRRRR',
+      '.U..UUUUSRR.....','....UUUU........','....UUUUUU......','....UU..UU......','....UU..UU......','...BBB..BBB.....',
+    ],
+    march1: [
+      '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
+      '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
+      '....UUUU........','....UUUU........','...UU..UU.......','..UU....UU......','.UU......UU.....','BBB......BBB....',
+    ],
+    march2: [
+      '.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......',
+      '...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........',
+      '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU..UU......','...BBB..BBB.....',
+    ],
+    typer1: [
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......',
+    ],
+    flag: [
+      '.........RFFFFFF','.........RFFFFFF','...HHHHHHRFFFFFF','..HHHHHHHRFFFF..','..HHHHHHHR......',
+      '...SSSESSR......','...SSSSS.R......','..UUUUUUSR......','..UUUUUUSR......','..U.UUUU.R......',
+      '....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU.UU.......','...BBB.BBB......',
+    ],
+  };
+  const CLS = { H:'u', U:'u', S:'s', E:'e', R:'r', B:'r', F:'f', M:'r', K:'r' };
+
+  function spriteSVG(name) {
+    const map = SPRITES[name];
+    let rects = '';
+    for (let y = 0; y < map.length; y++) for (let x = 0; x < map[y].length; x++) {
+      const ch = map[y][x];
+      if (ch === '.') continue;
+      rects += `<rect x="${x}" y="${y}" width="1" height="1" class="px-${CLS[ch]}"/>`;
+    }
+    return `<svg class="sprite" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+  const sd = (army, sprite, style, flip) =>
+    `<span class="sd ${army}${flip ? ' flip' : ''}" style="${style}">${spriteSVG(sprite)}</span>`;
+
+  // ── 시안 1 · 전장 (좌: codex 오퍼레이터/claude 입사/codex 앉아쏴 — 우: 미러) ──
+  const S1 = 'width:92px;height:92px;bottom:2px;';
+  document.getElementById('bf1').innerHTML =
+    sd('army-codex', 'typer1', S1 + 'left:0;') +
+    sd('army-claude', 'aim', S1 + 'left:104px;') +
+    sd('army-codex', 'kneel', S1 + 'left:208px;') +
+    sd('army-pi', 'typer1', S1 + 'right:0;', true) +
+    sd('army-opencode', 'aim', S1 + 'right:104px;', true) +
+    sd('army-pi', 'kneel', S1 + 'right:208px;', true) +
+    `<span class="td" style="left:18px;top:16px;"><i></i><i></i><i></i></span>
+     <span class="td" style="right:18px;top:16px;"><i></i><i></i><i></i></span>
+     <i class="flash" style="left:197px;top:63px;"></i>
+     <i class="flash" style="left:301px;top:75px;"></i>
+     <i class="flash" style="right:197px;top:63px;"></i>
+     <i class="flash" style="right:301px;top:75px;"></i>
+     <i class="tracer" style="left:360px;top:64px;background:var(--fg);"></i>
+     <i class="tracer" style="left:540px;top:76px;background:var(--ag-codex);"></i>
+     <i class="tracer" style="right:360px;top:64px;background:var(--ag-opencode);"></i>
+     <i class="tracer" style="right:540px;top:76px;background:var(--pi);"></i>
+     <b class="hit" style="left:47%;top:14px;">+1</b>
+     <b class="hit" style="left:58%;top:32px;">+1</b>`;
+
+  // ── 시안 2 · 퍼레이드 (→ 진행, 1위가 선두 / 깃발은 깃대 뒤로 나부낌) ──
+  const bearer = (army, label, left, frame) =>
+    `<span class="br ${army}" style="left:${left}px;">
+       <i class="pole"></i><i class="flag">${label}</i>
+       <span class="body">${spriteSVG(frame)}</span>
+     </span>`;
+  document.getElementById('parade2').innerHTML =
+    `<i class="ground"></i>` +
+    `<span class="mr army-opencode" style="left:70px;">${spriteSVG('march1')}</span>` +
+    bearer('army-pi', '#3 mightyviksy', 300, 'march2') +
+    bearer('army-codex', '#2 kenzo', 510, 'march1') +
+    bearer('army-claude', '#1 dohan', 720, 'march2') +
+    `<span class="mr army-opencode" style="left:920px;">${spriteSVG('march1')}</span>`;
+
+  // ── 시안 3 · 대치 포스터 ──
+  const S3 = 'width:132px;height:132px;bottom:106px;';
+  document.getElementById('field3').innerHTML =
+    `<i class="ground"></i>` +
+    sd('army-claude', 'aim', S3 + 'left:84px;') +
+    sd('army-codex', 'kneel', S3 + 'left:236px;') +
+    sd('army-opencode', 'aim', S3 + 'right:84px;', true) +
+    sd('army-pi', 'kneel', S3 + 'right:236px;', true) +
+    `<i class="flash" style="left:217px;bottom:168px;"></i>
+     <i class="flash" style="left:369px;bottom:152px;"></i>
+     <i class="flash" style="right:217px;bottom:168px;"></i>
+     <i class="flash" style="right:369px;bottom:152px;"></i>
+     <i class="tracer" style="left:430px;bottom:170px;background:var(--fg);"></i>
+     <i class="tracer" style="left:562px;bottom:154px;background:var(--ag-codex);"></i>
+     <i class="tracer" style="right:430px;bottom:170px;background:var(--ag-opencode);"></i>
+     <i class="tracer" style="right:562px;bottom:154px;background:var(--pi);"></i>
+     <b class="hit" style="left:528px;bottom:212px;">+1</b>
+     <b class="hit" style="left:648px;bottom:232px;">+1</b>`;
+
+  // ── 시안 4 · 랭크 병정 리더보드 ──
+  const ROWS4 = [
+    { r: 1, nick: 'dohan',       army: 'army-claude', sprite: 'flag',   on: 16, n: '3,412' },
+    { r: 2, nick: 'kenzo',       army: 'army-codex',  sprite: 'march2', on: 13, n: '2,988' },
+    { r: 3, nick: 'mightyviksy', army: 'army-pi',     sprite: 'march2', on: 12, n: '2,410' },
+  ];
+  const BAR_W = 18;
+  document.getElementById('rows4').innerHTML = ROWS4.map((r) => `
+    <div class="row">
+      <span class="rk${r.r === 1 ? ' one' : ''}">${r.r}</span>
+      <span class="mini ${r.army}">${spriteSVG(r.sprite)}</span>
+      <span class="nk">${r.nick}</span>
+      <span class="bar"><span class="on">${'█'.repeat(r.on)}</span><span class="off">${'░'.repeat(BAR_W - r.on)}</span></span>
+      <span class="n">${r.n} prompts</span>
+    </div>`).join('');
+  document.getElementById('sentry4').innerHTML = spriteSVG('march2');
+
+  // ── 시안 5 · 오퍼레이터 마스코트 ──
+  document.getElementById('typer5').innerHTML =
+    spriteSVG('typer1') + `<span class="td"><i></i><i></i><i></i></span>`;
+
+  // ── 뷰어: 축소 표시 / ?card=N 단일 원본 모드 ──
+  const solo = new URLSearchParams(location.search).get('card');
+  if (solo) {
+    document.body.classList.add('solo');
+    document.querySelectorAll('.stagewrap').forEach((w) => {
+      if (w.dataset.card !== solo) w.style.display = 'none';
+    });
+  } else {
+    const fit = () => document.querySelectorAll('.stage').forEach((st) => {
+      const s = Math.min(1, st.parentElement.clientWidth / 1200);
+      st.style.transform = `scale(${s})`;
+      st.parentElement.style.height = 630 * s + 'px';
+    });
+    fit(); addEventListener('resize', fit);
+  }
+</script>
+</body>
+</html>
