@@ -8,7 +8,7 @@
 
 [English](README.en.md) · **한국어**
 
-[![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev)
+[![website](https://img.shields.io/badge/opencodewar.dev-1a1a1a?style=for-the-badge)](https://opencodewar.dev/?ref=github)
 [![status](https://img.shields.io/badge/status-early%20development-e08a2e?style=for-the-badge)](#-로드맵)
 [![agents](https://img.shields.io/badge/Claude%20Code%20·%20Codex%20·%20OpenCode%20·%20pi-supported-6c5ce7?style=for-the-badge)](#-플러그인-설치)
 [![npm](https://img.shields.io/npm/v/open-code-war?style=for-the-badge&color=cb3837&logo=npm)](https://www.npmjs.com/package/open-code-war)
@@ -222,5 +222,5 @@ npm run dev                  # wrangler dev (http://localhost:8787)
 > BSL은 OSI 공인 오픈소스 라이선스가 아니라 'source-available'입니다. 이름·로고(Open Code War, opencodewar)와 도메인 상표는 라이선스와 별개로 보호됩니다.
 
 <div align="center">
-<sub>Made for the coding agent community · <a href="https://opencodewar.dev">opencodewar.dev</a></sub>
+<sub>Made for the coding agent community · <a href="https://opencodewar.dev/?ref=github">opencodewar.dev</a></sub>
 </div>

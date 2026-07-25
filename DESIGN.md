@@ -547,3 +547,83 @@ OAuth 를 열면 그때 "verified" 트랙 추가.
   날짜만 남긴 뒤, day-number(UTC) 연속성으로 런길이를 잰다. 결과를 `/user` 응답에 포함.
 - 노출: 프로필 상세(🔥 N일), OG 카드. 리더보드 행에는 넣지 않는다(계급·1위 깃발과 역할 중복).
 - 캐시: `/user` 응답 캐시에 함께 실린다. 스냅샷 주기 수준 정확도면 충분.
+
+---
+
+## 18. 유입 추적 (?ref / utm_*) — 들어오는 쪽·나가는 쪽 양방향
+
+링크에 붙는 `ref` 는 **방향에 따라 목적이 다르다**. 헷갈리면 값 설계를 틀린다.
+
+- **인바운드(우리 도메인 링크를 밖에 뿌릴 때)** — `?ref=<surface>`. 우리 k-datafast
+  (`analytics.stonkradar.io/k.js`, site `kdf_9e315b52f3f2`)가 받아 유입 채널로 쓴다.
+- **아웃바운드(우리 사이트에서 남의 사이트로 나갈 때)** — `?ref=opencodewar.dev`.
+  우리 집계와 무관하고 **상대 애널리틱스에 찍히는 출처명**이다. 프로젝트/블로그 주인이
+  자기 대시보드에서 "opencodewar.dev 가 방문자를 보냈다"를 보게 하는 것이 목적 —
+  OCW 가 명함첩·SNS 로서 갖는 값이라 트래픽을 흘려보내는 쪽이 이득이다.
+  (ProductHunt·긱뉴스 등이 쓰는 관행과 같다.)
+
+### 18.1 ref 와 utm 의 역할 분담
+
+| 용도 | 파라미터 | 이유 |
+|------|----------|------|
+| 우리가 뿌리는 자체 링크 (CLI·README·공유버튼·플러그인 메타) | `?ref=<surface>` | 짧고 손으로 붙이기 쉬움. 캠페인 축(매체/캠페인명)이 필요 없음 |
+| 우리 사이트 → 남의 사이트 | `?ref=opencodewar.dev` | 상대가 보는 값이므로 도메인 형태가 바로 읽힌다 |
+| 돈이 오가는 게재 — 광고·스폰서 카드·제휴 | `?utm_source=&utm_medium=&utm_campaign=` | 소스/매체/캠페인 3축이 있어야 건당 성과를 가른다 |
+
+```
+https://opencodewar.dev/?ref=newsletter        ← 뉴스레터
+https://opencodewar.dev/?ref=kakao             ← 카톡 공유
+https://opencodewar.dev/?utm_source=trustmrr&utm_medium=referral&utm_campaign=sponsor_card
+```
+
+### 18.2 k-datafast 의 채널 판정 순서 (그대로 따라야 하는 제약)
+
+`server/src/common/utils/channel.util.ts` 기준:
+
+1. 광고 클릭 ID (`gclid`·`fbclid`+유료매체 등) → 2. `utm_source` → 3. **`ref`/`source`/`via`** → 4. referrer 호스트 → 5. `Direct`
+
+즉 **`ref` 는 referrer 보다 우선**한다. 카톡·X 처럼 referrer 로도 잡히는 채널에
+`ref` 를 덮어씌우면 플랫폼 구분을 잃는다. 그래서 `ref` 는 **referrer 가 어차피 안 오는 자리**
+(터미널 CLI 출력, 메신저에 붙여넣는 공유 링크, 뉴스레터 본문)에만 붙인다.
+
+### 18.3 현재 붙어 있는 표식
+
+**인바운드 — 우리 애널리틱스로 잡힌다**
+
+| ref 값 | 붙는 위치 | 코드 |
+|--------|-----------|------|
+| `share` | 프로필 공유 버튼(복사·시스템 공유 시트)이 만드는 `/u/<nick>?d=...&ref=share` | `web/index.html` `REF_SHARE` / `profileUrl()` |
+| `cli` | `/ocw` 출력의 내 페이지·유저 페이지·개인정보처리방침 링크 | `plugin/scripts/ocw-cli.mjs` `pageUrl()` |
+| `github` | README(ko/en) 배지·푸터 | `README.md`, `README.en.md` |
+| `npm` | npm 패키지 README·`package.json` homepage | `adapters/npm-README.md`, `package.json` |
+| `plugin` | 플러그인/마켓플레이스 메타의 homepage | `plugin/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` |
+| `newsletter`, `kakao` … | 손으로 뿌리는 링크 | (코드 없음) |
+
+**아웃바운드 — 상대 애널리틱스에 찍힌다 (값은 전부 `opencodewar.dev`)**
+
+| 붙는 위치 | 코드 |
+|-----------|------|
+| 프로필 링크 칩 — website·blog·GitHub·X·LinkedIn | `web/index.html` `outboundUrl()` / `renderLinks()` |
+| 사이드프로젝트 `visit` 버튼 | `web/index.html` `renderProjects()` |
+| 푸터·개인정보처리방침의 우리 GitHub 레포 링크 | `web/index.html`, `web/privacy.html` (정적 하드코딩) |
+
+`outboundUrl()` 규칙:
+- `new URL()` 로 파싱해 `searchParams.set` — 기존 쿼리는 `&` 로 이어붙고 `#fragment` 는 뒤에 그대로 남는다
+  (해시 라우터 링크도 안 깨진다).
+- 상대 URL 에 이미 `ref` 나 `utm_source` 가 있으면 **덮어쓰지 않는다** — 유저나 상대 서비스의 의도가 우선.
+- 파싱 실패하면 원본을 그대로 반환한다. 표식보다 링크가 살아있는 게 우선.
+- 화면에 보이는 라벨(`linkLabel()`)은 **원본 URL** 로 만든다. `href` 에만 붙는다.
+- GitHub·X·LinkedIn 은 이 파라미터를 무시하고 리퍼럴 통계로 돌려주지도 않는다.
+  그래도 규칙을 단순하게 유지하려고 예외 없이 붙인다(해가 없음).
+
+### 18.4 붙이면 안 되는 곳
+
+- **`<link rel="canonical">`·`og:url`·`sitemap.xml`** — 정규 주소는 파라미터 없이 유지한다.
+  여기에 `ref` 가 섞이면 검색엔진이 중복 URL 로 본다.
+- **API 엔드포인트**(`/leaderboard`, `/user` …) — 사람이 보는 페이지가 아니다.
+
+### 18.5 SPA 라우팅과의 관계
+
+라우팅은 `location.pathname` 만 본다(`urlFor()`/`nickFromPath()`). `ref` 는 쿼리라
+경로 판정에 영향이 없고, 내부 이동 시 `urlFor()` 가 기존 쿼리를 보존하므로 주소창에 남는다.
+`k.js` 는 로드 시점에 `ref` 를 한 번만 읽으므로 중복 집계되지 않는다.
