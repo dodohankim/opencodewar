@@ -32,6 +32,9 @@ import {
 } from './og';
 import { isValidNickname } from './validate';
 
+/** 페이지·이미지 라우트는 GET/HEAD 둘 다 받는다 — HEAD 로 찔러보는 크롤러·링크체커가 404 를 받지 않도록. */
+const isPageRead = (method: string): boolean => method === 'GET' || method === 'HEAD';
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -54,18 +57,18 @@ export default {
       }
       // /privacy — 정적 페이지지만 방문자 국가를 심어야 해서 Worker 를 먼저 태운다
       // (wrangler.jsonc 의 assets.run_worker_first). 직접 들어와도 기본 언어가 맞도록.
-      if ((pathname === '/privacy' || pathname === '/privacy.html') && request.method === 'GET') {
+      if ((pathname === '/privacy' || pathname === '/privacy.html') && isPageRead(request.method)) {
         const res = await env.ASSETS.fetch(request);
         return withVisitorCountry(res, visitorCountry(request));
       }
       // /og/<public_id>.png — 유저별 공유 이미지(R2, 미스 시 공통 og.png 폴백).
       const ogId = ogImageIdFromPath(pathname);
-      if (ogId !== null && request.method === 'GET') {
+      if (ogId !== null && isPageRead(request.method)) {
         return await handleOgImage(request, url, env, ogId, ctx);
       }
       // /u/<nickname> — 프로필 페이지(에셋에 없는 경로라 Worker 폴백으로 도달).
       const pathNick = nicknameFromPath(pathname);
-      if (pathNick !== null && request.method === 'GET') {
+      if (pathNick !== null && isPageRead(request.method)) {
         return await handleProfilePage(request, url, env, pathNick);
       }
       if (pathname === '/health') {

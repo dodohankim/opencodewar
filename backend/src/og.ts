@@ -52,16 +52,30 @@ export function visitorCountry(request: Request): string | null {
  * 국가를 모르면 빈 값 그대로 둔다(웹이 브라우저 언어로 판단).
  */
 export function withVisitorCountry(res: Response, country: string | null): Response {
-  if (!country || !(res.headers.get('Content-Type') ?? '').includes('text/html')) return res;
+  if (!(res.headers.get('Content-Type') ?? '').includes('text/html')) return res;
+  if (!country) return asUtf8Html(res);
   return asPrivate(
-    new HTMLRewriter()
-      .on('meta[name="ocw-country"]', {
-        element(el) {
-          el.setAttribute('content', country);
-        },
-      })
-      .transform(res),
+    asUtf8Html(
+      new HTMLRewriter()
+        .on('meta[name="ocw-country"]', {
+          element(el) {
+            el.setAttribute('content', country);
+          },
+        })
+        .transform(res),
+    ),
   );
+}
+
+/**
+ * HTML Content-Type 헤더에 charset 명시. 에셋 서빙이 charset 없는 text/html 로 내려주는데,
+ * 일부 구형 스크래퍼는 헤더에 charset 이 없으면 meta charset 을 무시하고 ISO-8859-1 로 읽어
+ * 한글 OG 텍스트(태그라인·닉네임)가 깨진다. 헤더 선언이 우선순위 최상위라 여기서 못 박는다.
+ */
+function asUtf8Html(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.set('Content-Type', 'text/html; charset=utf-8');
+  return new Response(res.body, { status: res.status, headers });
 }
 
 /**
