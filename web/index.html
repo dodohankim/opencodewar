@@ -722,7 +722,7 @@
       streak_cur: (n) => `${n}-day streak`, streak_none: 'no active streak',
       streak_best: (n) => `best ${n}`, streak_since: (d) => `since ${d}`,
       std_global: 'global rank', std_next: 'next rank', std_streak: 'streak',
-      std_of: (n) => `of ${n}`, std_togo: (n) => `<b>${n}</b> prompts to go`, std_days: 'days',
+      std_togo: (n) => `<b>${n}</b> prompts to go`, std_days: 'days',
     },
     ko: {
       langBtn: 'EN',
@@ -765,7 +765,7 @@
       streak_cur: (n) => `연속 ${n}일`, streak_none: '진행 중인 연속 없음',
       streak_best: (n) => `최장 ${n}일`, streak_since: (d) => `${d}부터`,
       std_global: '전체 순위', std_next: '다음 계급', std_streak: '스트릭',
-      std_of: (n) => `${n}명 중`, std_togo: (n) => `<b>${n}</b> prompts 남음`, std_days: '일',
+      std_togo: (n) => `<b>${n}</b> prompts 남음`, std_days: '일',
     },
   };
   const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
@@ -1700,15 +1700,10 @@
       $('uRank').hidden = true;
     }
 
-    // seg1: 전체 순위(#N) + 국가 순위. rank 없으면(활동 0·구 API) 생략.
+    // seg1: 전체 순위(#N)만. 모집단이 작을 때 'of N'·국가 순위는 규모를 노출해 초라해 보이므로 표기하지 않는다.
     if (typeof data.rank === 'number' && data.rank > 0) {
       $('segStandingBig').innerHTML = `<span class="rk">#${fmt(data.rank)}</span>`;
-      const sub = [];
-      if (data.rankTotal) sub.push(t('std_of')(fmt(data.rankTotal)));
-      if (typeof data.countryRank === 'number' && data.countryRank > 0 && data.country) {
-        sub.push(`${escapeHtml(data.country)} ${flagOf(data.country)} #${fmt(data.countryRank)}`);
-      }
-      $('segStandingSub').innerHTML = sub.join(' · ') || '&nbsp;';
+      $('segStandingSub').innerHTML = '&nbsp;';
       $('segStanding').hidden = false; anySeg = true;
     } else {
       $('segStanding').hidden = true;
