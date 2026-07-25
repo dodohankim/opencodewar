@@ -26,4 +26,4 @@ done
 curl -s "http://localhost:$PORT/__scheduled?cron=$CRON"
 echo
 sleep 5 # waitUntil(웹훅 fetch) 완료 대기
-echo "발송 완료($KIND) — #ocw-리포트 확인 (로그: $LOG)"
+echo "발송 완료($KIND) — 사용량→#cloudflare-리포트 / 유저→#ocw-리포트 (로그: $LOG)"

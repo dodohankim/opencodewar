@@ -6,7 +6,8 @@ interface Env {
   ACCOUNT_ID: string;
   OCW_DB_ID: string; // ocw-db (D1) — 유저 리포트용
   CF_ANALYTICS_TOKEN: string; // secret: Account Analytics Read + KV/D1 Read
-  DISCORD_WEBHOOK_URL: string; // secret
+  DISCORD_WEBHOOK_URL: string; // secret — #cloudflare-리포트 (CF 사용량 리포트)
+  DISCORD_WEBHOOK_URL_USER: string; // secret — #ocw-리포트 (OCW 유저 리포트)
 }
 
 const API = 'https://api.cloudflare.com/client/v4';
@@ -210,8 +211,8 @@ async function buildUserEmbed(env: Env) {
   };
 }
 
-async function sendDiscord(env: Env, payload: unknown) {
-  const res = await fetch(env.DISCORD_WEBHOOK_URL, {
+async function sendDiscord(webhookUrl: string, payload: unknown) {
+  const res = await fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -262,16 +263,23 @@ const errorEmbed = (title: string, err: unknown) => ({
   color: 0xed4245,
 });
 
-// 리포트별 독립 발송 — 한쪽 조회가 실패해도 다른 쪽은 정상 발송.
+// 리포트별 독립 발송 — 사용량은 #cloudflare-리포트, 유저 리포트는 #ocw-리포트(별도 웹훅).
+// 한쪽 조회/발송이 실패해도 다른 쪽은 정상 발송(allSettled).
 async function report(env: Env, kind: ReportKind) {
-  const embeds: unknown[] = [];
+  const sends: Promise<void>[] = [];
   if (kind !== 'user') {
-    embeds.push(await buildUsageEmbed(env).catch((err) => errorEmbed('Cloudflare 무료 티어 사용량', err)));
+    const embed = await buildUsageEmbed(env).catch((err) => errorEmbed('Cloudflare 무료 티어 사용량', err));
+    sends.push(sendDiscord(env.DISCORD_WEBHOOK_URL, { username: 'CF Usage', embeds: [embed] }));
   }
   if (kind !== 'usage') {
-    embeds.push(await buildUserEmbed(env).catch((err) => errorEmbed('OCW 유저 리포트', err)));
+    const embed = await buildUserEmbed(env).catch((err) => errorEmbed('OCW 유저 리포트', err));
+    sends.push(sendDiscord(env.DISCORD_WEBHOOK_URL_USER, { username: 'CF Usage', embeds: [embed] }));
   }
-  await sendDiscord(env, { username: 'CF Usage', embeds });
+  const results = await Promise.allSettled(sends);
+  const failed = results.filter((r) => r.status === 'rejected');
+  if (failed.length) {
+    throw new Error(failed.map((r) => (r as PromiseRejectedResult).reason).join('; '));
+  }
 }
 
 export default {
@@ -283,7 +291,7 @@ export default {
       report(env, kind).catch(async (err) => {
         // 발송 실패도 침묵하지 않고 웹훅으로 알린다(웹훅 자체 실패면 로그로만 남음).
         console.error('report failed:', err);
-        await sendDiscord(env, {
+        await sendDiscord(env.DISCORD_WEBHOOK_URL, {
           username: 'CF Usage',
           content: `⚠ 리포트 발송 실패(${kind}): ${err instanceof Error ? err.message : String(err)}`,
         }).catch(() => {});
