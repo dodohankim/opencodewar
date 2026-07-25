@@ -23,6 +23,7 @@
     "adapters/pi/ocw-track.ts",
     "adapters/README.md",
     "plugin/scripts/track.mjs",
+    "plugin/scripts/brief.mjs",
     "plugin/scripts/lib"
   ],
   "pi": {

@@ -151,8 +151,13 @@ Register a nickname / check status / turn collection on-off:
 ```
 /ocw nickname <name>     # register or change your leaderboard display name
 /ocw status              # show your userId · nickname · collection state
+/ocw brief on | off      # toggle the one-line session briefing (rank · rank title · streak)
 /ocw enable | disable    # turn collection on/off
 ```
+
+When a session starts you get a **one-line briefing** in the terminal — just the single thing worth
+knowing right now (your streak is about to break, the next rank is close, how far the person above you is).
+If nothing changed, it stays quiet.
 
 - Config file: `~/.open-code-war/config.json` (userId · nickname · on/off)
 - ⚠️ Your `userId` is **both your identity and your secret key.** Don't share it.

@@ -60,6 +60,53 @@ function resolveTrackScript() {
 const TRACK_SCRIPT = resolveTrackScript();
 const NODE = resolveNode();
 
+// 세션 브리핑 스크립트는 track.mjs 와 같은 디렉토리에 있다(DESIGN.md §19).
+const BRIEF_SCRIPT = (() => {
+  if (!TRACK_SCRIPT) return null;
+  const p = join(dirname(TRACK_SCRIPT), 'brief.mjs');
+  return existsSync(p) ? p : null;
+})();
+
+const BRIEF_TIMEOUT_MS = 3000;
+
+/** 세션 시작 시 브리핑을 미리 받아둔다(표시는 하지 않는다). 실패는 무시. */
+function prefetchBrief() {
+  if (!BRIEF_SCRIPT || !NODE) return;
+  try {
+    const child = spawn(NODE, [BRIEF_SCRIPT, '--prefetch'], { detached: true, stdio: 'ignore' });
+    child.on('error', () => {});
+    child.unref();
+  } catch {
+    // 브리핑 실패가 대화를 막아선 안 된다
+  }
+}
+
+/** 표시할 브리핑 한 줄. 없으면 null. 문구·우선순위 판정은 brief.mjs 안에 있다. */
+function briefLine(sessionID) {
+  return new Promise((resolve) => {
+    if (!BRIEF_SCRIPT || !NODE) return resolve(null);
+    try {
+      const args = [BRIEF_SCRIPT, '--line'];
+      if (sessionID) args.push('--session', String(sessionID));
+      const child = spawn(NODE, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+      let out = '';
+      const finish = (v) => resolve(v);
+      const timer = setTimeout(() => finish(null), BRIEF_TIMEOUT_MS);
+      child.stdout.on('data', (c) => (out += c));
+      child.on('error', () => {
+        clearTimeout(timer);
+        finish(null);
+      });
+      child.on('close', () => {
+        clearTimeout(timer);
+        finish(out.trim() || null);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 /** 프롬프트 1건 집계. 절대 throw 하지 않고, 호출자를 기다리게 하지 않는다. */
 function track(prompt) {
   if (!TRACK_SCRIPT || !NODE) return;
@@ -87,6 +134,9 @@ function textOf(parts) {
 }
 
 export const OpenCodeWar = async ({ client }) => {
+  // opencode 에는 SessionStart 훅이 없다 — 플러그인 로드 시점에 한 번 미리 받아둔다.
+  prefetchBrief();
+
   // 서브에이전트 세션(parentID 보유)은 사용자가 친 프롬프트가 아니므로 집계에서 뺀다.
   // 세션당 한 번만 조회하고 캐시한다.
   const subSessionCache = new Map();
@@ -112,7 +162,13 @@ export const OpenCodeWar = async ({ client }) => {
       const text = textOf(output?.parts);
       void (async () => {
         try {
-          if (!(await isSubSession(sessionID))) track(text);
+          if (await isSubSession(sessionID)) return;
+          track(text);
+          // 세션당 1회 판정은 brief.mjs 가 sessionID 로 한다 — 여기서는 매번 물어봐도 된다.
+          const line = await briefLine(sessionID);
+          if (line) {
+            await client.tui.showToast({ body: { title: 'Open Code War', message: line, variant: 'info' } });
+          }
         } catch {
           // 어떤 오류도 대화를 막지 않는다
         }

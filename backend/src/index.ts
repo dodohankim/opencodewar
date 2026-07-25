@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { CORS_HEADERS, json } from './http';
 import {
+  handleBriefing,
   handleDelete,
   handleLeaderboard,
   handleMe,
@@ -94,6 +95,10 @@ export default {
       }
       if (pathname === '/me' && request.method === 'GET') {
         return await handleMe(url, env);
+      }
+      // 세션 브리핑(§19) — 플러그인이 세션 시작 시 1회만 호출한다.
+      if (pathname === '/briefing' && request.method === 'GET') {
+        return await handleBriefing(url, env, ctx);
       }
       // Google 계정 연동 (DESIGN.md §14)
       if (pathname === '/auth/start' && request.method === 'POST') {

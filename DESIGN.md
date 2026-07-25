@@ -608,3 +608,202 @@ CLI 가 출력하는 `/u/<nick>` 링크 — 전부 **표식 없이 맨 URL**로 
 라우팅은 `location.pathname` 만 본다(`urlFor()`/`nickFromPath()`). 들어온 `ref` 는 쿼리라
 경로 판정에 영향이 없고, 내부 이동 시 `urlFor()` 가 기존 쿼리를 보존해 주소창에 남는다.
 `k.js` 는 로드 시점에 `ref` 를 한 번만 읽으므로 중복 집계되지 않는다.
+
+---
+
+## 19. 세션 브리핑 — 터미널을 읽기 표면으로
+
+### 19.1 문제
+
+지금 터미널은 **write-only** 다. 훅은 숫자를 쏘기만 하고 유저는 아무것도 돌려받지 않는다.
+계급(§16)·스트릭(§17)·순위 같은 리텐션 장치를 **전부 웹에 가둬놨기 때문에**, 웹 재방문이
+끊기면 제품이 사라진다. 하루 8시간 터미널에 앉아 있는 사람에게 "웹 보러 오세요"는 구조적으로 진다.
+
+지렛대는 이미 있다 — 훅 JSON 의 **`systemMessage` 필드는 터미널 UI 에 직접 표시된다.**
+(`hookSpecificOutput.additionalContext` 는 모델 컨텍스트로만 간다. 둘은 다르다.)
+추가 설치도, statusline 자리 경쟁도 필요 없다.
+
+### 19.2 원칙 (§4.3 fail-open 을 깨지 않는다)
+
+1. **프롬프트 제출은 절대 네트워크를 기다리지 않는다.** 표시용 훅은 로컬 파일만 읽는다.
+2. **미리 받아두고 나중에 띄운다.** 네트워크는 `SessionStart` 에서 detached 로 끝내고,
+   `UserPromptSubmit` 은 그 결과 파일을 읽기만 한다. §14.3 `pendingLinkCode` 와 같은
+   "다음 실행 시 해소" 패턴.
+3. **침묵이 기본.** 보여줄 변화가 없으면 아무것도 띄우지 않는다. 매 세션 배너는 3일이면 소음이 된다.
+4. **세션당 최대 1회.** `session_id` 로 중복 표시를 막는다.
+
+### 19.3 흐름
+
+```
+SessionStart 훅 (async, 출력 없음)
+  → detached 자식: GET /briefing?userId=…
+  → ~/.open-code-war/briefing.json 저장 { generatedAt, lines, shownFor: null }
+
+UserPromptSubmit 훅 (동기, 네트워크 없음)
+  → briefing.json 읽기
+      · 없음 / 오래됨(> 6h) / shownFor == 현재 session_id  → 즉시 exit 0, 출력 없음
+      · 그 외 → {"systemMessage": "<한 줄>"} 출력 + shownFor = session_id 기록
+```
+
+훅을 **두 개로 분리**하는 게 핵심이다. 기존 track 훅은 `async: true` 인데, **async 훅은 실행은 되지만
+`systemMessage` 가 화면에 뜨지 않는다**(§19.8 실측). 그래서 전송(async, 출력 없음)과 표시(동기,
+로컬 I/O only)를 섞지 않는다. 표시 훅의 비용은 node 기동 ~50ms + 파일 read 1회이고, 보여줄 게 없으면
+파일 stat 수준에서 끝난다 — 기존 track 훅의 fire-and-forget 은 그대로 둔다.
+
+### 19.4 엔드포인트
+
+| 메서드 | 경로 | 호출 빈도 |
+|---|---|---|
+| GET | `/briefing?userId=…` | **세션당 1회** (프롬프트당이 아님 — 실호출량 1/50 수준) |
+
+세션당 1회이므로 프롬프트당 예산과 달리 D1 을 쓸 여유가 있다. 응답:
+
+```jsonc
+{
+  "rank":   { "global": 41, "country": 7, "delta": 2, "country_code": "KR" },
+  "ahead":  { "nickname": "codemonkey", "gap": 12 },   // 바로 위 경쟁자 (top-100 내일 때만)
+  "rank_title": { "key": "corporal", "remaining": 47 }, // 다음 계급까지 누적 prompts
+  "streak": { "current": 12, "todayPrompts": 3, "todayChars": 210 },
+  "isAnonymous": true,                                  // 닉네임 미등록
+  "generatedAt": 1750000000000
+}
+```
+
+문구 조립(i18n 포함)은 **클라이언트**가 한다. 서버는 숫자만 준다 — §16 RANKS 상수가 이미 웹·OG 두 곳에
+복제돼 있어 서버 문자열까지 늘리면 원본이 셋이 된다.
+
+### 19.5 표시 규칙 — 우선순위 1개만, 한 줄
+
+⚠️ **문구 앞에 `UserPromptSubmit says: ` 가 자동으로 붙는다**(§19.8 실측). 우리가 없앨 수 없으므로
+그 접두사 **뒤에서 자연스럽게 읽히는 문장**으로 쓴다 — 인사말·주어로 시작하지 말고 상태나 지시로 바로 들어간다.
+실제 화면: `UserPromptSubmit says: 🎖 상병까지 47 프롬프트`
+
+위에서부터 **처음 걸리는 것 하나만** 띄운다. 여러 줄로 늘리지 않는다.
+
+| 순위 | 조건 | 예시 |
+|---|---|---|
+| 1 | 닉네임 미등록 | `익명으로 집계 중 — /ocw nickname <이름> 으로 리더보드에 이름을 올리세요` |
+| 2 | 스트릭 ≥ 3 인데 오늘 조건 미달 | `🔥 12일 연속 · 오늘 3/10 — 7개 더 치면 유지` |
+| 3 | 다음 계급까지 ≤ 10% | `🎖 상병까지 47 프롬프트` |
+| 4 | 순위 변동 있음 | `KR 7위 (↑2)` |
+| 5 | top-100 이고 바로 위와 격차 ≤ 20 | `KR 7위 · 6위 codemonkey 와 12 차이` |
+| — | 그 외 | **침묵** |
+
+- 1번(닉네임 유도)이 최우선인 이유: 익명 유저는 리더보드에 이름이 없어 공유·재방문 동기가 0 이다.
+  브리핑의 첫 실용 효과는 랭킹 자랑이 아니라 **익명 → 등록 전환**이다.
+- 2번(스트릭 위험)이 리텐션에 가장 강하다 — 손실 회피. 이미 쌓은 것을 잃는다는 신호.
+- 5번(바로 위와의 격차)이 전체 리더보드보다 강력하다. 스냅샷 top-100 에 이미 있으므로 **D1 추가 비용 0**.
+
+`/ocw brief off|on` 으로 끌 수 있어야 한다(config `brief: true`). 끄면 SessionStart prefetch 도 하지 않는다.
+
+### 19.6 비용
+
+`/briefing` 한 번당:
+- KV get 1회 — 기존 `lb:snapshot:v2` 재사용. 순위·이웃·delta 를 여기서 뽑으므로 **랭킹 관련 D1 0회**.
+- D1 왕복 1회 — `SELECT day, SUM(prompts), SUM(chars) FROM daily_stats WHERE user_id=? GROUP BY day`.
+  이 한 쿼리로 allTime(계급)·오늘(스트릭 조건)·스트릭 전부 계산된다. PK 가 `(user_id, day, agent)` 라
+  user_id prefix 스캔이고, 읽는 행은 그 유저 것뿐이다.
+
+유저 100명 × 하루 5세션 = 500 호출/일 → D1 읽기 수만 행, KV 읽기 500회. 한도(D1 500만 행/일,
+KV 10만 read/일) 대비 무시할 수준. `delta`(순위 변동) 는 이전 브리핑의 순위를 **클라이언트 파일에
+남겨** 비교한다 — 서버에 히스토리 테이블을 만들지 않는다.
+
+### 19.7 에이전트별 표시 수단 — 문구는 하나, 표시는 각자
+
+4개 에이전트의 표시 경로가 전부 다르다. 조사 결과(2026-07-25):
+
+| 에이전트 | 표시 수단 | 비고 |
+|---|---|---|
+| **Claude Code** | 훅 JSON `systemMessage` | 동기 훅만. 접두사 `UserPromptSubmit says: ` 강제 |
+| **Codex** | 훅 JSON `systemMessage` | **스키마 동일**(`continue`/`stopReason`/`suppressOutput`/`systemMessage`) → 같은 코드 재사용 |
+| **pi** | `ctx.ui.notify(msg, "info")` | 추가로 `setStatus()`(푸터)·`setWidget(…, {placement:"aboveEditor"})`(상시 위젯)까지 가능 — 4개 중 가장 풍부 |
+| **OpenCode** | `/tui/show-toast` (서버 엔드포인트) | 플러그인 `client` 로 호출. 정확한 SDK 시그니처는 구현 시 확정 |
+
+**제약**: pi·opencode 어댑터는 **자립형이어야 한다**. jiti(pi)·bun(opencode) 로더가 심볼릭 링크된
+파일의 상대 import 를 각기 다르게 해석해서 공용 모듈을 import 하면 로드가 깨진다(어댑터 파일 주석 참조).
+그래서 문구 조립을 공용 JS 모듈로 빼는 방법은 쓸 수 없다.
+
+**해법 — `plugin/scripts/brief.mjs` 하나가 문구를 만들고, 표시만 각자 한다.**
+집계(`track.mjs`)와 표시(`brief.mjs`)는 파일부터 분리한다 — 전자는 fire-and-forget async,
+후자는 동기 표시라 성격이 정반대다.
+
+```
+brief.mjs --prefetch             SessionStart 용. detached 자식에 넘기고 즉시 종료(세션 시작 지연 0)
+brief.mjs --hook                 Claude Code·Codex 용. stdin 의 session_id 를 읽어
+                                 {"systemMessage": "<한 줄>"} 출력 (없으면 무출력)
+brief.mjs --line [--session ID]   pi·opencode 어댑터 용. 문구 한 줄만 stdout
+   ├─ pi       : 어댑터가 ctx.ui.notify(line, "info")
+   └─ OpenCode : 어댑터가 client.tui.showToast({ body: { message: line, variant: "info" } })
+```
+
+우선순위 규칙(§19.5)·i18n·캐시 판정이 **`lib/briefing.mjs` 한 곳에만** 살고, 자립형 제약도
+깨지지 않는다. 각 어댑터가 갖는 것은 "brief.mjs 를 spawn 해 한 줄을 받아 띄우는" 몇 줄뿐이다.
+
+pi·opencode 에는 SessionStart 훅이 없으므로 **확장/플러그인 로드 시점에 prefetch** 한다.
+
+### 19.7.1 표시 언어 — 국가 우선 (§15 와 같은 순서)
+
+`config.lang` → **서버가 준 국가(`rank.countryCode`)** → 셸 로케일 순으로 정한다.
+셸 로케일을 먼저 보면 안 된다 — **macOS 기본이 `en_US.UTF-8`** 이라 한국 유저도 영어로 나온다
+(실측으로 확인). 서버가 IP 로 판정한 `users.country` 가 훨씬 정확하다.
+
+### 19.8 실측 결과 (2026-07-25)
+
+| 항목 | 결과 |
+|---|---|
+| 동기 훅 `systemMessage` 표시 | ✅ **표시됨**. 단 `UserPromptSubmit says: ` 접두사가 붙는다 |
+| `async: true` 훅 | 실행은 되지만 **표시 안 됨** → §19.3 훅 분리 설계가 필요한 이유 |
+| 훅 실행 자체 | sync·async 모두 실행 확인(파일 사이드이펙트로 검증) |
+| 이모지(🎖) | ✅ 정상 렌더 |
+| stdin `session_id` | ✅ 존재 → 세션당 1회 판정 가능 |
+| 헤드리스(`claude -p`) | UserPromptSubmit 훅 이벤트가 stream-json 에 실리지 않는다. `systemMessage` 는 TUI 렌더라 **헤드리스로는 검증 불가** — 반드시 인터랙티브로 확인할 것 |
+
+남은 리스크:
+- ⬜ `systemMessage` **여러 줄 처리** 미확인 → 한 줄 + 이모지 1개로 보수적으로 간다.
+- ⬜ OpenCode `client` 의 toast 호출 시그니처 미확정(엔드포인트 존재만 확인).
+- ⬜ Codex 는 [`suppressOutput` 이 no-op](https://github.com/openai/codex/issues/15497) 이라 훅 출력이
+  더 잘 노출된다 → 노이즈 체감이 Claude Code 와 다를 수 있으니 별도 확인.
+- 세션이 매우 짧거나(1프롬프트) SessionStart 직후 바로 치면 prefetch 가 안 끝나 그 세션은 침묵한다.
+  다음 세션에 뜨므로 정상 동작으로 본다(신선도 6h 컷).
+- 브리핑은 **집계 스냅샷 기준**(최대 30분 지연, §13)이라 "방금 친 것"이 반영 안 될 수 있다.
+  문구를 실시간처럼 쓰지 않는다.
+
+### 19.9 구현 상태 — 1차 완료 (2026-07-25)
+
+| # | 항목 | 산출물 |
+|---|---|---|
+| 1 | 훅 출력 실측 | §19.8 |
+| 2 | `GET /briefing` | `backend/src/briefing.ts`(순수 함수) + `handleBriefing` + `test/briefing.test.ts` |
+| 3 | 캐시 + prefetch | `plugin/scripts/lib/briefing.mjs`, `brief.mjs --prefetch`, `SessionStart` 훅 |
+| 4 | 문구 조립 + 표시 훅 | `composeBriefing()` + `brief.mjs --hook` (동기) |
+| 5 | Codex | `codex-hooks.json` — Claude Code 와 동일 코드 |
+| 6 | pi·opencode | 두 어댑터에 `briefLine()`/`prefetchBrief()` + notify/showToast |
+| 7 | CLI | `/ocw brief on\|off`, `/ocw status` 에 상태 줄 |
+
+로컬 E2E 확인: `/track` → `/briefing` → `--prefetch` → `--hook` 표시 → 같은 세션 침묵 →
+`--line` 경로까지 전부 통과. 언어는 `countryCode=KR` 로 한국어 선택됨.
+
+**호스트별 실측 (2026-07-25)**
+
+| 호스트 | 확장/훅 로드 | prefetch | 표시 경로 도달 | 화면 표시 |
+|---|---|---|---|---|
+| Claude Code | ✅ | ✅ | ✅ | ✅ 눈으로 확인(§19.8) |
+| pi | ✅ `pi -p` | ✅ | ✅ `shownFor`=세션파일 경로 | ⬜ TUI 필요 |
+| OpenCode | ✅ `opencode run` | ✅ | ✅ `shownFor`=`ses_…` | ⬜ TUI 필요 |
+| Codex | ⬜ | ⬜ | ⬜ | ⬜ |
+
+- pi·OpenCode 는 헤드리스로 **확장 로드 → prefetch → briefLine 호출**까지 전 경로가 실제로 도는 것을
+  확인했다(캐시의 `shownFor`/`shownAt` 기록이 증거). 토스트·notify 가 실제로 그려지는지는 TUI 가
+  필요해 미확인이나, 호출은 에러 없이 통과했다.
+- **Codex 만 미실측** — `codex exec` 가 프롬프트 처리 단계까지 가지 못했다(승인/인증 추정, 5분 타임아웃).
+  훅 스키마가 Claude Code 와 동일하고 같은 `brief.mjs --hook` 을 쓰므로 리스크는 낮지만 확인은 필요.
+- ⚠️ **Claude Code·Codex 플러그인은 GitHub 레포에서 설치된다**(`~/.claude/plugins/marketplaces/opencodewar`,
+  codex `[plugins."open-code-war@opencodewar"]`). 즉 **푸시하기 전에는 두 호스트에서 새 기능이 돌지 않는다.**
+  pi·opencode 는 로컬 심볼릭 링크라 즉시 반영된다.
+
+**남은 것**
+- ⬜ 배포(`/briefing` 이 프로덕션에 없으면 prefetch 가 404 → 기능 전체가 침묵). 스키마 변경이 없어
+  마이그레이션은 불필요하다.
+- ⬜ Codex 실측, TUI 에서 pi·opencode 표시 확인.
+- ⬜ 배포 후 `/briefing` 실호출량·D1 읽기 모니터링(§19.6 추정치 대비).
+- ⬜ 문구 A/B — 5순위(격차)가 가장 자주 걸릴 텐데 실제로 행동을 끌어내는지.

@@ -1,11 +1,27 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${PLUGIN_ROOT}/scripts/brief.mjs --prefetch",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "node ${PLUGIN_ROOT}/scripts/track.mjs --agent codex",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node ${PLUGIN_ROOT}/scripts/brief.mjs --hook",
             "timeout": 10
           }
         ]

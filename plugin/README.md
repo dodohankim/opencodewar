@@ -64,6 +64,7 @@ claude --plugin-dir ./plugin
 ```
 /ocw nickname 도한      # 닉네임 등록 (리더보드 표시명)
 /ocw status            # 내 정보 + 오늘 순위
+/ocw brief on|off      # 세션 시작 브리핑 켜기/끄기
 /ocw disable           # 집계 일시중지
 /ocw enable            # 재개
 ```

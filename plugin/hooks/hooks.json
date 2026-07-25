@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs --prefetch",
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "matcher": "",
@@ -9,6 +22,11 @@
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/track.mjs",
             "timeout": 10,
             "async": true
+          },
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs --hook",
+            "timeout": 10
           }
         ]
       }

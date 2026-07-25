@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
-const CONFIG_DIR = join(homedir(), '.open-code-war');
+export const CONFIG_DIR = join(homedir(), '.open-code-war');
 export const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
 // 배포된 커스텀 도메인. OCW_API_URL 환경변수로 덮어쓸 수 있다.
@@ -27,6 +27,7 @@ export function loadConfig() {
       nickname: null,
       endpoint: null,
       enabled: true,
+      brief: true, // 세션 브리핑 표시 여부 (/ocw brief off 로 끔, DESIGN.md §19)
       bio: null,
       role: null,
       company: null,

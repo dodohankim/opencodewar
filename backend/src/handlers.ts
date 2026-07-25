@@ -24,6 +24,7 @@ import {
   type Project,
 } from './validate';
 import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, dayFilter, getSnapshot, periodOf } from './snapshot';
+import { buildBriefing } from './briefing';
 import { displayNickname } from './nickname';
 import { isValidPublicId, newPublicId } from './publicid';
 import { cityKey, cleanCity, countryFlag } from './zones';
@@ -368,6 +369,58 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
       zones,
     },
   });
+}
+
+/**
+ * GET /briefing?userId=… — 세션 브리핑용 최소 데이터(DESIGN.md §19).
+ *
+ * **세션당 1회** 호출을 전제로 한다(프롬프트당이 아님). 그래서 비용은
+ * KV 스냅샷 1회 + D1 batch 1왕복(유저 프로필 + 그 유저의 daily_stats)뿐이다.
+ * 순위·이웃은 스냅샷에서 뽑으므로 랭킹 관련 D1 조회가 없다 — `/me` 처럼 전체 daily_stats 를
+ * GROUP BY 하면 세션 수만큼 전량 스캔이 되어 한도를 태운다(§19.6).
+ *
+ * 문구 조립·i18n·우선순위 판정은 클라이언트(`track.mjs --brief`)가 한다. 서버는 숫자만 준다.
+ */
+export async function handleBriefing(url: URL, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  const userId = url.searchParams.get('userId');
+  if (!isValidUserId(userId)) {
+    return json({ error: 'invalid_userId' }, 400);
+  }
+  const now = Date.now();
+
+  const [snapshot, [userRes, statRes]] = await Promise.all([
+    getSnapshot(env, ctx),
+    env.DB.batch([
+      env.DB.prepare('SELECT nickname, public_id, country FROM users WHERE user_id = ?').bind(userId),
+      env.DB.prepare(
+        'SELECT day, SUM(prompts) AS prompts, SUM(chars) AS chars FROM daily_stats WHERE user_id = ? GROUP BY day',
+      ).bind(userId),
+    ]),
+  ]);
+
+  const user = userRes.results[0] as
+    | { nickname: string | null; public_id: string | null; country: string | null }
+    | undefined;
+  if (!user) {
+    return json({ error: 'user_not_found' }, 404);
+  }
+
+  const dayStats = (statRes.results as Array<{ day: string; prompts: number; chars: number }>).map((r) => ({
+    day: r.day,
+    prompts: Number(r.prompts) || 0,
+    chars: Number(r.chars) || 0,
+  }));
+
+  return json(
+    buildBriefing({
+      snapshot,
+      publicId: user.public_id ?? null,
+      country: user.country ?? null,
+      registered: user.nickname != null,
+      dayStats,
+      now,
+    }),
+  );
 }
 
 /**

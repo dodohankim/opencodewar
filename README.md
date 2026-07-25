@@ -151,8 +151,12 @@ claude --plugin-dir ./plugin
 ```
 /ocw nickname <이름>     # 리더보드 표시 이름 등록·변경
 /ocw status              # 내 userId·닉네임·수집 상태 확인
+/ocw brief on | off      # 세션 시작 브리핑(순위·계급·스트릭 한 줄) 켜기/끄기
 /ocw enable | disable    # 수집 켜기/끄기
 ```
+
+세션을 시작하면 터미널에 **한 줄 브리핑**이 뜹니다 — 지금 알릴 만한 것 하나만(스트릭이 끊길 참이거나,
+다음 계급이 코앞이거나, 바로 위 경쟁자와 얼마 차이인지). 알릴 변화가 없으면 아무것도 표시하지 않습니다.
 
 - 설정 파일: `~/.open-code-war/config.json` (userId · 닉네임 · on/off)
 - ⚠️ `userId`는 **신원이자 비밀키**입니다. 공유하지 마세요.

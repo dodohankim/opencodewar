@@ -7,6 +7,7 @@
 //   signup | login — Google 계정 연동 (DESIGN.md §14)
 //   email public|private — 연동 이메일 프로필 공개 여부 (기본 비공개)
 //   random — 등록 유저 중 무작위 한 명의 공개 프로필 카드
+//   brief on|off — 세션 시작 브리핑 표시 여부 (DESIGN.md §19)
 //   status | whoami | enable | disable | help
 
 import { ensureConfig, saveConfig, endpointOf } from './lib/config.mjs';
@@ -560,6 +561,11 @@ async function status() {
     lines.push(`- 순위(일간): ${rankParts.join(' · ')}`);
   }
 
+  // 세션 시작 시 터미널에 뜨는 한 줄 브리핑(DESIGN.md §19). 꺼져 있으면 켜는 법을 같이 알린다.
+  lines.push(
+    cfg.brief === false ? '- 세션 브리핑: 꺼짐 — `/ocw brief on`' : '- 세션 브리핑: 켜짐 (`/ocw brief off` 로 끄기)',
+  );
+
   // 내 프로필 페이지 링크. 닉네임 미등록이면 페이지가 없으므로 생략.
   const nickForUrl = (me && me.nickname) || cfg.nickname || null;
   if (nickForUrl) {
@@ -587,6 +593,7 @@ function help() {
       '- `/ocw email public|private` — 연동 이메일 프로필 공개/비공개 (기본 비공개)',
       '- `/ocw status` — 내 정보 및 오늘 순위',
       '- `/ocw random` — 등록 유저 중 무작위 한 명 구경하기',
+      '- `/ocw brief on|off` — 세션 시작 브리핑(순위·계급·스트릭 한 줄) 켜기/끄기',
       '- `/ocw disable` / `/ocw enable` — 집계 끄기/켜기',
       '- `/ocw delete` — 프로필만 비움(닉네임·순위·사용량 유지)',
       '- `/ocw delete all` — 사용량 포함 전부 영구 삭제(되돌릴 수 없음)',
@@ -625,6 +632,27 @@ async function main() {
       return project(rest);
     case 'delete':
       return deleteData(rest);
+    case 'brief': {
+      const v = (rest || '').trim().toLowerCase();
+      if (v === 'on' || v === 'off') {
+        cfg.brief = v === 'on';
+        saveConfig(cfg);
+        return print(
+          v === 'on'
+            ? '● 세션 브리핑을 켰습니다. 다음 세션부터 순위·계급·스트릭이 한 줄로 표시됩니다.'
+            : '⏸ 세션 브리핑을 껐습니다. 다시 켜려면 `/ocw brief on`.',
+        );
+      }
+      return print(
+        [
+          `세션 브리핑: ${cfg.brief === false ? '꺼짐' : '켜짐'}`,
+          '사용법: `/ocw brief on` | `/ocw brief off`',
+          '',
+          '세션을 시작할 때 순위·계급·스트릭 중 지금 알릴 만한 것 하나를 한 줄로 보여줍니다.',
+          '알릴 변화가 없으면 아무것도 표시하지 않습니다.',
+        ].join('\n'),
+      );
+    }
     case 'enable':
       cfg.enabled = true;
       saveConfig(cfg);

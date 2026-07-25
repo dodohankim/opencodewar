@@ -64,6 +64,52 @@ function resolveTrackScript(): string | null {
 const TRACK_SCRIPT = resolveTrackScript();
 const NODE = resolveNode();
 
+// 세션 브리핑 스크립트는 track.mjs 와 같은 디렉토리에 있다(DESIGN.md §19).
+const BRIEF_SCRIPT: string | null = (() => {
+  if (!TRACK_SCRIPT) return null;
+  const p = join(dirname(TRACK_SCRIPT), 'brief.mjs');
+  return existsSync(p) ? p : null;
+})();
+
+const BRIEF_TIMEOUT_MS = 3000;
+
+/** 확장 로드 시 브리핑을 미리 받아둔다(표시는 하지 않는다). 실패는 무시. */
+function prefetchBrief(): void {
+  if (!BRIEF_SCRIPT || !NODE) return;
+  try {
+    const child = spawn(NODE, [BRIEF_SCRIPT, '--prefetch'], { detached: true, stdio: 'ignore' });
+    child.on('error', () => {});
+    child.unref();
+  } catch {
+    // 브리핑 실패가 입력 처리를 막아선 안 된다
+  }
+}
+
+/** 표시할 브리핑 한 줄. 없으면 null. 문구·우선순위 판정은 brief.mjs 안에 있다. */
+function briefLine(sessionId: string | null): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!BRIEF_SCRIPT || !NODE) return resolve(null);
+    try {
+      const args = [BRIEF_SCRIPT, '--line'];
+      if (sessionId) args.push('--session', sessionId);
+      const child = spawn(NODE, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+      let out = '';
+      const timer = setTimeout(() => resolve(null), BRIEF_TIMEOUT_MS);
+      child.stdout.on('data', (c) => (out += c));
+      child.on('error', () => {
+        clearTimeout(timer);
+        resolve(null);
+      });
+      child.on('close', () => {
+        clearTimeout(timer);
+        resolve(out.trim() || null);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 /** 프롬프트 1건 집계. 절대 throw 하지 않고, 호출자를 기다리게 하지 않는다. */
 function track(prompt: string): void {
   if (!TRACK_SCRIPT || !NODE) return;
@@ -82,9 +128,25 @@ function track(prompt: string): void {
 }
 
 export default function (pi: any) {
-  pi.on('input', async (event: any) => {
+  // pi 에는 SessionStart 훅이 없다 — 확장 로드 시점에 한 번 미리 받아둔다.
+  prefetchBrief();
+
+  pi.on('input', async (event: any, ctx: any) => {
     try {
-      if (COUNTED_SOURCES.has(event?.source)) track(typeof event?.text === 'string' ? event.text : '');
+      if (COUNTED_SOURCES.has(event?.source)) {
+        track(typeof event?.text === 'string' ? event.text : '');
+
+        // 입력 처리를 기다리게 하지 않는다 — 뒤에서 조회하고 나오면 그때 띄운다.
+        void (async () => {
+          try {
+            const sessionId = ctx?.sessionManager?.getSessionFile?.() ?? null;
+            const line = await briefLine(sessionId);
+            if (line) ctx?.ui?.notify?.(line, 'info');
+          } catch {
+            // 브리핑 실패는 조용히 무시
+          }
+        })();
+      }
     } catch {
       // 어떤 오류도 입력 처리를 막지 않는다
     }
