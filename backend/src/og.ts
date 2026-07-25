@@ -121,9 +121,14 @@ export function ogImageKey(publicId: string): string {
   return `og:img:${publicId}`;
 }
 export function ogImageUrl(publicId: string): string {
-  // ?d=YYYYMMDD — 카톡·X 등 플랫폼의 이미지 캐시를 일 단위로 우회한다(데일리 카드 컨셉 유지).
+  // ?d=YYYYMMDD-HHMM(30분 버킷, UTC) — 카톡·X 등 플랫폼의 이미지 캐시 우회.
+  // 일 단위 버킷이면 하루 여러 번 공유해도 그 플랫폼의 첫 스크랩 카드가 하루 종일 고정되므로,
+  // KV TTL(OG_KV_TTL_S=30분)과 같은 입자로 쪼개 재공유 시 최신 수치를 다시 긁어가게 한다.
   // /og/ 라우팅·KV 캐시는 pathname 만 보므로 서버 동작엔 영향 없다.
-  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const now = new Date();
+  now.setUTCMinutes(Math.floor(now.getUTCMinutes() / 30) * 30, 0, 0);
+  const iso = now.toISOString();
+  const d = `${iso.slice(0, 10).replace(/-/g, '')}-${iso.slice(11, 16).replace(':', '')}`;
   return `${SITE_ORIGIN}${OG_IMAGE_PREFIX}${publicId}.png?d=${d}`;
 }
 /** '/og/<public_id>.png' 에서 public_id 를 꺼낸다. 형식이 아니면 null. */
