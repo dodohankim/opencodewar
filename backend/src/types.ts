@@ -36,8 +36,16 @@ export interface LeaderboardRow {
   nickname: string | null;
   public_id: string | null;
   country: string | null;
+  /** users.projects 원본 JSON 문자열. 대표 프로젝트 1개만 뽑아 랭킹에 실는다. */
+  projects: string | null;
   prompts: number;
   chars: number;
+}
+
+/** 리더보드 행에 붙는 대표 프로젝트(홍보용). desc 는 리더보드에 안 쓰므로 담지 않는다. */
+export interface RankProject {
+  name: string;
+  url?: string;
 }
 
 /** 공개 랭킹 항목 (user_id는 비밀키라 제외) */
@@ -49,6 +57,8 @@ export interface RankEntry {
   /** 공개 프로필 slug. 라우팅용 — 등록 유저는 닉네임으로, 익명 유저는 이 값으로 상세 진입. */
   public_id: string | null;
   country: string | null;
+  /** 대표 프로젝트(없으면 null). 리더보드에서 코더 이름 옆에 이름+링크로 노출. */
+  project: RankProject | null;
   prompts: number;
   chars: number;
 }

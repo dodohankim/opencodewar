@@ -156,6 +156,17 @@ export function normalizeProjects(v: unknown): Project[] | null {
   return out;
 }
 
+/** users.projects(JSON 문자열) → Project[]. 미설정·파싱 실패·형식 불일치는 빈 배열. */
+export function parseProjects(raw: string | null): Project[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? (v as Project[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function parseMetric(v: string | null): Metric {
   return v === 'chars' ? 'chars' : 'prompts';
 }

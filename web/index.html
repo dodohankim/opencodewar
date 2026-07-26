@@ -299,7 +299,7 @@
   .zonepick select { font:inherit; font-size:12px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 8px; cursor:pointer; max-width:180px; }
 
   .board-scroll { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; min-width:640px; }
+  table { width:100%; border-collapse:collapse; min-width:760px; }
   thead th { font-size:10.5px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); text-align:left; padding:6px 15px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
   th.num, td.num { text-align:right; font-variant-numeric:tabular-nums; }
   tbody td { padding:7px 15px; font-size:13.5px; vertical-align:middle; }
@@ -315,6 +315,14 @@
   .me .nm { font-weight:700; }
   .you { color:var(--faint); font-size:11px; }
   .cc { color:var(--faint); font-size:12px; }
+  /* 코더 옆 대표 프로젝트 — 긴 이름은 셀 안에서 말줄임(행 높이 유지) */
+  td.proj { max-width:190px; }
+  .proj-l { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; color:var(--dim); font-size:12.5px; text-decoration:none; }
+  a.proj-l { text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:2px; }
+  a.proj-l:hover { color:var(--fg); text-decoration-color:var(--fg); }
+  .proj-l .arr { color:var(--faint); margin-left:3px; }
+  a.proj-l:hover .arr { color:var(--ok); }
+  .proj-none { color:var(--faint); }
   .pnum { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
   .snum { color:var(--dim); font-variant-numeric:tabular-nums; }
   .bar { letter-spacing:-1px; white-space:nowrap; }
@@ -535,13 +543,13 @@
           <table>
             <thead>
               <tr>
-                <th>#</th><th>coder</th>
+                <th>#</th><th>coder</th><th>shipping</th>
                 <th class="num" id="thPrimary">prompts</th>
                 <th class="num" id="thSecond">chars</th>
                 <th>activity</th><th>cc</th>
               </tr>
             </thead>
-            <tbody id="tbody"><tr><td colspan="6"><div class="msg" id="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
+            <tbody id="tbody"><tr><td colspan="7"><div class="msg" id="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
           </table>
         </div>
       </section>
@@ -858,7 +866,7 @@
     $('thSecond').textContent = curMetric === 'prompts' ? 'chars' : 'prompts';
     // city 스코프인데 고를 도시가 없으면(해당 국가에 등록 도시 없음) 빈 상태 안내.
     if (curScope === 'city' && !curCity) {
-      $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('zone_nocity')}</div></td></tr>`;
+      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('zone_nocity')}</div></td></tr>`;
       return;
     }
     loadParade(); // 퍼레이드는 보드 탭·스코프와 무관(전역 total+daily) — 본 요청과 병렬 로딩
@@ -872,8 +880,19 @@
     } catch (e) {
       $('liveDot').classList.add('off');
       $('liveText').textContent = t('live_off');
-      $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div></td></tr>`;
+      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div></td></tr>`;
     }
+  }
+
+  // 코더 옆 대표 프로젝트 셀. url 이 있으면 이름 자체가 링크(아웃바운드 ?ref — DESIGN.md §18),
+  // 없으면 이름만. 미등록이면 '–' 을 남겨 "여기에 내 프로젝트를 걸 수 있다"가 보이게 한다.
+  function projCell(p) {
+    if (!p || !p.name) return `<span class="proj-none">–</span>`;
+    const nm = escapeHtml(p.name);
+    const url = p.url ? safeUrl(p.url) : '';
+    if (!url) return `<span class="proj-l" title="${nm}">${nm}</span>`;
+    return `<a class="proj-l" href="${escapeHtml(outboundUrl(url))}" target="_blank" rel="nofollow noopener"
+      title="${nm} · ${escapeHtml(linkLabel(url))}">${nm}<span class="arr">↗</span></a>`;
   }
 
   function render(data) {
@@ -894,7 +913,7 @@
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} · ${t('every_5m')}` : '';
 
     if (!rows.length) {
-      $('tbody').innerHTML = `<tr><td colspan="6"><div class="msg">${t('empty')}</div></td></tr>`;
+      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('empty')}</div></td></tr>`;
       return;
     }
     const max = Math.max(...rows.map((r) => r[curMetric] || 0), 1);
@@ -919,6 +938,7 @@
       return `<tr class="${isMe ? 'me' : ''}">
         <td><span class="${rankCls}">${r.rank}</span></td>
         <td>${mini}${nmCell}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
+        <td class="proj">${projCell(r.project)}</td>
         <td class="num"><span class="pnum">${fmt(primary)}</span></td>
         <td class="num"><span class="snum">${fmt(second)}</span></td>
         <td><span class="bar">${bar(pct)}</span></td>

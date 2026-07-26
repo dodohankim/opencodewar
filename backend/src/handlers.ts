@@ -19,9 +19,9 @@ import {
   normalizeLinks,
   normalizeProjects,
   parseMetric,
+  parseProjects,
   parseType,
   type Links,
-  type Project,
 } from './validate';
 import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, dayFilter, getSnapshot, periodOf } from './snapshot';
 import { buildBriefing } from './briefing';
@@ -32,7 +32,7 @@ import { cityKey, cleanCity, countryFlag } from './zones';
 /** 유저 상세 페이지 그래프가 보여주는 최근 사용량 구간(로컬 일수). */
 const PROFILE_WINDOW_DAYS = 30;
 
-/** links/projects 는 users 테이블에 JSON 문자열로 저장된다. 파싱 실패 시 기본값 반환. */
+/** links 는 users 테이블에 JSON 문자열로 저장된다. 파싱 실패 시 기본값 반환(projects 는 validate.ts). */
 function parseLinks(raw: string | null): Links {
   if (!raw) return {};
   try {
@@ -40,15 +40,6 @@ function parseLinks(raw: string | null): Links {
     return v && typeof v === 'object' && !Array.isArray(v) ? (v as Links) : {};
   } catch {
     return {};
-  }
-}
-function parseProjects(raw: string | null): Project[] {
-  if (!raw) return [];
-  try {
-    const v = JSON.parse(raw);
-    return Array.isArray(v) ? (v as Project[]) : [];
-  } catch {
-    return [];
   }
 }
 

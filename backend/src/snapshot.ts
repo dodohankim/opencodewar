@@ -3,11 +3,23 @@
 // - 읽기: /leaderboard = KV get 1회 → D1 미접근
 // - 신선도: SNAPSHOT_TTL_MS 초과 시 읽기 시점에 자동 재빌드(cron이 없거나 트래픽만 있어도 동작)
 
-import type { BoardSnapshot, BoardType, Env, LeaderboardRow, Metric, Period, RankEntry, Snapshot } from './types';
+import type {
+  BoardSnapshot,
+  BoardType,
+  Env,
+  LeaderboardRow,
+  Metric,
+  Period,
+  RankEntry,
+  RankProject,
+  Snapshot,
+} from './types';
 import { utcToday, monthDays, weekDays, weekendDays } from './time';
 import { displayNickname } from './nickname';
+import { isValidUrl, parseProjects } from './validate';
 
-export const SNAPSHOT_KEY = 'lb:snapshot:v2'; // v2: 'all'(전체 기간) 보드 추가 — 배포 즉시 재빌드 유도
+// v2: 'all'(전체 기간) 보드 추가 / v3: 랭킹 항목에 대표 프로젝트 추가 — 배포 즉시 재빌드 유도
+export const SNAPSHOT_KEY = 'lb:snapshot:v3';
 const SNAPSHOT_LIMIT = 100;
 const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30분
 const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend', 'monthly', 'all'];
@@ -51,6 +63,35 @@ export function periodOf(type: BoardType, now: number): Period {
   return { from: days[0], to: days[days.length - 1], days };
 }
 
+/**
+ * 리더보드에 실을 대표 프로젝트 1개. main 표식이 있으면 그것, 없으면 첫 항목 —
+ * 유저 상세(main 우선, 나머지는 등록 순)에서 맨 위에 보이는 것과 같은 프로젝트다.
+ * name 이 없으면 버리고, url 이 http(s) 절대 URL 이 아니면 링크 없이 이름만 남긴다.
+ */
+export function pickMainProject(raw: string | null): RankProject | null {
+  const list = parseProjects(raw);
+  const picked = list.find((p) => p && p.main === true) ?? list[0];
+  const name = picked && typeof picked.name === 'string' ? picked.name.trim() : '';
+  if (!name) return null;
+  const project: RankProject = { name };
+  if (isValidUrl(picked.url)) project.url = picked.url.trim();
+  return project;
+}
+
+/** D1 원시 행 → 공개 랭킹 항목. user_id 는 비밀키라 응답에 담지 않는다. */
+function toRankEntry(r: LeaderboardRow, i: number): RankEntry {
+  return {
+    rank: i + 1,
+    nickname: displayNickname(r.nickname, r.user_id),
+    registered: r.nickname != null,
+    public_id: r.public_id ?? null,
+    country: r.country ?? null,
+    project: pickMainProject(r.projects ?? null),
+    prompts: Number(r.prompts) || 0,
+    chars: Number(r.chars) || 0,
+  };
+}
+
 /** 특정 보드×지표의 top-N 랭킹을 D1에서 계산 */
 export async function computeRanking(
   env: Env,
@@ -64,26 +105,18 @@ export async function computeRanking(
   // daily_stats 는 (user_id, day, agent) 단위 행 — daily 도 유저별 합산이 필요해 전 보드 동일 쿼리.
   const { sql: dayCond, binds: dayBinds } = dayFilter(type, now);
   const result = await env.DB.prepare(
-    `SELECT s.user_id, u.nickname, u.public_id, MAX(s.country) AS country,
+    `SELECT s.user_id, u.nickname, u.public_id, u.projects, MAX(s.country) AS country,
             SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
      FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
      WHERE ${dayCond}
-     GROUP BY s.user_id, u.nickname, u.public_id
+     GROUP BY s.user_id, u.nickname, u.public_id, u.projects
      ORDER BY ${orderCol} DESC, s.user_id ASC
      LIMIT ?`,
   )
     .bind(...dayBinds, limit)
     .all<LeaderboardRow>();
 
-  return result.results.map((r, i) => ({
-    rank: i + 1,
-    nickname: displayNickname(r.nickname, r.user_id),
-    registered: r.nickname != null,
-    public_id: r.public_id ?? null,
-    country: r.country ?? null,
-    prompts: Number(r.prompts) || 0,
-    chars: Number(r.chars) || 0,
-  }));
+  return result.results.map(toRankEntry);
 }
 
 /**
@@ -108,26 +141,18 @@ export async function computeZoneRanking(
   binds.push(limit);
 
   const result = await env.DB.prepare(
-    `SELECT s.user_id, u.nickname, u.public_id, u.country AS country,
+    `SELECT s.user_id, u.nickname, u.public_id, u.projects, u.country AS country,
             SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
      FROM daily_stats s JOIN users u ON u.user_id = s.user_id
      WHERE ${dayCond} AND u.country = ? ${cityClause}
-     GROUP BY s.user_id, u.nickname, u.public_id
+     GROUP BY s.user_id, u.nickname, u.public_id, u.projects
      ORDER BY ${orderCol} DESC, s.user_id ASC
      LIMIT ?`,
   )
     .bind(...binds)
     .all<LeaderboardRow>();
 
-  return result.results.map((r, i) => ({
-    rank: i + 1,
-    nickname: displayNickname(r.nickname, r.user_id),
-    registered: r.nickname != null,
-    public_id: r.public_id ?? null,
-    country: r.country ?? null,
-    prompts: Number(r.prompts) || 0,
-    chars: Number(r.chars) || 0,
-  }));
+  return result.results.map(toRankEntry);
 }
 
 /** 전 보드/지표를 계산해 스냅샷 객체 생성 */
