@@ -381,6 +381,55 @@
   .cardpop .cp-btns button:disabled { opacity:.5; cursor:default; }
   .cardpop .cp-btns button.ok { color:var(--ok); border-color:var(--ok); }
   .cardpop .cp-hint { margin-top:10px; font-size:11px; color:var(--faint); text-align:center; }
+
+  /* ── 로그인/계정 (타이틀바) ── */
+  .authwrap { position:relative; display:inline-flex; }
+  #authBtn.on { color:var(--fg); border-color:var(--fg); }
+  .authpop { position:absolute; top:calc(100% + 8px); right:0; z-index:14; min-width:150px; padding:5px;
+    background:var(--bg); border:1px solid var(--line); border-radius:6px; box-shadow:0 8px 26px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; gap:2px; }
+  .authpop[hidden] { display:none; }
+  .authpop button { font:inherit; font-size:12px; text-align:left; border:0; border-radius:4px; background:none;
+    color:var(--dim); padding:7px 9px; cursor:pointer; }
+  .authpop button:hover { background:var(--hover); color:var(--fg); }
+
+  /* ── 프로필 편집 폼 ── */
+  .editbox .ed-hint { margin:0 0 16px; padding:9px 12px; border-left:2px solid var(--ok); color:var(--fg); font-size:13px; }
+  .ed-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 16px; }
+  .ed-row { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .ed-row.wide { grid-column:1 / -1; }
+  .ed-row > span { font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase; }
+  .editbox input[type=text], .editbox input[type=url], .editbox textarea {
+    font:inherit; font-size:13px; background:var(--backdrop); color:var(--fg); border:1px solid var(--line);
+    border-radius:5px; padding:7px 9px; width:100%; resize:vertical; }
+  .editbox input:focus, .editbox textarea:focus { outline:none; border-color:var(--fg); }
+  .editbox input::placeholder, .editbox textarea::placeholder { color:var(--faint); }
+  .ed-sub { margin:22px 0 10px; font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase;
+    border-top:1px solid var(--line); padding-top:14px; }
+  .ed-sub .ed-note { text-transform:none; letter-spacing:0; color:var(--faint); opacity:.8; }
+  .ed-proj { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto auto; gap:8px; align-items:center; margin-bottom:8px; }
+  .ed-proj .ed-url { grid-column:1 / -1; }
+  .ed-proj .ed-main { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--faint); white-space:nowrap; cursor:pointer; }
+  .ed-proj .ed-del { border:1px solid var(--line); background:var(--bg); color:var(--faint); font:inherit; font-size:12px;
+    border-radius:5px; padding:6px 9px; cursor:pointer; }
+  .ed-proj .ed-del:hover { color:var(--err); border-color:var(--err); }
+  .ed-add { border:1px dashed var(--line); background:none; color:var(--dim); font:inherit; font-size:12px;
+    border-radius:5px; padding:7px 12px; cursor:pointer; }
+  .ed-add:hover:not(:disabled) { color:var(--fg); border-color:var(--fg); }
+  .ed-add:disabled { opacity:.4; cursor:default; }
+  .ed-check { display:flex; align-items:center; gap:8px; margin-top:22px; padding-top:14px; border-top:1px solid var(--line);
+    font-size:12.5px; color:var(--dim); cursor:pointer; }
+  .ed-check[hidden] { display:none; }
+  .ed-check b { color:var(--fg); font-weight:400; }
+  .ed-msg { margin-top:14px; font-size:12.5px; color:var(--err); }
+  .ed-msg.ok { color:var(--ok); }
+  .ed-msg[hidden] { display:none; }
+  .ed-btns { display:flex; gap:8px; margin-top:18px; }
+  .ed-btns button { font:inherit; font-size:13px; border-radius:5px; padding:9px 20px; cursor:pointer; }
+  .ed-save { border:1px solid var(--rev-bg); background:var(--rev-bg); color:var(--rev-fg); font-weight:700; }
+  .ed-save:disabled { opacity:.5; cursor:default; }
+  .ed-cancel { border:1px solid var(--line); background:var(--bg); color:var(--dim); }
+  .ed-cancel:hover { color:var(--fg); border-color:var(--fg); }
   .profile .p-nick { font-size:clamp(19px,3.6vw,26px); font-weight:700; letter-spacing:0.02em; margin:2px 0 0; word-break:break-all; }
   /* 자기소개 — 좌측 액센트 + 본문색 + 큰 글씨로 강조(흐릿하던 문제 해결) */
   .profile .p-bio { margin:16px 0 0; padding:5px 0 5px 14px; border-left:2px solid var(--ok);
@@ -468,7 +517,8 @@
   .pagefoot a { color:var(--dim); text-decoration:none; }
   .pagefoot a:hover { color:var(--fg); }
   .pagefoot .dot { color:var(--faint); }
-  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} .ship{flex-wrap:wrap;} }
+  @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} .ship{flex-wrap:wrap;}
+    .ed-grid{grid-template-columns:1fr;} .ed-proj{grid-template-columns:minmax(0,1fr) auto;} .ed-proj .ed-desc{grid-column:1 / -1;} }
   @media (prefers-reduced-motion:reduce){
     .cursor,.flash,.tracer,.hit,.march-track,.marcher .f1,.marcher .f2,.bearer .f1,.bearer .f2,
     .soldier.typer .f1,.soldier.typer .f2,.portrait .f1,.portrait .f2,.tdots b { animation:none !important; }
@@ -483,6 +533,14 @@
     <div class="titlebar">
       <span class="lights"><i></i><i></i><i></i></span>
       <span class="name">ocw — open-code-war (live)</span>
+      <!-- 로그인/계정 — 미로그인이면 'sign in', 로그인 상태면 닉네임 버튼이 메뉴를 연다. -->
+      <span class="authwrap">
+        <button class="theme-toggle" id="authBtn" type="button" hidden aria-haspopup="menu" aria-expanded="false"></button>
+        <div class="authpop" id="authPop" role="menu" hidden>
+          <button id="authMe" type="button" role="menuitem" data-i18n="my_profile">my profile</button>
+          <button id="authOut" type="button" role="menuitem" data-i18n="sign_out">sign out</button>
+        </div>
+      </span>
       <button class="theme-toggle" id="langBtn" type="button">한국어</button>
       <button class="theme-toggle" id="themeBtn" type="button">◐ theme</button>
     </div>
@@ -589,7 +647,7 @@
       <div id="userView" hidden>
         <button class="theme-toggle backbtn" id="backBtn" type="button" data-i18n="back">← Leaderboard</button>
 
-        <section class="box profile">
+        <section class="box profile" id="uProfileBox">
           <span class="legend" data-i18n="profile_legend">profile</span>
           <div class="p-head">
             <span class="portrait" id="uPortrait" hidden aria-hidden="true"></span>
@@ -597,6 +655,7 @@
             <span class="cc" id="uCountry"></span>
             <span class="rankchip" id="uRank" hidden></span>
             <span class="headbtns" id="headBtns">
+              <button class="theme-toggle editbtn" id="editBtn" type="button" hidden data-i18n="edit">✎ edit</button>
               <button class="theme-toggle cardbtn" id="cardBtn" type="button" hidden data-i18n="card" aria-haspopup="dialog" aria-expanded="false">🖼 card</button>
               <button class="theme-toggle sharebtn" id="shareBtn" type="button" hidden data-i18n="share">⧉ share</button>
               <div class="cardpop" id="cardPop" role="dialog" aria-label="save card" hidden>
@@ -640,6 +699,49 @@
               <label data-i18n="member_since">member since</label>
               <span class="val" id="uJoined">–</span>
             </div>
+          </div>
+        </section>
+
+        <!-- 프로필 편집 — 본인이 로그인해서 자기 페이지를 볼 때만 열린다(프로필/shipping 박스와 자리를 바꾼다). -->
+        <section class="box editbox" id="editBox" hidden>
+          <span class="legend" data-i18n="edit_legend">edit profile</span>
+          <p class="ed-hint" id="edSetupHint" hidden data-i18n="setup_hint">Welcome! Pick a display name to appear on the board.</p>
+          <div class="ed-grid">
+            <label class="ed-row"><span data-i18n="f_nickname">nickname</span>
+              <input type="text" id="edNick" maxlength="20" autocomplete="off" spellcheck="false" /></label>
+            <label class="ed-row"><span data-i18n="f_role">role</span>
+              <input type="text" id="edRole" maxlength="40" data-i18n-ph="f_role_ph" placeholder="Backend Engineer" /></label>
+            <label class="ed-row"><span data-i18n="f_company">company</span>
+              <input type="text" id="edCompany" maxlength="40" /></label>
+            <label class="ed-row"><span data-i18n="f_city">city</span>
+              <input type="text" id="edCity" maxlength="40" data-i18n-ph="f_city_ph" placeholder="Seoul" /></label>
+            <label class="ed-row wide"><span data-i18n="f_bio">bio</span>
+              <textarea id="edBio" maxlength="160" rows="2"></textarea></label>
+          </div>
+
+          <div class="ed-sub" data-i18n="f_links">links</div>
+          <div class="ed-grid">
+            <label class="ed-row"><span>GitHub</span><input type="url" id="edGithub" maxlength="200" placeholder="https://github.com/…" /></label>
+            <label class="ed-row"><span>X</span><input type="url" id="edX" maxlength="200" placeholder="https://x.com/…" /></label>
+            <label class="ed-row"><span>LinkedIn</span><input type="url" id="edLinkedin" maxlength="200" placeholder="https://linkedin.com/in/…" /></label>
+            <label class="ed-row"><span data-i18n="f_website">website</span><input type="url" id="edWebsite" maxlength="200" placeholder="https://…" /></label>
+            <label class="ed-row"><span data-i18n="f_blog">blog</span><input type="url" id="edBlog" maxlength="200" placeholder="https://…" /></label>
+          </div>
+
+          <div class="ed-sub"><span data-i18n="f_projects">shipping</span> <span class="ed-note" data-i18n="f_projects_note">up to 5 · pick one as MAIN</span></div>
+          <div id="edProjects"></div>
+          <button class="ed-add" id="edProjAdd" type="button" data-i18n="add_project">+ add project</button>
+
+          <label class="ed-check" id="edEmailWrap" hidden>
+            <input type="checkbox" id="edEmailPublic" />
+            <span data-i18n="f_email_public">show my email on my profile</span>
+            <b id="edEmailAddr"></b>
+          </label>
+
+          <div class="ed-msg" id="edMsg" hidden></div>
+          <div class="ed-btns">
+            <button class="ed-save" id="edSave" type="button" data-i18n="save">save</button>
+            <button class="ed-cancel" id="edCancel" type="button" data-i18n="cancel">cancel</button>
           </div>
         </section>
 
@@ -737,6 +839,22 @@
       streak_best: (n) => `best ${n}`, streak_since: (d) => `since ${d}`,
       std_global: 'global rank', std_next: 'next rank', std_streak: 'streak',
       std_togo: (n) => `<b>${n}</b> prompts to go`, std_days: 'days',
+      sign_in: 'sign in', sign_out: 'sign out', my_profile: 'my profile',
+      edit: '✎ edit', edit_legend: 'edit profile',
+      setup_hint: 'Welcome aboard. Pick a display name — that’s the name the board will call you by.',
+      f_nickname: 'nickname', f_role: 'role', f_role_ph: 'Backend Engineer', f_company: 'company',
+      f_city: 'city', f_city_ph: 'Seoul', f_bio: 'bio', f_links: 'links', f_website: 'website', f_blog: 'blog',
+      f_projects: 'shipping', f_projects_note: '· up to 5, one can be MAIN',
+      f_proj_name: 'name', f_proj_desc: 'one-line description', f_proj_url: 'https://…',
+      f_main: 'MAIN', f_del: 'remove', add_project: '+ add project',
+      f_email_public: 'show my Google email on my profile',
+      save: 'save', cancel: 'cancel', saving: 'saving…', saved: '✓ saved',
+      err_nickname: 'Nickname must be 2–20 characters (letters, numbers, _ or spaces).',
+      err_taken: 'That nickname is already taken.',
+      err_url: 'Links must be full http(s) URLs.',
+      err_proj_name: 'Every project needs a name.',
+      err_save: "Couldn't save. Try again.",
+      err_auth: 'Your session expired. Please sign in again.',
     },
     ko: {
       langBtn: 'EN',
@@ -780,6 +898,22 @@
       streak_best: (n) => `최장 ${n}일`, streak_since: (d) => `${d}부터`,
       std_global: '전체 순위', std_next: '다음 계급', std_streak: '스트릭',
       std_togo: (n) => `<b>${n}</b> prompts 남음`, std_days: '일',
+      sign_in: '로그인', sign_out: '로그아웃', my_profile: '내 프로필',
+      edit: '✎ 편집', edit_legend: '프로필 편집',
+      setup_hint: '참전을 환영합니다. 리더보드에 표시될 이름부터 정하세요.',
+      f_nickname: '닉네임', f_role: '직함', f_role_ph: '백엔드 개발자', f_company: '소속',
+      f_city: '도시', f_city_ph: 'Seoul', f_bio: '자기소개', f_links: '링크', f_website: '웹사이트', f_blog: '블로그',
+      f_projects: '만든 것', f_projects_note: '· 최대 5개, 하나를 메인으로',
+      f_proj_name: '이름', f_proj_desc: '한 줄 설명', f_proj_url: 'https://…',
+      f_main: '메인', f_del: '삭제', add_project: '+ 프로젝트 추가',
+      f_email_public: '연동된 Google 이메일을 내 프로필에 공개',
+      save: '저장', cancel: '취소', saving: '저장 중…', saved: '✓ 저장됨',
+      err_nickname: '닉네임은 2~20자여야 합니다 (한글·영문·숫자·_·공백).',
+      err_taken: '이미 사용 중인 닉네임입니다.',
+      err_url: '링크는 http(s) 로 시작하는 전체 주소여야 합니다.',
+      err_proj_name: '프로젝트에는 이름이 필요합니다.',
+      err_save: '저장하지 못했습니다. 다시 시도해 주세요.',
+      err_auth: '세션이 만료되었습니다. 다시 로그인해 주세요.',
     },
   };
   const t = (k) => (T[LANG] && T[LANG][k] !== undefined ? T[LANG][k] : T.en[k]);
@@ -828,6 +962,8 @@
     document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
     document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
     $('langBtn').textContent = t('langBtn');
+    renderAuth(); // 로그인 버튼은 닉네임이 들어가 dynamic — data-i18n 으로 못 덮는다
+    if (editing) renderProjRows(readProjRows()); // 프로젝트 행 placeholder 도 JS 생성이라 다시 그린다
   }
 
   // 직접 고른 언어만 저장한다(자동 판정값을 저장하면 나중에 국가 판정이 영영 안 먹는다).
@@ -1388,6 +1524,7 @@
     // ?api= 등 기존 파라미터는 유지하고 경로만 바꾼다(로컬 개발용).
     const u = new URL(location.href);
     u.searchParams.delete('user');
+    u.searchParams.delete('setup'); // 가입 직후 1회용 플래그 — 주소에 남기지 않는다
     u.pathname = nick ? PROFILE_PREFIX + encodeURIComponent(nick) : '/';
     return u.pathname + u.search;
   }
@@ -1407,6 +1544,7 @@
   const BASE_TITLE = 'Open Code War — Leaderboard (live)';
   function showBoard() {
     curUser = null;
+    resetEdit();
     $('userView').hidden = true;
     $('boardView').hidden = false;
     $('cmdEcho').textContent = `GET /leaderboard?${boardQuery()}`;
@@ -1455,6 +1593,7 @@
   function showUserError(msg) {
     $('shareBtn').hidden = true;
     $('cardBtn').hidden = true;
+    $('editBtn').hidden = true;
     closeCardPop();
     $('uPortrait').hidden = true;
     $('uRank').hidden = true;
@@ -1484,6 +1623,7 @@
     uHoursCache.clear();
     syncUsortButtons();
     syncViewButtons();
+    resetEdit(); // 다른 유저로 이동 시 열려 있던 편집 폼을 접는다
     const byId = isPid(nick);
     const q = byId ? `id=${encodeURIComponent(nick)}` : `nickname=${encodeURIComponent(nick)}`;
     $('cmdEcho').textContent = `GET /user?${q}`;
@@ -1645,6 +1785,8 @@
     $('uTz').textContent = data.timezone ? t('tz_note')(data.timezone) : '';
     $('uMsg').hidden = true;
     renderUserChart();
+    syncEditBtn();
+    maybeAutoEdit();
   }
   // ── 계급(이병~장군) — 정책 원문: DESIGN.md §16. 전 기간 누적 prompts 기준, 강등 없음 ──
   const RANKS = [
@@ -2204,11 +2346,255 @@
     chartEl.addEventListener('mouseleave', hide);
   })();
 
+  // ══ 로그인 세션 + 프로필 편집 (DESIGN.md §14.9) ══════════════════════════════
+  // 웹은 자기 userId 를 모른다(HttpOnly 쿠키 세션). 그래서 "이게 내 페이지인가"는
+  // 공개 slug(publicId) 비교로 판단하고, 저장은 전부 세션 기반 /api/* 로 보낸다.
+  let SESSION = { loggedIn: false };
+  let editing = false;
+  let autoEditDone = false;
+
+  const jsonPost = (path, body) =>
+    fetch(`${API}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body),
+    });
+
+  function closeAuthPop() {
+    $('authPop').hidden = true;
+    $('authBtn').setAttribute('aria-expanded', 'false');
+  }
+  function renderAuth() {
+    const btn = $('authBtn');
+    btn.hidden = false;
+    btn.textContent = SESSION.loggedIn ? `◆ ${SESSION.nickname}` : t('sign_in');
+    btn.classList.toggle('on', !!SESSION.loggedIn);
+    closeAuthPop();
+  }
+  async function loadSession() {
+    try {
+      const res = await fetch(`${API}/api/session`, { cache: 'no-store', credentials: 'same-origin' });
+      SESSION = res.ok ? await res.json() : { loggedIn: false };
+    } catch {
+      SESSION = { loggedIn: false };
+    }
+    renderAuth();
+    syncEditBtn();
+    maybeAutoEdit();
+  }
+  // 로그인 후 보던 자리로 정확히 돌아온다(서버가 내부 경로만 허용해 open redirect 를 막는다).
+  function goSignIn() {
+    location.href = `${API}/auth/login?next=${encodeURIComponent(location.pathname + location.search)}`;
+  }
+  function myProfileSlug() {
+    return SESSION.registered ? SESSION.nickname : SESSION.publicId;
+  }
+
+  function isMine(data) {
+    return !!(SESSION.loggedIn && SESSION.publicId && data && data.publicId === SESSION.publicId);
+  }
+  function syncEditBtn() {
+    $('editBtn').hidden = editing || !isMine(uData);
+  }
+  /** 갓 가입해서 ?setup=1 로 돌아온 사람에게 편집 폼을 바로 펴 준다(세션·프로필 중 늦게 오는 쪽이 발동). */
+  function maybeAutoEdit() {
+    if (autoEditDone || editing) return;
+    if (!new URLSearchParams(location.search).has('setup')) return;
+    if (!isMine(uData)) return;
+    autoEditDone = true;
+    openEdit(true);
+  }
+
+  // ── 편집 폼 ──
+  const LINK_FIELDS = [
+    ['github', 'edGithub'], ['x', 'edX'], ['linkedin', 'edLinkedin'],
+    ['website', 'edWebsite'], ['blog', 'edBlog'],
+  ];
+  const MAX_PROJECTS = 5;
+
+  function projRowHtml(p) {
+    const v = (s) => escapeHtml(s || '');
+    return `<div class="ed-proj">
+      <input type="text" class="ed-pname" maxlength="40" placeholder="${escapeHtml(t('f_proj_name'))}" value="${v(p.name)}" />
+      <input type="text" class="ed-desc" maxlength="80" placeholder="${escapeHtml(t('f_proj_desc'))}" value="${v(p.desc)}" />
+      <label class="ed-main"><input type="radio" name="edMain"${p.main ? ' checked' : ''} /> ${escapeHtml(t('f_main'))}</label>
+      <button type="button" class="ed-del" title="${escapeHtml(t('f_del'))}" aria-label="${escapeHtml(t('f_del'))}">✕</button>
+      <input type="url" class="ed-url" maxlength="200" placeholder="${escapeHtml(t('f_proj_url'))}" value="${v(p.url)}" />
+    </div>`;
+  }
+  function readProjRows() {
+    return [...$('edProjects').querySelectorAll('.ed-proj')].map((row) => ({
+      name: row.querySelector('.ed-pname').value.trim(),
+      desc: row.querySelector('.ed-desc').value.trim(),
+      url: row.querySelector('.ed-url').value.trim(),
+      main: row.querySelector('input[type=radio]').checked,
+    }));
+  }
+  function renderProjRows(list) {
+    $('edProjects').innerHTML = list.map(projRowHtml).join('');
+    $('edProjAdd').disabled = list.length >= MAX_PROJECTS;
+  }
+
+  function edMsg(text, ok) {
+    const el = $('edMsg');
+    el.hidden = !text;
+    el.textContent = text || '';
+    el.classList.toggle('ok', !!ok);
+  }
+  function edBusy(on) {
+    $('edSave').disabled = on;
+    $('edSave').textContent = on ? t('saving') : t('save');
+  }
+
+  function openEdit(setup) {
+    if (!uData) return;
+    editing = true;
+    closeCardPop();
+    $('uProfileBox').hidden = true;
+    $('uShipBox').hidden = true;
+    $('editBox').hidden = false;
+    $('editBtn').hidden = true;
+    $('edSetupHint').hidden = !setup;
+    edMsg('');
+    edBusy(false);
+    // 닉네임 미등록자에게 보이는 이름은 자동 생성값이다 — 폼에는 넣지 않고 직접 정하게 둔다.
+    $('edNick').value = SESSION.registered ? uData.nickname || '' : '';
+    $('edRole').value = uData.role || '';
+    $('edCompany').value = uData.company || '';
+    $('edCity').value = uData.city || '';
+    $('edBio').value = uData.bio || '';
+    const links = uData.links || {};
+    for (const [key, id] of LINK_FIELDS) $(id).value = links[key] || '';
+    renderProjRows(Array.isArray(uData.projects) ? uData.projects : []);
+    const hasEmail = !!SESSION.email;
+    $('edEmailWrap').hidden = !hasEmail;
+    $('edEmailAddr').textContent = SESSION.email || '';
+    $('edEmailPublic').checked = !!SESSION.emailPublic;
+    window.scrollTo(0, 0);
+    $('edNick').focus();
+  }
+  /** 폼만 접는다(데이터 복구 없음) — 다른 유저로 이동할 때처럼 uData 가 곧 갈릴 상황용. */
+  function resetEdit() {
+    editing = false;
+    $('editBox').hidden = true;
+    $('uProfileBox').hidden = false;
+    $('editBtn').hidden = true;
+  }
+  function closeEdit() {
+    resetEdit();
+    renderProjects(uData ? uData.projects : []); // shipping 박스 표시 상태 복구
+    syncEditBtn();
+  }
+
+  async function saveEdit() {
+    const nickname = $('edNick').value.trim();
+    if (!/^[\w가-힣 ]{2,20}$/u.test(nickname)) return edMsg(t('err_nickname'));
+
+    const rows = readProjRows().filter((p) => p.name || p.desc || p.url);
+    if (rows.some((p) => !p.name)) return edMsg(t('err_proj_name'));
+    const projects = rows.map((p) => {
+      const out = { name: p.name };
+      if (p.desc) out.desc = p.desc;
+      if (p.url) out.url = p.url;
+      if (p.main) out.main = true;
+      return out;
+    });
+
+    const links = {};
+    for (const [key, id] of LINK_FIELDS) links[key] = $(id).value.trim();
+    const urls = [...Object.values(links), ...projects.map((p) => p.url || '')].filter(Boolean);
+    if (urls.some((u) => !/^https?:\/\//i.test(u))) return edMsg(t('err_url'));
+
+    edMsg('');
+    edBusy(true);
+    try {
+      // 닉네임은 유일성 검사(409)가 있어 따로 보낸다. 바뀌지 않았으면 건너뛴다.
+      if (!SESSION.registered || nickname !== uData.nickname) {
+        const res = await jsonPost('/api/nickname', { nickname });
+        if (res.status === 409) return edMsg(t('err_taken'));
+        if (res.status === 401) return edMsg(t('err_auth'));
+        if (!res.ok) return edMsg(t('err_save'));
+      }
+      const res = await jsonPost('/api/profile', {
+        role: $('edRole').value,
+        company: $('edCompany').value,
+        city: $('edCity').value,
+        bio: $('edBio').value,
+        links,
+        projects,
+      });
+      if (res.status === 401) return edMsg(t('err_auth'));
+      if (!res.ok) return edMsg(t('err_save'));
+
+      const wantEmailPublic = $('edEmailPublic').checked;
+      if (!$('edEmailWrap').hidden && wantEmailPublic !== !!SESSION.emailPublic) {
+        await jsonPost('/api/account', { emailPublic: wantEmailPublic });
+      }
+    } catch {
+      return edMsg(t('err_save'));
+    } finally {
+      edBusy(false);
+    }
+
+    await loadSession();
+    resetEdit();
+    invalidateCardBlob(); // 프로필이 바뀌었으니 캐시된 OG 카드는 폐기
+    // 닉네임을 새로 정했으면 주소도 /u/<닉네임> 으로 (urlFor 가 ?setup= 도 함께 떨군다).
+    if (nickname !== curUser) {
+      curUser = nickname;
+      history.replaceState({ user: nickname }, '', urlFor(nickname));
+    }
+    document.title = `${nickname} · Open Code War`;
+    loadUser(nickname);
+  }
+
+  $('authBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!SESSION.loggedIn) return goSignIn();
+    const open = $('authPop').hidden;
+    $('authPop').hidden = !open;
+    $('authBtn').setAttribute('aria-expanded', String(open));
+  });
+  $('authMe').addEventListener('click', () => {
+    closeAuthPop();
+    const slug = myProfileSlug();
+    if (slug) navigateUser(slug);
+  });
+  $('authOut').addEventListener('click', async () => {
+    closeAuthPop();
+    try { await jsonPost('/auth/logout', {}); } catch {}
+    resetEdit();
+    await loadSession();
+    if (curUser) loadUser(curUser);
+  });
+  document.addEventListener('click', (e) => {
+    if (!$('authPop').hidden && !e.target.closest('.authwrap')) closeAuthPop();
+  });
+  $('editBtn').addEventListener('click', () => openEdit(false));
+  $('edCancel').addEventListener('click', closeEdit);
+  $('edSave').addEventListener('click', saveEdit);
+  $('edProjAdd').addEventListener('click', () => {
+    const rows = readProjRows();
+    if (rows.length >= MAX_PROJECTS) return;
+    rows.push({ name: '' });
+    renderProjRows(rows);
+  });
+  $('edProjects').addEventListener('click', (e) => {
+    const del = e.target.closest('.ed-del');
+    if (!del) return;
+    const row = del.closest('.ed-proj');
+    const rows = readProjRows();
+    rows.splice([...$('edProjects').children].indexOf(row), 1);
+    renderProjRows(rows);
+  });
+
   window.addEventListener('popstate', route);
 
   applyLang();
   load();  // 리더보드를 미리 채워둠(상세에서 뒤로가기 시 즉시 표시)
   loadZones(); // 구역 셀렉터 드롭다운 채우기(백그라운드)
+  loadSession(); // 로그인 상태 확인(백그라운드) — 끝나면 편집 버튼 노출 여부가 정해진다
   route(); // 초기 URL(/u/<nick>) 에 맞춰 뷰 결정
 </script>
 

@@ -102,11 +102,18 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   if (!body || !isValidUserId(body.userId)) {
     return json({ error: 'invalid_userId' }, 400);
   }
-  if (!isValidNickname(body.nickname)) {
+  return setNickname(env, body.userId, body.nickname);
+}
+
+/**
+ * 닉네임 등록/변경 본체. 주체(userId)를 어디서 얻었는지와 무관하다 —
+ * CLI 는 body 의 비밀 userId 로, 웹은 세션 쿠키로 확인한 뒤 같은 함수를 부른다.
+ */
+export async function setNickname(env: Env, userId: string, raw: unknown): Promise<Response> {
+  if (!isValidNickname(raw)) {
     return json({ error: 'invalid_nickname' }, 400);
   }
-  const userId = body.userId;
-  const nickname = (body.nickname as string).trim();
+  const nickname = raw.trim();
   const now = Date.now();
 
   await env.DB.prepare(
@@ -427,8 +434,14 @@ export async function handleProfile(request: Request, env: Env): Promise<Respons
   if (!body || !isValidUserId(body.userId)) {
     return json({ error: 'invalid_userId' }, 400);
   }
-  const userId = body.userId;
+  return updateProfile(env, body.userId, body);
+}
 
+/**
+ * 프로필 필드 갱신 본체(주체 확인은 호출자 몫 — CLI 는 비밀 userId, 웹은 세션).
+ * body 에 **있는 키만** 건드린다. userId 키는 여기서 읽지 않는다.
+ */
+export async function updateProfile(env: Env, userId: string, body: Record<string, unknown>): Promise<Response> {
   // 제공된 필드만 SET 절에 넣는다. echo 는 정규화된 값을 응답에 담아 클라이언트가 로컬 캐시 갱신에 쓴다.
   const cols: string[] = [];
   const vals: (string | null)[] = [];

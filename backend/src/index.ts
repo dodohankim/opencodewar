@@ -21,7 +21,10 @@ import {
   handleAuthLink,
   handleAuthStart,
   handleAuthStatus,
+  handleWebLogin,
+  handleWebLogout,
 } from './auth';
+import { handleApiAccount, handleApiNickname, handleApiProfile, handleApiSession } from './api';
 import {
   handleOgImage,
   handleProfilePage,
@@ -118,6 +121,25 @@ export default {
       }
       if (pathname === '/account' && request.method === 'POST') {
         return await handleAccountUpdate(request, env);
+      }
+      // 웹 로그인/회원가입 + 세션 API (DESIGN.md §14.9). /auth/callback 은 위 CLI 라우트와 공유한다.
+      if (pathname === '/auth/login' && isPageRead(request.method)) {
+        return await handleWebLogin(url, env);
+      }
+      if (pathname === '/auth/logout' && request.method === 'POST') {
+        return await handleWebLogout(request, env);
+      }
+      if (pathname === '/api/session' && request.method === 'GET') {
+        return await handleApiSession(request, env);
+      }
+      if (pathname === '/api/profile' && request.method === 'POST') {
+        return await handleApiProfile(request, url, env);
+      }
+      if (pathname === '/api/nickname' && request.method === 'POST') {
+        return await handleApiNickname(request, url, env);
+      }
+      if (pathname === '/api/account' && request.method === 'POST') {
+        return await handleApiAccount(request, url, env);
       }
       if (pathname === '/user/hours' && request.method === 'GET') {
         return await handleUserHours(url, env);

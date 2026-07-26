@@ -359,7 +359,7 @@ GROUP BY user_id ORDER BY p DESC LIMIT :limit;
 **비목표**
 - 사용량 위조 방지 (§14.6 — 로그인은 신원 증명이지 정직성 검증이 아님)
 - 로그인 강제 — 익명 참가는 계속 1급 시민. 진입장벽 없음이 이 서비스의 생명.
-- 웹 세션 / 웹 프로필 편집 — 2단계. (콜백에서 쿠키만 심어두면 확장 가능)
+- ~~웹 세션 / 웹 프로필 편집 — 2단계~~ → **§14.9 로 구현 완료(2026-07-26)**
 
 ### 14.2 원칙: 진입점은 플러그인, 브라우저는 OAuth 동의에만
 
@@ -451,6 +451,76 @@ CREATE TABLE accounts (
 Claude Code Ads·Kickbacks — 실제 돈이 걸림)도 암호학적 검증 없이 서버측 카운팅 + 휴리스틱 + 지급 보류로
 운영. 즉 완전 차단은 현재 불가 → 로그인(밴 지속성) + §14.6 억제책이 실질 상한. Anthropic 이 개인 usage
 OAuth 를 열면 그때 "verified" 트랙 추가.
+
+### 14.9 웹 로그인 / 마이페이지 / 프로필 편집 (2026-07-26)
+
+§14.1 에서 "2단계"로 미뤄뒀던 것. **터미널을 안 켜고도 가입·로그인·프로필 수정이 되게** 하는 게 목적이다
+(플러그인만이 유일한 진입점이면 명함첩(§ 제품방향)으로서의 문턱이 너무 높다).
+
+#### 자격증명이 두 갈래가 된다
+
+| | CLI | 웹 |
+|---|---|---|
+| 주체 확인 | 요청 body 의 비밀 `userId` | HttpOnly 쿠키 세션(`ocw_sess`) |
+| 엔드포인트 | `/track` `/register` `/profile` `/account` | `/api/nickname` `/api/profile` `/api/account` |
+
+**웹에는 `userId` 를 절대 내려보내지 않는다.** `userId` 는 `/track` 권한까지 가진 bearer 비밀키라, 한 번
+브라우저 JS 에 노출되면 XSS 하나로 계정이 통째로 털린다. 그래서 `/api/session` 응답에도 없고, 웹이
+"이게 내 페이지인가"를 판단할 땐 공개 slug(`publicId`)를 비교한다.
+
+`/api/*` 는 CLI 엔드포인트와 검증·저장 로직을 공유한다(`setNickname` / `updateProfile` / `setEmailPublic`
+를 추출해 양쪽이 호출). 주체를 어디서 얻느냐만 다르다.
+
+#### 세션
+
+- KV `sess:<hex32>` → `{userId, googleSub, email, createdAt}`, TTL 30일.
+- 쿠키 `ocw_sess`: `HttpOnly; Secure; SameSite=Lax; Path=/`.
+- CSRF 방어 2겹: SameSite=Lax(크로스사이트 POST 에 쿠키 미포함) + `/api/*` 상태변경 요청의 `Origin` 검사.
+- `json()` 이 붙이는 `Access-Control-Allow-Origin: *` 는 credentials 와 함께 못 쓰이므로(브라우저가 거부)
+  외부 사이트가 남의 세션으로 `/api/session` 을 읽을 수 없다. `Allow-Credentials` 는 **붙이지 않는다.**
+
+#### 플로우
+
+```
+GET /auth/login?next=/u/foo
+  → KV authweb:<code> = {nonce, next}, TTL 10분, 1회용
+  → 302 Google (state = 'web.<code>.<nonce>')
+GET /auth/callback            ← CLI 연동과 같은 redirect_uri 를 공유한다
+  state 가 'web.' 로 시작 → 웹 로그인, 아니면 CLI 연동(§14.3)
+  accounts 에 google_sub 있음 → 그 user_id 로 세션
+                     없음 → 웹 단독 가입: users+accounts 신규 생성
+  → Set-Cookie + 302 (기존 유저는 next, 신규는 /u/<public_id>?setup=1)
+```
+
+- **redirect_uri 를 하나로 유지**한 건 GCP 콘솔에 등록된 URI 가 `/auth/callback` 하나뿐이기 때문이다.
+  플로우 구분은 `state` 접두사로 한다 → **콘솔 설정 변경 없이 배포 가능.**
+- **link-jacking 확인 페이지(§14.6)가 여기엔 없다.** 저건 "이미 있는 남의 익명 userId 에 내 Google 을
+  붙이는" 상황을 막는 장치인데, 웹 로그인은 붙일 대상 자체가 없다(브라우저에서 시작해 브라우저에서 끝난다).
+- `next` 는 내부 경로만 허용(`/` 로 시작 + `//`·`/\` 금지) — open redirect 차단.
+
+#### 웹 단독 가입 (CLI 미설치자)
+
+`newWebUserId()` 가 플러그인과 **같은 36자 형식**(`ocw_` + hex32)으로 발급한다. 이 값이 나중에 CLI
+`/ocw signup` 의 canonical userId 가 되어 `config.userId` 에 들어가므로, `isValidUserId`(≤64자)를
+통과하지 못하면 그 기기의 `/track` 이 전부 400 이 된다 — `test/session.test.ts` 가 이걸 지킨다.
+
+기록은 0에서 시작하고, 나중에 그 사람이 CLI 를 깔고 `/ocw signup` 하면 기존 병합 로직(§14.4)이 기기
+사용량을 이 계정으로 합쳐준다.
+
+#### 웹 UI
+
+- 타이틀바: 미로그인 `로그인` / 로그인 시 `◆ <닉네임>` → 메뉴(내 프로필 · 로그아웃).
+- 마이페이지는 **별도 화면이 아니라 자기 프로필의 인라인 편집**이다 — 내 `/u/<nick>` 에서만 `✎ 편집`
+  버튼이 뜨고, 누르면 프로필/shipping 박스가 폼으로 바뀐다. 보이는 화면 = 남이 보는 화면이라 미리보기가 필요 없다.
+- 편집 항목: 닉네임 · 직함 · 소속 · 도시 · 자기소개 · 링크 5종 · shipping 5개(메인 1개) · 이메일 공개 여부.
+- 갓 가입한 사람은 `?setup=1` 로 돌아와 폼이 자동으로 펴지고 닉네임부터 묻는다. 저장 후 주소는
+  `/u/<닉네임>` 으로 갈아끼우고 `?setup=` 은 떨군다.
+- 닉네임만 별도 요청(`/api/nickname`)인 이유는 유일성 충돌(409)을 따로 처리해야 하기 때문.
+
+#### 안 한 것
+
+- 웹에서의 계정 삭제(`/delete` 웹판) — CLI `/ocw delete all` 만 있다.
+- 연동 해제, 세션 목록/원격 로그아웃.
 
 ---
 

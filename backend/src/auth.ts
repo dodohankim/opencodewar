@@ -9,6 +9,14 @@ import { json, readJson } from './http';
 import { isValidUserId } from './validate';
 import { displayNickname } from './nickname';
 import { newPublicId } from './publicid';
+import {
+  createSession,
+  clearSessionCookie,
+  destroySession,
+  newWebUserId,
+  randomToken,
+  sessionCookie,
+} from './session';
 
 /** 링크 코드 유효기간(초) — 브라우저에서 Google 로그인을 마칠 때까지의 여유. */
 const PENDING_TTL_S = 600;
@@ -36,11 +44,6 @@ interface AuthLinkRecord {
   canonicalUserId?: string;
   firstSignup?: boolean;
   merged?: { prompts: number; chars: number } | null;
-}
-
-function randomToken(): string {
-  const buf = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function kvKey(code: string): string {
@@ -156,12 +159,44 @@ export async function handleAuthLink(url: URL, env: Env, code: string): Promise<
   return Response.redirect(auth.toString(), 302);
 }
 
-/** GET /auth/callback — Google 리다이렉트 수신 → id_token 검증 → 연동 확인 페이지. */
+/**
+ * authorization code → id_token 교환 후 클레임 반환.
+ * TLS 로 Google 에서 직접 받으므로 서명(JWKS) 검증은 생략하고 iss·aud 만 확인한다(§14.5).
+ */
+async function exchangeCode(url: URL, env: Env, gcode: string): Promise<GoogleClaims | null> {
+  const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: gcode,
+      client_id: env.GOOGLE_CLIENT_ID!,
+      client_secret: env.GOOGLE_CLIENT_SECRET!,
+      redirect_uri: `${url.origin}/auth/callback`,
+    }),
+  });
+  const token = (await tokenRes.json().catch(() => null)) as { id_token?: string } | null;
+  const idToken = token?.id_token;
+  if (!tokenRes.ok || !idToken) return null;
+
+  const claims = parseIdToken(idToken);
+  if (!claims || claims.aud !== env.GOOGLE_CLIENT_ID || !/^(https:\/\/)?accounts\.google\.com$/.test(claims.iss)) {
+    return null;
+  }
+  return claims;
+}
+
+/** GET /auth/callback — Google 리다이렉트 수신 → id_token 검증 → 연동 확인 페이지(웹 로그인은 세션 발급). */
 export async function handleAuthCallback(url: URL, env: Env): Promise<Response> {
   if (url.searchParams.get('error')) return errorPage('Google 로그인이 취소되었습니다.');
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return errorPage('서버에 Google 로그인이 아직 설정되지 않았습니다.');
 
-  const [code, nonce] = (url.searchParams.get('state') ?? '').split('.');
+  const state = url.searchParams.get('state') ?? '';
+  // 두 플로우가 같은 redirect_uri 를 쓴다(GCP 콘솔에 하나만 등록돼 있으므로) — state 접두사로 가른다.
+  //   'web.<code>.<nonce>' = 브라우저 로그인,  '<code>.<nonce>' = CLI 연동(§14.3).
+  if (state.startsWith(`${WEB_STATE_PREFIX}.`)) return handleWebCallback(url, env, state);
+
+  const [code, nonce] = state.split('.');
   const rec = await loadRecord(env, code);
   if (!rec || rec.status !== 'pending' || !nonce || rec.nonce !== nonce) {
     return errorPage('링크가 만료되었거나 요청이 올바르지 않습니다.');
@@ -169,27 +204,8 @@ export async function handleAuthCallback(url: URL, env: Env): Promise<Response> 
   const gcode = url.searchParams.get('code');
   if (!gcode) return errorPage('Google 응답이 올바르지 않습니다.');
 
-  // authorization code → id_token 교환. TLS 로 Google 에서 직접 받으므로 서명(JWKS) 검증은 생략,
-  // iss·aud 확인만 한다(§14.5).
-  const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code: gcode,
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `${url.origin}/auth/callback`,
-    }),
-  });
-  const token = (await tokenRes.json().catch(() => null)) as { id_token?: string } | null;
-  const idToken = token?.id_token;
-  if (!tokenRes.ok || !idToken) return errorPage('Google 인증에 실패했습니다.');
-
-  const claims = parseIdToken(idToken);
-  if (!claims || claims.aud !== env.GOOGLE_CLIENT_ID || !/^(https:\/\/)?accounts\.google\.com$/.test(claims.iss)) {
-    return errorPage('Google 토큰 검증에 실패했습니다.');
-  }
+  const claims = await exchangeCode(url, env, gcode);
+  if (!claims) return errorPage('Google 인증에 실패했습니다.');
 
   // 즉시 연동하지 않고 확인 페이지를 거친다 — 남의 링크를 눌러 내 Google 이 엉뚱한 계정에
   // 붙는 것(link-jacking, §14.6)을 사용자가 눈으로 확인하고 막을 수 있게.
@@ -218,7 +234,14 @@ export async function handleAuthCallback(url: URL, env: Env): Promise<Response> 
   );
 }
 
-function parseIdToken(idToken: string): { iss: string; aud: string; sub: string; email?: string } | null {
+interface GoogleClaims {
+  iss: string;
+  aud: string;
+  sub: string;
+  email?: string;
+}
+
+function parseIdToken(idToken: string): GoogleClaims | null {
   try {
     const payload = idToken.split('.')[1];
     const jsonStr = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
@@ -299,13 +322,140 @@ export async function handleAuthConfirm(request: Request, env: Env): Promise<Res
 export async function handleAccountUpdate(request: Request, env: Env): Promise<Response> {
   const body = await readJson(request);
   if (!body || !isValidUserId(body.userId)) return json({ error: 'invalid_userId' }, 400);
-  if (typeof body.emailPublic !== 'boolean') return json({ error: 'invalid_emailPublic' }, 400);
+  return setEmailPublic(env, body.userId, body.emailPublic);
+}
+
+/** 이메일 공개 여부 갱신 본체(주체 확인은 호출자 몫 — CLI 는 비밀 userId, 웹은 세션). */
+export async function setEmailPublic(env: Env, userId: string, emailPublic: unknown): Promise<Response> {
+  if (typeof emailPublic !== 'boolean') return json({ error: 'invalid_emailPublic' }, 400);
 
   const r = await env.DB.prepare('UPDATE accounts SET email_public = ? WHERE user_id = ?')
-    .bind(body.emailPublic ? 1 : 0, body.userId)
+    .bind(emailPublic ? 1 : 0, userId)
     .run();
   if (!r.meta.changes) return json({ error: 'not_linked' }, 404);
-  return json({ ok: true, emailPublic: body.emailPublic });
+  return json({ ok: true, emailPublic });
+}
+
+// ── 웹 로그인/회원가입 (DESIGN.md §14.9) ─────────────────────────────────────
+//
+// CLI 연동(§14.3)과 목적이 다르다. 저기는 "이미 있는 익명 userId 에 Google 을 붙이는" 플로우라
+// link-jacking 확인 페이지가 필요했지만, 여기는 브라우저에서 시작해 브라우저에서 끝나는 평범한
+// 로그인이다 — 붙일 대상(남의 userId)이 애초에 없으므로 확인 단계가 없다.
+
+/** 웹 로그인 state 접두사. CLI 연동 state('<code>.<nonce>')와 구분하는 유일한 표식. */
+const WEB_STATE_PREFIX = 'web';
+/** 로그인 왕복(구글 동의 화면 체류) 유효기간(초). */
+const WEB_LOGIN_TTL_S = 600;
+
+interface WebLoginRecord {
+  nonce: string;
+  /** 로그인 후 돌아갈 우리 사이트 내부 경로. */
+  next: string;
+  createdAt: number;
+}
+
+function webKey(code: string): string {
+  return `authweb:${code}`;
+}
+
+/**
+ * 리다이렉트 목적지를 우리 오리진 내부 경로로 제한한다(open redirect 방지).
+ * '//evil.com' 과 '/\evil.com' 은 브라우저가 스킴상대 URL 로 읽으므로 함께 막는다.
+ */
+function safeNext(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return '/';
+  return raw;
+}
+
+/** 유저의 공개 프로필 경로 — 등록 닉네임이 있으면 닉네임, 없으면 public_id slug. */
+function profilePathFor(nickname: string | null, publicId: string | null): string {
+  if (nickname) return `/u/${encodeURIComponent(nickname)}`;
+  if (publicId) return `/u/${publicId}`;
+  return '/';
+}
+
+/** GET /auth/login?next=/u/foo — 브라우저 로그인 시작. 302 로 Google 동의 화면으로 보낸다. */
+export async function handleWebLogin(url: URL, env: Env): Promise<Response> {
+  if (!env.GOOGLE_CLIENT_ID) return errorPage('서버에 Google 로그인이 아직 설정되지 않았습니다.');
+
+  const code = randomToken();
+  const nonce = randomToken();
+  const rec: WebLoginRecord = { nonce, next: safeNext(url.searchParams.get('next')), createdAt: Date.now() };
+  await env.KV.put(webKey(code), JSON.stringify(rec), { expirationTtl: WEB_LOGIN_TTL_S });
+
+  const auth = new URL(GOOGLE_AUTH_URL);
+  auth.searchParams.set('client_id', env.GOOGLE_CLIENT_ID);
+  auth.searchParams.set('redirect_uri', `${url.origin}/auth/callback`);
+  auth.searchParams.set('response_type', 'code');
+  auth.searchParams.set('scope', 'openid email');
+  auth.searchParams.set('state', `${WEB_STATE_PREFIX}.${code}.${nonce}`);
+  auth.searchParams.set('prompt', 'select_account');
+  return Response.redirect(auth.toString(), 302);
+}
+
+/** 웹 로그인 콜백 — 계정 조회(없으면 생성) → 세션 쿠키 → 원래 보던 경로로 302. */
+async function handleWebCallback(url: URL, env: Env, state: string): Promise<Response> {
+  const [, code, nonce] = state.split('.');
+  if (!code || !TOKEN_RE.test(code) || !nonce) return errorPage('요청이 올바르지 않습니다.');
+  const rec = await env.KV.get<WebLoginRecord>(webKey(code), 'json');
+  if (!rec || rec.nonce !== nonce) return errorPage('로그인 링크가 만료되었거나 요청이 올바르지 않습니다.');
+  await env.KV.delete(webKey(code)); // 1회용 — 재생 공격 차단
+
+  const gcode = url.searchParams.get('code');
+  if (!gcode) return errorPage('Google 응답이 올바르지 않습니다.');
+  const claims = await exchangeCode(url, env, gcode);
+  if (!claims) return errorPage('Google 인증에 실패했습니다.');
+
+  const existing = await env.DB.prepare('SELECT account_id, user_id FROM accounts WHERE google_sub = ?')
+    .bind(claims.sub)
+    .first<{ account_id: string; user_id: string }>();
+
+  let userId: string;
+  let firstSignup = false;
+  if (existing) {
+    userId = existing.user_id;
+    // 구글 쪽에서 이메일이 바뀌었을 수 있다 — 로그인마다 최신값으로 맞춘다(CLI 연동과 동일).
+    await env.DB.prepare('UPDATE accounts SET email = ? WHERE account_id = ?')
+      .bind(claims.email ?? null, existing.account_id)
+      .run();
+  } else {
+    // 웹 단독 가입 — CLI 를 깔지 않은 사람도 여기서 계정을 만든다. 기록은 0에서 시작하고,
+    // 나중에 그 사람이 /ocw signup 을 하면 기존 병합 로직(§14.4)이 기기 사용량을 이 userId 로 합친다.
+    firstSignup = true;
+    userId = newWebUserId();
+    await env.DB.batch([
+      env.DB.prepare('INSERT INTO users (user_id, public_id, created_at) VALUES (?, ?, ?)').bind(
+        userId,
+        newPublicId(),
+        Date.now(),
+      ),
+      env.DB.prepare(
+        'INSERT INTO accounts (account_id, google_sub, email, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+      ).bind('acc_' + randomToken(), claims.sub, claims.email ?? null, userId, Date.now()),
+    ]);
+  }
+
+  const token = await createSession(env, { userId, googleSub: claims.sub, email: claims.email ?? null });
+
+  // 갓 가입한 사람은 돌아갈 곳이 없다 — 자기 프로필로 보내 닉네임부터 정하게 한다(?setup=1).
+  let dest = rec.next;
+  if (firstSignup) {
+    const row = await env.DB.prepare('SELECT nickname, public_id FROM users WHERE user_id = ?')
+      .bind(userId)
+      .first<{ nickname: string | null; public_id: string | null }>();
+    dest = profilePathFor(row?.nickname ?? null, row?.public_id ?? null) + '?setup=1';
+  }
+
+  return new Response(null, {
+    status: 302,
+    headers: { Location: new URL(dest, url).toString(), 'Set-Cookie': sessionCookie(token) },
+  });
+}
+
+/** POST /auth/logout — 세션 파기 + 쿠키 삭제. */
+export async function handleWebLogout(request: Request, env: Env): Promise<Response> {
+  await destroySession(request, env);
+  return json({ ok: true }, 200, { 'Set-Cookie': clearSessionCookie() });
 }
 
 /** GET /auth/status?code&userId — CLI 가 다음 실행 때 결과를 회수한다(pendingLinkCode 패턴). */
