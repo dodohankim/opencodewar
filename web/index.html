@@ -385,6 +385,18 @@
   /* ── 로그인/계정 (타이틀바) ── */
   .authwrap { position:relative; display:inline-flex; }
   #authBtn.on { color:var(--fg); border-color:var(--fg); }
+  /* 이름 미정 — 타이틀바 버튼까지 호박색으로 물들여 어느 화면에 있든 눈에 걸리게. */
+  #authBtn.warn { color:var(--amber); border-color:var(--amber); }
+  .setupbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 18px;
+    padding:10px 14px; border:1px solid var(--amber); border-left-width:3px; border-radius:6px;
+    font-size:12.5px; color:var(--fg); }
+  .setupbar[hidden] { display:none; }
+  .setupbar .sb-ico { color:var(--amber); font-size:11px; }
+  .setupbar .sb-txt { flex:1; min-width:180px; }
+  .setupbar .sb-txt b { color:var(--amber); }
+  .setupbar .sb-btn { border:1px solid var(--amber); background:none; color:var(--amber); font:inherit;
+    font-size:12px; border-radius:5px; padding:5px 12px; cursor:pointer; white-space:nowrap; }
+  .setupbar .sb-btn:hover { background:var(--amber); color:var(--bg); }
   .authpop { position:absolute; top:calc(100% + 8px); right:0; z-index:14; min-width:150px; padding:5px;
     background:var(--bg); border:1px solid var(--line); border-radius:6px; box-shadow:0 8px 26px rgba(0,0,0,.28);
     display:flex; flex-direction:column; gap:2px; }
@@ -564,6 +576,14 @@
     </div>
     <div class="screen">
       <div class="echo"><span class="sig">you@open-code-war</span>:~$ <span id="cmdEcho">GET /leaderboard?type=all&amp;metric=prompts</span> <span class="cursor" aria-hidden="true"></span></div>
+
+      <!-- 이름 미정 안내 — 가입 직후 setup 폼을 건너뛴 사람에게 계속 붙는다(리더보드·프로필 양쪽).
+           강제로 막지는 않는다: 자동 이름으로도 보드에 서 있되 눈에 띄게 상기시키는 쪽. -->
+      <div class="setupbar" id="setupBar" hidden>
+        <span class="sb-ico" aria-hidden="true">▲</span>
+        <span class="sb-txt" id="setupBarText"></span>
+        <button class="sb-btn" id="setupBarBtn" type="button" data-i18n="setup_cta">pick a name</button>
+      </div>
 
       <div id="boardView">
       <section class="box banner">
@@ -869,6 +889,8 @@
       std_global: 'global rank', std_next: 'next rank', std_streak: 'streak',
       std_togo: (n) => `<b>${n}</b> prompts to go`, std_days: 'days',
       sign_in: 'sign in', sign_out: 'sign out', my_profile: 'my profile',
+      setup_bar: (auto) => `You haven't picked a coder name — the board shows you as <b>${auto}</b>.`,
+      setup_cta: 'pick a name',
       edit: '✎ edit', edit_legend: 'edit profile',
       setup_hint: 'Welcome aboard. Pick a display name — that’s the name the board will call you by.',
       f_nickname: 'coder', f_role: 'role', f_role_ph: 'Backend Engineer', f_company: 'company',
@@ -930,6 +952,8 @@
       std_global: '전체 순위', std_next: '다음 계급', std_streak: '스트릭',
       std_togo: (n) => `<b>${n}</b> prompts 남음`, std_days: '일',
       sign_in: '로그인', sign_out: '로그아웃', my_profile: '내 프로필',
+      setup_bar: (auto) => `아직 코더 이름을 안 정했습니다 — 리더보드엔 <b>${auto}</b> 로 표시됩니다.`,
+      setup_cta: '이름 정하기',
       edit: '✎ 편집', edit_legend: '프로필 편집',
       setup_hint: '참전을 환영합니다. 리더보드에 표시될 이름부터 정하세요.',
       f_nickname: '코더', f_role: '직함', f_role_ph: '백엔드 개발자', f_company: '소속',
@@ -1824,6 +1848,7 @@
     $('uMsg').hidden = true;
     renderUserChart();
     syncEditBtn();
+    if (pendingSetup && isMine(data)) { pendingSetup = false; openEdit(true); }
     maybeAutoEdit();
   }
   // ── 계급(이병~장군) — 정책 원문: DESIGN.md §16. 전 기간 누적 prompts 기준, 강등 없음 ──
@@ -2403,12 +2428,32 @@
     $('authPop').hidden = true;
     $('authBtn').setAttribute('aria-expanded', 'false');
   }
+  /** 로그인은 했는데 코더 이름을 아직 안 정한 상태(자동 이름으로 보드에 서 있는 사람). */
+  const needsName = () => !!(SESSION.loggedIn && !SESSION.registered);
+
+  function renderSetupBar() {
+    const show = needsName() && !editing; // 편집 중엔 폼 자체가 안내라 중복
+    $('setupBar').hidden = !show;
+    if (show) $('setupBarText').innerHTML = t('setup_bar')(escapeHtml(SESSION.nickname || ''));
+  }
   function renderAuth() {
     const btn = $('authBtn');
     btn.hidden = false;
     btn.textContent = SESSION.loggedIn ? `◆ ${SESSION.nickname}` : t('sign_in');
     btn.classList.toggle('on', !!SESSION.loggedIn);
+    btn.classList.toggle('warn', needsName());
     closeAuthPop();
+    renderSetupBar();
+  }
+
+  // 안내 배너에서 들어온 경우 프로필 로딩이 끝나는 대로 폼을 편다(다른 화면에 있었을 수 있다).
+  let pendingSetup = false;
+  function requestSetup() {
+    const slug = myProfileSlug();
+    if (!slug) return;
+    if (curUser === slug && uData) return openEdit(true);
+    pendingSetup = true;
+    navigateUser(slug);
   }
   async function loadSession() {
     try {
@@ -2588,6 +2633,7 @@
     $('editBox').hidden = false;
     $('editBtn').hidden = true;
     $('edSetupHint').hidden = !setup;
+    renderSetupBar();
     edMsg('');
     edBusy(false);
     // 닉네임 미등록자에게 보이는 이름은 자동 생성값이다 — 폼에는 넣지 않고 직접 정하게 둔다.
@@ -2611,6 +2657,7 @@
   /** 폼만 접는다(데이터 복구 없음) — 다른 유저로 이동할 때처럼 uData 가 곧 갈릴 상황용. */
   function resetEdit() {
     editing = false;
+    renderSetupBar();
     $('editBox').hidden = true;
     $('uProfileBox').hidden = false;
     $('editBtn').hidden = true;
@@ -2738,6 +2785,7 @@
   });
   $('edCountryClear').addEventListener('click', () => { ccSet(''); ccClose(); $('edCountry').focus(); });
 
+  $('setupBarBtn').addEventListener('click', requestSetup);
   $('editBtn').addEventListener('click', () => openEdit(false));
   $('edCancel').addEventListener('click', closeEdit);
   $('edSave').addEventListener('click', saveEdit);
