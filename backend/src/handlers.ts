@@ -78,10 +78,18 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
       agent,
       now,
     ),
+    // 신규는 INSERT, 기존은 원칙적으로 건드리지 않는다(쓰기 절감 — last_seen_at 매번 갱신 X).
+    // 예외는 country·timezone 이 **아직 비어 있을 때**뿐이다. 웹 가입자(§14.9)는 users 행이
+    // 먼저 생기는데, 가입 시점에 cf 를 못 읽었거나 그 이전 버전으로 가입했으면 NULL 로 남는다.
+    // DO NOTHING 이면 그 뒤로 아무리 쳐도 영영 NULL → 국가/도시 구역 보드에서 계속 안 보인다.
+    // WHERE 덕에 이미 값이 있는 절대다수 요청에서는 쓰기가 발생하지 않는다.
     env.DB.prepare(
       `INSERT INTO users (user_id, public_id, country, timezone, created_at, last_seen_at)
        VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(user_id) DO NOTHING`,
+       ON CONFLICT(user_id) DO UPDATE SET
+         country  = COALESCE(users.country, excluded.country),
+         timezone = COALESCE(users.timezone, excluded.timezone)
+       WHERE users.country IS NULL OR users.timezone IS NULL`,
     ).bind(userId, newPublicId(), country, timezone, now, now),
     env.DB.prepare(
       `INSERT INTO daily_stats (user_id, day, agent, prompts, chars, country)
