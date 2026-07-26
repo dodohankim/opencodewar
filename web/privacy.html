@@ -49,6 +49,10 @@
     --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
     --ok:#4F8258;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    /* 카드 폭·안쪽 여백은 index.html 과 동일하게 맞춘다(페이지 이동 시 프레임이 안 흔들리게).
+       남는 가로폭은 본문을 늘리는 대신 섹션 인덱스 레일이 차지한다 → 본문은 72ch 유지. */
+    --pad: clamp(14px,2.5vw,24px);
+    --rail: 220px;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -69,41 +73,68 @@
   * { box-sizing:border-box; }
   body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px;
     line-height:1.6; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased; }
-  .term { max-width:760px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  /* overflow 는 clip. hidden 은 스크롤 컨테이너를 만들어 .toc 의 sticky 를 죽인다. */
+  .term { max-width:920px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:clip; }
   .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
   .lights { display:flex; gap:7px; }
   .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
   .titlebar .name { flex:1; text-align:center; }
   .titlebar button { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
   .titlebar button:hover { color:var(--fg); }
-  .screen { padding:clamp(16px,3vw,28px); }
+  .screen { padding:var(--pad); }
   .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; font-size:13px; }
   .echo .sig { color:var(--fg); }
   .backlink { color:var(--dim); text-decoration:none; border:1px solid var(--line); border-radius:5px; padding:4px 10px; font-size:12px; display:inline-block; margin-bottom:18px; }
   .backlink:hover { color:var(--fg); border-color:var(--fg); }
+
+  /* 본문 | 섹션 인덱스 2단. 920px 카드에서 본문이 정확히 72ch 로 떨어진다. */
+  .doc { display:grid; grid-template-columns:minmax(0,1fr) var(--rail); gap:32px; align-items:start; }
+  .doc-main { min-width:0; }
+  .toc { position:sticky; top:20px; border-left:1px solid var(--line); padding-left:20px; }
+  .toc-h { font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--faint); margin-bottom:10px; }
+  /* grid: 번호를 거터로 빼서 두 줄짜리 항목의 둘째 줄이 라벨에 맞춰 들어가게 한다. */
+  .toc a { display:grid; grid-template-columns:auto 1fr; gap:8px; padding:4px 0; font-size:12px; line-height:1.45; color:var(--dim); text-decoration:none; }
+  .toc a .n { color:var(--faint); }
+  .toc a:hover { color:var(--fg); }
+  .toc a[aria-current="true"] { color:var(--fg); }
+  .toc a[aria-current="true"] .n { color:var(--ok); }
+  html { scroll-behavior:smooth; }
+  @media (prefers-reduced-motion:reduce){ html { scroll-behavior:auto; } }
 
   h1 { font-size:clamp(21px,4vw,28px); font-weight:700; letter-spacing:0.02em; margin:0 0 4px; text-wrap:balance; }
   .updated { color:var(--faint); font-size:12px; margin:0 0 20px; }
   .lead { color:var(--dim); font-size:13.5px; border:1px solid var(--line); border-radius:6px; padding:14px 15px; margin:0 0 8px; }
   .lead b { color:var(--fg); font-weight:600; }
 
-  h2 { font-size:14px; font-weight:700; color:var(--fg); margin:26px 0 8px; display:flex; gap:9px; align-items:baseline; }
+  h2 { font-size:14px; font-weight:700; color:var(--fg); margin:26px 0 8px; display:flex; gap:9px; align-items:baseline; scroll-margin-top:20px; }
   h2 .n { color:var(--ok); font-size:12px; font-weight:700; }
-  p { margin:0 0 10px; color:var(--dim); max-width:66ch; }
+  p { margin:0 0 10px; color:var(--dim); text-wrap:pretty; }
   p.tight { margin-bottom:4px; }
   strong { color:var(--fg); font-weight:600; }
-  ul { margin:0 0 10px; padding-left:0; list-style:none; display:grid; gap:7px; max-width:66ch; }
-  li { color:var(--dim); position:relative; padding-left:18px; }
+  ul { margin:0 0 10px; padding-left:0; list-style:none; display:grid; gap:7px; }
+  li { color:var(--dim); position:relative; padding-left:18px; text-wrap:pretty; }
   li::before { content:"–"; position:absolute; left:2px; color:var(--faint); }
   li b { color:var(--fg); font-weight:600; }
-  code { color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:12.5px; }
+  /* nowrap: claude-code 가 하이픈에서 잘려 테두리가 반쪽으로 갈라지는 걸 막는다.
+     본문 코드 조각은 최대 23자라 320px 화면에서도 한 줄에 들어간다. */
+  code { color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:12.5px; white-space:nowrap; }
   a.link { color:var(--ok); text-decoration:none; border-bottom:1px solid var(--line); }
   a.link:hover { border-bottom-color:var(--ok); }
   .repo { display:inline-block; margin-top:4px; font-size:13px; }
+  /* 한글은 어절 단위로 줄바꿈(keep-all). 없으면 "직접"이 "직/접" 으로 잘린다. */
+  #ko { word-break:keep-all; }
+  #en, #ko { overflow-wrap:break-word; }
 
   .foot { margin-top:26px; padding-top:14px; border-top:1px solid var(--line); font-size:11.5px; color:var(--faint); }
   a:focus-visible, button:focus-visible { outline:2px solid var(--ok); outline-offset:2px; }
   [hidden] { display:none !important; }
+  /* 레일을 놓을 자리가 없어지는 폭부터 1단(문서가 짧아 인덱스는 숨긴다).
+     이때는 카드 폭을 본문 72ch 에서 역산해, 넓은 프레임에 짧은 본문이 남는 상태를 막는다. */
+  @media (max-width:880px){
+    .term { max-width:calc(72ch + 2 * var(--pad) + 2px); }
+    .doc { grid-template-columns:1fr; }
+    .toc { display:none; }
+  }
   @media (max-width:600px){ .titlebar .name { display:none; } }
 </style>
 <script defer src="https://analytics.stonkradar.io/k.js" data-site="kdf_9e315b52f3f2"></script>
@@ -119,6 +150,9 @@
     <div class="screen">
       <div class="echo"><span class="sig">you@open-code-war</span>:~$ cat privacy.txt</div>
       <a class="backlink" href="/">← Leaderboard</a>
+
+      <div class="doc">
+      <div class="doc-main">
 
       <!-- ============ ENGLISH ============ -->
       <div id="en">
@@ -250,6 +284,15 @@
           <a class="link" href="https://github.com/dodohankim/opencodewar/issues?ref=opencodewar" target="_blank" rel="noopener">GitHub 이슈 ↗</a>로 남겨주세요.</p>
       </div>
 
+      </div><!-- /.doc-main -->
+        <!-- 섹션 인덱스는 본문 h2 에서 생성한다(마크업 중복 없음). -->
+        <aside class="toc" id="toc" aria-label="Sections">
+          <div class="toc-h" id="tocH">Sections</div>
+          <nav id="toc-en"></nav>
+          <nav id="toc-ko" hidden></nav>
+        </aside>
+      </div><!-- /.doc -->
+
       <div class="foot" id="foot">Open Code War · opencodewar.dev · open source, privacy-first</div>
     </div>
   </div>
@@ -259,15 +302,58 @@
   // 언어는 <head> 의 판정 스크립트가 정한다(?lang= → 직접 선택 → 접속 국가 → 브라우저 언어).
   let LANG = window.OCW_LANG === 'ko' ? 'ko' : 'en';
 
+  // 섹션 인덱스를 본문 h2 에서 만든다. 조항을 고쳐도 목차가 따로 놀지 않는다.
+  function buildToc(which) {
+    const root = $(which);
+    const nav = $('toc-' + which);
+    nav.textContent = '';
+    root.querySelectorAll('h2').forEach((h) => {
+      const numEl = h.querySelector('.n');
+      const num = numEl ? numEl.textContent.trim() : '';
+      h.id = which + '-' + num;
+      const a = document.createElement('a');
+      a.href = '#' + h.id;
+      const s = document.createElement('span');
+      s.className = 'n';
+      s.textContent = num;
+      a.appendChild(s);
+      a.appendChild(document.createTextNode(h.textContent.replace(num, '').trim()));
+      nav.appendChild(a);
+    });
+  }
+
+  // 현재 읽고 있는 섹션 표시. 화면 상단 120px 을 지난 마지막 h2 가 현재 섹션.
+  let ticking = false;
+  function updateSpy() {
+    ticking = false;
+    const nav = $('toc-' + LANG);
+    let cur = '';
+    $(LANG).querySelectorAll('h2').forEach((h) => {
+      if (h.getBoundingClientRect().top <= 120) cur = h.id;
+    });
+    nav.querySelectorAll('a').forEach((a) => {
+      if (a.getAttribute('href') === '#' + cur) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    });
+  }
+  addEventListener('scroll', () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateSpy); }
+  }, { passive: true });
+
   function applyLang() {
     const ko = LANG === 'ko';
     $('en').hidden = ko;
     $('ko').hidden = !ko;
+    $('toc-en').hidden = ko;
+    $('toc-ko').hidden = !ko;
+    $('tocH').textContent = ko ? '목차' : 'Sections';
+    $('toc').setAttribute('aria-label', ko ? '목차' : 'Sections');
     $('langBtn').textContent = ko ? 'EN' : '한국어';
     document.documentElement.lang = ko ? 'ko' : 'en';
     $('foot').textContent = ko
       ? 'Open Code War · opencodewar.dev · 오픈소스 · 프라이버시 우선'
       : 'Open Code War · opencodewar.dev · open source, privacy-first';
+    updateSpy();
   }
 
   // 직접 고른 언어만 저장하고(자동 판정값 저장 금지) 주소의 ?lang= 도 함께 맞춘다.
@@ -292,6 +378,8 @@
     document.documentElement.setAttribute('data-theme', next);
   });
 
+  buildToc('en');
+  buildToc('ko');
   applyLang();
 </script>
 </body>
