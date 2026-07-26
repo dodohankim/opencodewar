@@ -112,8 +112,10 @@ export async function computeRanking(
   // 무너져(그 기간에 행이 없는 유저가 탈락) daily 보드에서 다시 0인 사람이 사라진다.
   const { sql: dayCond, binds: dayBinds } = dayFilter(type, now);
   const result = await env.DB.prepare(
+    // 국가는 users 를 먼저 본다 — 유저가 직접 고칠 수 있는 값이라(프로필 편집) 여기가 정본이고,
+    // 프로필 페이지(/user)도 users.country 를 보여준다. daily_stats 는 users 가 빌 때의 폴백.
     `SELECT u.user_id, u.nickname, u.public_id, u.projects,
-            COALESCE(MAX(s.country), u.country) AS country,
+            COALESCE(u.country, MAX(s.country)) AS country,
             COALESCE(SUM(s.prompts), 0) AS prompts, COALESCE(SUM(s.chars), 0) AS chars
      FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND ${dayCond}
      GROUP BY u.user_id, u.nickname, u.public_id, u.projects, u.country, u.created_at

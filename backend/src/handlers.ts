@@ -488,6 +488,17 @@ export async function updateProfile(env: Env, userId: string, body: Record<strin
     vals.push(cleaned);
     echo.city = cleaned;
   }
+  if ('country' in body) {
+    // IP 로 넣어둔 값(가입·/track 시점)을 유저가 직접 고칠 수 있다 — VPN·이주·오탐 교정용.
+    // 빈 값은 해제(NULL) → 리더보드에서 국기 없이 서고 국가 구역에서 빠진다.
+    if (typeof body.country !== 'string') return json({ error: 'invalid_country' }, 400);
+    const t = body.country.trim();
+    if (t && !isValidCountryCode(t)) return json({ error: 'invalid_country' }, 400);
+    const cc = t ? t.toUpperCase() : null;
+    cols.push('country = ?');
+    vals.push(cc);
+    echo.country = cc;
+  }
   if ('links' in body) {
     const links = normalizeLinks(body.links);
     if (links === null) return json({ error: 'invalid_links' }, 400);

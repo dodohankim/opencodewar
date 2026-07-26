@@ -399,10 +399,12 @@
   .ed-row { display:flex; flex-direction:column; gap:5px; min-width:0; }
   .ed-row.wide { grid-column:1 / -1; }
   .ed-row > span { font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase; }
-  .editbox input[type=text], .editbox input[type=url], .editbox textarea {
+  .ed-row > span .req { color:var(--err); font-weight:700; }
+  .editbox input[type=text], .editbox input[type=url], .editbox textarea, .editbox select {
     font:inherit; font-size:13px; background:var(--backdrop); color:var(--fg); border:1px solid var(--line);
     border-radius:5px; padding:7px 9px; width:100%; resize:vertical; }
-  .editbox input:focus, .editbox textarea:focus { outline:none; border-color:var(--fg); }
+  .editbox select { height:35px; cursor:pointer; }
+  .editbox input:focus, .editbox textarea:focus, .editbox select:focus { outline:none; border-color:var(--fg); }
   .editbox input::placeholder, .editbox textarea::placeholder { color:var(--faint); }
   .ed-sub { margin:22px 0 10px; font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase;
     border-top:1px solid var(--line); padding-top:14px; }
@@ -707,12 +709,14 @@
           <span class="legend" data-i18n="edit_legend">edit profile</span>
           <p class="ed-hint" id="edSetupHint" hidden data-i18n="setup_hint">Welcome! Pick a display name to appear on the board.</p>
           <div class="ed-grid">
-            <label class="ed-row"><span data-i18n="f_nickname">nickname</span>
-              <input type="text" id="edNick" maxlength="20" autocomplete="off" spellcheck="false" /></label>
+            <label class="ed-row"><span><span data-i18n="f_nickname">coder</span> <b class="req" aria-hidden="true">*</b></span>
+              <input type="text" id="edNick" maxlength="20" autocomplete="off" spellcheck="false" required aria-required="true" /></label>
             <label class="ed-row"><span data-i18n="f_role">role</span>
               <input type="text" id="edRole" maxlength="40" data-i18n-ph="f_role_ph" placeholder="Backend Engineer" /></label>
             <label class="ed-row"><span data-i18n="f_company">company</span>
               <input type="text" id="edCompany" maxlength="40" /></label>
+            <label class="ed-row"><span data-i18n="f_country">country</span>
+              <select id="edCountry"></select></label>
             <label class="ed-row"><span data-i18n="f_city">city</span>
               <input type="text" id="edCity" maxlength="40" data-i18n-ph="f_city_ph" placeholder="Seoul" /></label>
             <label class="ed-row wide"><span data-i18n="f_bio">bio</span>
@@ -842,7 +846,8 @@
       sign_in: 'sign in', sign_out: 'sign out', my_profile: 'my profile',
       edit: '✎ edit', edit_legend: 'edit profile',
       setup_hint: 'Welcome aboard. Pick a display name — that’s the name the board will call you by.',
-      f_nickname: 'nickname', f_role: 'role', f_role_ph: 'Backend Engineer', f_company: 'company',
+      f_nickname: 'coder', f_role: 'role', f_role_ph: 'Backend Engineer', f_company: 'company',
+      f_country: 'country', f_country_none: '— not set —',
       f_city: 'city', f_city_ph: 'Seoul', f_bio: 'bio', f_links: 'links', f_website: 'website', f_blog: 'blog',
       f_projects: 'shipping', f_projects_note: '· up to 5, one can be MAIN',
       f_proj_name: 'name', f_proj_desc: 'one-line description', f_proj_url: 'https://…',
@@ -901,7 +906,8 @@
       sign_in: '로그인', sign_out: '로그아웃', my_profile: '내 프로필',
       edit: '✎ 편집', edit_legend: '프로필 편집',
       setup_hint: '참전을 환영합니다. 리더보드에 표시될 이름부터 정하세요.',
-      f_nickname: '닉네임', f_role: '직함', f_role_ph: '백엔드 개발자', f_company: '소속',
+      f_nickname: '코더', f_role: '직함', f_role_ph: '백엔드 개발자', f_company: '소속',
+      f_country: '국가', f_country_none: '— 설정 안 함 —',
       f_city: '도시', f_city_ph: 'Seoul', f_bio: '자기소개', f_links: '링크', f_website: '웹사이트', f_blog: '블로그',
       f_projects: '만든 것', f_projects_note: '· 최대 5개, 하나를 메인으로',
       f_proj_name: '이름', f_proj_desc: '한 줄 설명', f_proj_url: 'https://…',
@@ -963,7 +969,10 @@
     document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
     $('langBtn').textContent = t('langBtn');
     renderAuth(); // 로그인 버튼은 닉네임이 들어가 dynamic — data-i18n 으로 못 덮는다
-    if (editing) renderProjRows(readProjRows()); // 프로젝트 행 placeholder 도 JS 생성이라 다시 그린다
+    if (editing) {
+      renderProjRows(readProjRows()); // 프로젝트 행 placeholder 도 JS 생성이라 다시 그린다
+      fillCountrySelect(); // 국가명도 언어를 따라간다(선택값은 유지)
+    }
   }
 
   // 직접 고른 언어만 저장한다(자동 판정값을 저장하면 나중에 국가 판정이 영영 안 먹는다).
@@ -2413,6 +2422,32 @@
   ];
   const MAX_PROJECTS = 5;
 
+  // 국가 셀렉트 — ISO 3166-1 alpha-2. 이름은 Intl.DisplayNames 로 현재 언어에 맞춰 뽑고(사전 불필요),
+  // 국기는 flagOf 로 코드에서 유도한다. 목록은 표시 이름 기준 가나다/알파벳 순.
+  const COUNTRY_CODES = ('AD AE AF AG AL AM AO AR AT AU AZ BA BB BD BE BF BG BH BI BJ BN BO BR BS BT BW BY BZ CA CD CF CG CH CI CL CM CN CO CR CU CV CY CZ ' +
+    'DE DJ DK DM DO DZ EC EE EG ER ES ET FI FJ FM FR GA GB GD GE GH GM GN GQ GR GT GW GY HK HN HR HT HU ID IE IL IN IQ IR IS IT JM JO JP KE KG KH KI KM KN ' +
+    'KP KR KW KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MG MH MK ML MM MN MO MR MT MU MV MW MX MY MZ NA NE NG NI NL NO NP NR NZ OM PA PE PG PH PK PL ' +
+    'PS PT PW PY QA RO RS RU RW SA SB SC SD SE SG SI SK SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL TM TN TO TR TT TV TW TZ UA UG US UY UZ VA VC VE VN VU ' +
+    'WS YE ZA ZM ZW').split(' ');
+
+  function countryName(code) {
+    try {
+      return new Intl.DisplayNames([LANG === 'ko' ? 'ko' : 'en'], { type: 'region' }).of(code) || code;
+    } catch {
+      return code; // Intl.DisplayNames 미지원 브라우저 → 코드 그대로
+    }
+  }
+  /** 국가 셀렉트를 (재)구성한다. 선택값은 유지 — 언어 전환 시에도 고른 나라가 안 풀리게. */
+  function fillCountrySelect(selected) {
+    const sel = $('edCountry');
+    const keep = selected !== undefined ? selected : sel.value;
+    const opts = COUNTRY_CODES.map((c) => ({ c, n: countryName(c) })).sort((a, b) => a.n.localeCompare(b.n, LANG));
+    sel.innerHTML =
+      `<option value="">${escapeHtml(t('f_country_none'))}</option>` +
+      opts.map((o) => `<option value="${o.c}">${flagOf(o.c)} ${escapeHtml(o.n)} (${o.c})</option>`).join('');
+    sel.value = keep || '';
+  }
+
   function projRowHtml(p) {
     const v = (s) => escapeHtml(s || '');
     return `<div class="ed-proj">
@@ -2462,6 +2497,7 @@
     $('edNick').value = SESSION.registered ? uData.nickname || '' : '';
     $('edRole').value = uData.role || '';
     $('edCompany').value = uData.company || '';
+    fillCountrySelect(uData.country || '');
     $('edCity').value = uData.city || '';
     $('edBio').value = uData.bio || '';
     const links = uData.links || {};
@@ -2519,6 +2555,7 @@
       const res = await jsonPost('/api/profile', {
         role: $('edRole').value,
         company: $('edCompany').value,
+        country: $('edCountry').value,
         city: $('edCity').value,
         bio: $('edBio').value,
         links,

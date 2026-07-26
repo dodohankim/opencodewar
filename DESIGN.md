@@ -552,6 +552,29 @@ GET /auth/callback            ← CLI 연동과 같은 redirect_uri 를 공유�
 
 웹 가입 시 `users.country`·`users.timezone` 을 `request.cf` 에서 채운다 — `/track` 은 이벤트마다
 채우지만 이 사람에겐 이벤트가 없다. 안 넣으면 보드에 국기 없이 서고 상세 페이지가 UTC 로 떨어진다.
+국가는 `visitorCountry()` 를 거친다(`XX`·`T1` 같은 판별 실패값이 국기로 뜨면 안 된다).
+
+`/track` 의 users 업서트도 `DO NOTHING` → **비어 있을 때만 채우는 조건부 DO UPDATE** 로 바꿨다.
+안 그러면 country 가 NULL 인 채로 가입한 사람은 이후 아무리 쳐도 NULL 이라 국가·도시 구역 보드에서
+영영 안 보인다. `WHERE users.country IS NULL OR users.timezone IS NULL` 덕에 값이 이미 있는
+절대다수 요청에서는 쓰기가 발생하지 않아 쓰기 절감(§13)은 유지된다.
+
+### 14.11 국가(cc)를 유저가 직접 고를 수 있게 (2026-07-26)
+
+IP 판정은 VPN·이주·오탐으로 틀릴 수 있고, 웹 가입자는 아예 비어 있을 수도 있다. 프로필 편집에
+국가 셀렉트를 넣고 `country` 를 `/profile`·`/api/profile` 이 받는 필드로 승격했다(빈 값 = 해제).
+
+- 셀렉트 목록은 ISO 3166-1 alpha-2 코드 배열 하나만 두고, **표시 이름은 `Intl.DisplayNames`**
+  로 현재 언어에 맞춰 뽑는다(국가명 사전을 들고 다니지 않는다). 국기는 코드에서 유도(`flagOf`).
+  언어를 바꾸면 라벨만 다시 그리고 고른 값은 유지한다.
+- 리더보드의 국가 표시를 `COALESCE(MAX(s.country), u.country)` → **`COALESCE(u.country, MAX(s.country))`**
+  로 뒤집었다. `users.country` 가 이제 유저가 고치는 정본이고 프로필 페이지도 그 값을 보여준다 —
+  안 뒤집으면 "고쳤는데 보드에선 안 바뀐다"가 된다. daily_stats 는 users 가 빌 때의 폴백.
+- 스냅샷은 5분 주기로 재빌드되므로 국가 변경은 최대 5분 뒤 보드에 반영된다(닉네임처럼 즉시
+  무효화하지는 않는다 — 저빈도 변경이라 재빌드 비용을 아끼는 쪽).
+
+닉네임(웹 라벨은 리더보드 열과 맞춰 **coder**)은 편집 폼에서 필수다 — `*` 표시 + `required`,
+2~20자를 통과하지 못하면 저장이 막힌다. 가입 직후 `?setup=1` 폼도 같은 규칙을 쓴다.
 
 ---
 

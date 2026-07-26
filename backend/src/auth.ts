@@ -8,6 +8,7 @@ import type { Env } from './types';
 import { json, readJson } from './http';
 import { isValidUserId } from './validate';
 import { isValidTimezone } from './tz';
+import { visitorCountry } from './og';
 import { displayNickname } from './nickname';
 import { newPublicId } from './publicid';
 import {
@@ -426,6 +427,7 @@ async function handleWebCallback(request: Request, url: URL, env: Env, state: st
     userId = newWebUserId();
     // 국가·타임존을 가입 시점에 남긴다. /track 은 매 이벤트마다 채우지만 이 사람은 아직 이벤트가
     // 없다 — 안 넣으면 리더보드에 국기 없이 서고, 상세 페이지가 UTC 로 떨어진다.
+    // visitorCountry 는 'XX'·'T1'(판별 실패) 를 NULL 로 걸러준다 — 실제 국가가 아닌 값이 국기로 뜨면 안 된다.
     const cfTz = request.cf?.timezone;
     await env.DB.batch([
       env.DB.prepare(
@@ -433,7 +435,7 @@ async function handleWebCallback(request: Request, url: URL, env: Env, state: st
       ).bind(
         userId,
         newPublicId(),
-        request.cf?.country ?? null,
+        visitorCountry(request),
         isValidTimezone(cfTz) ? cfTz : null,
         Date.now(),
       ),
