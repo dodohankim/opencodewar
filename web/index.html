@@ -400,11 +400,27 @@
   .ed-row.wide { grid-column:1 / -1; }
   .ed-row > span { font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase; }
   .ed-row > span .req { color:var(--err); font-weight:700; }
-  .editbox input[type=text], .editbox input[type=url], .editbox textarea, .editbox select {
+  .editbox input[type=text], .editbox input[type=url], .editbox textarea {
     font:inherit; font-size:13px; background:var(--backdrop); color:var(--fg); border:1px solid var(--line);
     border-radius:5px; padding:7px 9px; width:100%; resize:vertical; }
-  .editbox select { height:35px; cursor:pointer; }
-  .editbox input:focus, .editbox textarea:focus, .editbox select:focus { outline:none; border-color:var(--fg); }
+  .editbox input:focus, .editbox textarea:focus { outline:none; border-color:var(--fg); }
+  /* 국가 콤보박스 */
+  .cc-wrap { position:relative; }
+  .cc-wrap input { padding-right:28px !important; }
+  .cc-clear { position:absolute; top:50%; right:6px; transform:translateY(-50%); border:0; background:none;
+    color:var(--faint); font:inherit; font-size:12px; line-height:1; padding:4px 5px; cursor:pointer; border-radius:4px; }
+  .cc-clear:hover { color:var(--err); }
+  .cc-clear[hidden] { display:none; }
+  .cc-pop { position:absolute; z-index:16; top:calc(100% + 4px); left:0; right:0; max-height:240px; overflow-y:auto;
+    background:var(--bg); border:1px solid var(--line); border-radius:6px; box-shadow:0 10px 28px rgba(0,0,0,.3); padding:4px; }
+  .cc-pop[hidden] { display:none; }
+  .cc-opt { padding:7px 9px; font-size:13px; border-radius:4px; cursor:pointer; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; }
+  .cc-opt .cc-code { color:var(--faint); font-size:11.5px; }
+  .cc-opt:hover, .cc-opt.on { background:var(--hover); }
+  .cc-opt.on { outline:1px solid var(--line); }
+  .cc-opt.cc-none { color:var(--faint); font-style:italic; }
+  .cc-empty { padding:9px; font-size:12.5px; color:var(--faint); text-align:center; }
   .editbox input::placeholder, .editbox textarea::placeholder { color:var(--faint); }
   .ed-sub { margin:22px 0 10px; font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase;
     border-top:1px solid var(--line); padding-top:14px; }
@@ -715,8 +731,17 @@
               <input type="text" id="edRole" maxlength="40" data-i18n-ph="f_role_ph" placeholder="Backend Engineer" /></label>
             <label class="ed-row"><span data-i18n="f_company">company</span>
               <input type="text" id="edCompany" maxlength="40" /></label>
-            <label class="ed-row"><span data-i18n="f_country">country</span>
-              <select id="edCountry"></select></label>
+            <!-- 국가: 200개짜리 네이티브 select 는 찾기가 고통스러워 타이핑 필터가 되는 콤보박스로 만든다.
+                 팝업 클릭이 라벨의 focus 전가와 엉키지 않도록 <label> 로 감싸지 않는다. -->
+            <div class="ed-row"><span data-i18n="f_country">country</span>
+              <div class="cc-wrap">
+                <input type="text" id="edCountry" role="combobox" aria-expanded="false" aria-autocomplete="list"
+                       aria-controls="edCountryList" autocomplete="off" spellcheck="false"
+                       data-i18n-ph="f_country_ph" placeholder="type to search…" />
+                <button type="button" class="cc-clear" id="edCountryClear" hidden data-i18n-title="f_country_none">✕</button>
+                <div class="cc-pop" id="edCountryList" role="listbox" hidden></div>
+              </div>
+            </div>
             <label class="ed-row"><span data-i18n="f_city">city</span>
               <input type="text" id="edCity" maxlength="40" data-i18n-ph="f_city_ph" placeholder="Seoul" /></label>
             <label class="ed-row wide"><span data-i18n="f_bio">bio</span>
@@ -848,6 +873,7 @@
       setup_hint: 'Welcome aboard. Pick a display name — that’s the name the board will call you by.',
       f_nickname: 'coder', f_role: 'role', f_role_ph: 'Backend Engineer', f_company: 'company',
       f_country: 'country', f_country_none: '— not set —',
+      f_country_ph: 'type to search…', f_country_empty: 'no match',
       f_city: 'city', f_city_ph: 'Seoul', f_bio: 'bio', f_links: 'links', f_website: 'website', f_blog: 'blog',
       f_projects: 'shipping', f_projects_note: '· up to 5, one can be MAIN',
       f_proj_name: 'name', f_proj_desc: 'one-line description', f_proj_url: 'https://…',
@@ -908,6 +934,7 @@
       setup_hint: '참전을 환영합니다. 리더보드에 표시될 이름부터 정하세요.',
       f_nickname: '코더', f_role: '직함', f_role_ph: '백엔드 개발자', f_company: '소속',
       f_country: '국가', f_country_none: '— 설정 안 함 —',
+      f_country_ph: '입력해서 검색…', f_country_empty: '검색 결과 없음',
       f_city: '도시', f_city_ph: 'Seoul', f_bio: '자기소개', f_links: '링크', f_website: '웹사이트', f_blog: '블로그',
       f_projects: '만든 것', f_projects_note: '· 최대 5개, 하나를 메인으로',
       f_proj_name: '이름', f_proj_desc: '한 줄 설명', f_proj_url: 'https://…',
@@ -967,11 +994,13 @@
     document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
     document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
     $('langBtn').textContent = t('langBtn');
     renderAuth(); // 로그인 버튼은 닉네임이 들어가 dynamic — data-i18n 으로 못 덮는다
     if (editing) {
       renderProjRows(readProjRows()); // 프로젝트 행 placeholder 도 JS 생성이라 다시 그린다
-      fillCountrySelect(); // 국가명도 언어를 따라간다(선택값은 유지)
+      ccOptions = null; // 국가명 캐시 무효화 → 새 언어로 다시 뽑는다(고른 코드는 유지)
+      ccSet(ccCode);
     }
   }
 
@@ -2424,28 +2453,96 @@
 
   // 국가 셀렉트 — ISO 3166-1 alpha-2. 이름은 Intl.DisplayNames 로 현재 언어에 맞춰 뽑고(사전 불필요),
   // 국기는 flagOf 로 코드에서 유도한다. 목록은 표시 이름 기준 가나다/알파벳 순.
-  const COUNTRY_CODES = ('AD AE AF AG AL AM AO AR AT AU AZ BA BB BD BE BF BG BH BI BJ BN BO BR BS BT BW BY BZ CA CD CF CG CH CI CL CM CN CO CR CU CV CY CZ ' +
-    'DE DJ DK DM DO DZ EC EE EG ER ES ET FI FJ FM FR GA GB GD GE GH GM GN GQ GR GT GW GY HK HN HR HT HU ID IE IL IN IQ IR IS IT JM JO JP KE KG KH KI KM KN ' +
-    'KP KR KW KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MG MH MK ML MM MN MO MR MT MU MV MW MX MY MZ NA NE NG NI NL NO NP NR NZ OM PA PE PG PH PK PL ' +
-    'PS PT PW PY QA RO RS RU RW SA SB SC SD SE SG SI SK SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL TM TN TO TR TT TV TW TZ UA UG US UY UZ VA VC VE VN VU ' +
-    'WS YE ZA ZM ZW').split(' ');
+  const COUNTRY_CODES = (
+    'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC ' +
+    'CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD ' +
+    'GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH ' +
+    'KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW ' +
+    'MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC ' +
+    'SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY ' +
+    'UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'
+  ).split(' ');
 
-  function countryName(code) {
+  function regionNames(locale) {
     try {
-      return new Intl.DisplayNames([LANG === 'ko' ? 'ko' : 'en'], { type: 'region' }).of(code) || code;
+      return new Intl.DisplayNames([locale], { type: 'region' });
     } catch {
-      return code; // Intl.DisplayNames 미지원 브라우저 → 코드 그대로
+      return null; // Intl.DisplayNames 미지원 → 코드로 폴백
     }
   }
-  /** 국가 셀렉트를 (재)구성한다. 선택값은 유지 — 언어 전환 시에도 고른 나라가 안 풀리게. */
-  function fillCountrySelect(selected) {
-    const sel = $('edCountry');
-    const keep = selected !== undefined ? selected : sel.value;
-    const opts = COUNTRY_CODES.map((c) => ({ c, n: countryName(c) })).sort((a, b) => a.n.localeCompare(b.n, LANG));
-    sel.innerHTML =
-      `<option value="">${escapeHtml(t('f_country_none'))}</option>` +
-      opts.map((o) => `<option value="${o.c}">${flagOf(o.c)} ${escapeHtml(o.n)} (${o.c})</option>`).join('');
-    sel.value = keep || '';
+  // 현재 언어 기준 국가 목록 캐시. 검색어는 **현지어 이름·영어 이름·코드** 셋 다에 걸린다 —
+  // 한국어로 보면서 'korea' 나 'KR' 로 찾는 사람이 반드시 있다.
+  let ccOptions = null;
+  let ccOptionsLang = null;
+  function countryOptions() {
+    if (ccOptions && ccOptionsLang === LANG) return ccOptions;
+    const local = regionNames(LANG === 'ko' ? 'ko' : 'en');
+    const english = regionNames('en');
+    ccOptions = COUNTRY_CODES.map((code) => {
+      const name = (local && local.of(code)) || code;
+      const en = (english && english.of(code)) || code;
+      return { code, name, hay: `${name} ${en} ${code}`.toLowerCase() };
+    }).sort((a, b) => a.name.localeCompare(b.name, LANG));
+    ccOptionsLang = LANG;
+    return ccOptions;
+  }
+  // 목록에 없는 코드(Cloudflare 가 새 속령을 주거나 목록이 뒤처진 경우)도 코드로 표시한다.
+  // 빈 문자열로 떨어뜨리면 그 유저가 편집만 열었다 저장해도 국가가 날아간다.
+  const ccLabel = (code) => {
+    if (!code) return '';
+    const o = countryOptions().find((x) => x.code === code);
+    return o ? `${flagOf(o.code)} ${o.name} (${o.code})` : `${flagOf(code)} ${code}`;
+  };
+
+  // 선택된 국가코드(''=해제). input 의 텍스트는 표시용일 뿐 이 값이 정본이다.
+  let ccCode = '';
+  let ccActive = -1; // 키보드로 훑는 중인 항목 인덱스
+  let ccShown = []; // 지금 팝업에 그려진 목록
+
+  function ccClose() {
+    $('edCountryList').hidden = true;
+    $('edCountry').setAttribute('aria-expanded', 'false');
+    ccActive = -1;
+  }
+  /** 코드를 확정 반영(입력창 텍스트·지움 버튼까지). */
+  function ccSet(code) {
+    ccCode = code || '';
+    $('edCountry').value = ccCode ? ccLabel(ccCode) : '';
+    $('edCountryClear').hidden = !ccCode;
+  }
+  function ccRender(query) {
+    const q = (query || '').trim().toLowerCase();
+    // 검색어가 없으면 전체(선택된 게 있으면 그 항목이 위로), 있으면 부분일치.
+    ccShown = q ? countryOptions().filter((o) => o.hay.includes(q)) : countryOptions().slice();
+    const pop = $('edCountryList');
+    if (!ccShown.length) {
+      pop.innerHTML = `<div class="cc-empty">${escapeHtml(t('f_country_empty'))}</div>`;
+    } else {
+      const none = q ? '' : `<div class="cc-opt cc-none" data-code="">${escapeHtml(t('f_country_none'))}</div>`;
+      pop.innerHTML =
+        none +
+        ccShown
+          .map(
+            (o, i) =>
+              `<div class="cc-opt${i === ccActive ? ' on' : ''}" role="option" data-code="${o.code}">` +
+              `${flagOf(o.code)} ${escapeHtml(o.name)} <span class="cc-code">(${o.code})</span></div>`,
+          )
+          .join('');
+    }
+    pop.scrollTop = 0;
+    pop.hidden = false;
+    $('edCountry').setAttribute('aria-expanded', 'true');
+  }
+  function ccHighlight(next) {
+    if (!ccShown.length) return;
+    ccActive = (next + ccShown.length) % ccShown.length;
+    const pop = $('edCountryList');
+    pop.querySelectorAll('.cc-opt').forEach((el) => el.classList.remove('on'));
+    const el = pop.querySelector(`.cc-opt[data-code="${ccShown[ccActive].code}"]`);
+    if (el) {
+      el.classList.add('on');
+      el.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   function projRowHtml(p) {
@@ -2497,7 +2594,8 @@
     $('edNick').value = SESSION.registered ? uData.nickname || '' : '';
     $('edRole').value = uData.role || '';
     $('edCompany').value = uData.company || '';
-    fillCountrySelect(uData.country || '');
+    ccSet(uData.country || '');
+    ccClose();
     $('edCity').value = uData.city || '';
     $('edBio').value = uData.bio || '';
     const links = uData.links || {};
@@ -2555,7 +2653,7 @@
       const res = await jsonPost('/api/profile', {
         role: $('edRole').value,
         company: $('edCompany').value,
-        country: $('edCountry').value,
+        country: ccCode,
         city: $('edCity').value,
         bio: $('edBio').value,
         links,
@@ -2608,6 +2706,38 @@
   document.addEventListener('click', (e) => {
     if (!$('authPop').hidden && !e.target.closest('.authwrap')) closeAuthPop();
   });
+  // ── 국가 콤보박스 이벤트 ──
+  $('edCountry').addEventListener('focus', () => ccRender(''));
+  $('edCountry').addEventListener('input', () => {
+    ccActive = -1;
+    ccRender($('edCountry').value);
+  });
+  $('edCountry').addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); if ($('edCountryList').hidden) ccRender($('edCountry').value); ccHighlight(ccActive + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); ccHighlight(ccActive - 1); }
+    else if (e.key === 'Enter') {
+      // 목록이 열려 있으면 폼 제출 대신 선택. 훑던 게 없으면 첫 결과를 고른다(타이핑 후 바로 Enter).
+      if (!$('edCountryList').hidden && ccShown.length) {
+        e.preventDefault();
+        ccSet(ccShown[ccActive >= 0 ? ccActive : 0].code);
+        ccClose();
+      }
+    } else if (e.key === 'Escape') { ccClose(); ccSet(ccCode); }
+  });
+  // blur 로 닫으면 팝업 클릭이 먼저 죽는다 → mousedown 으로 고르고, blur 는 텍스트만 되돌린다.
+  $('edCountryList').addEventListener('mousedown', (e) => {
+    const opt = e.target.closest('.cc-opt');
+    if (!opt) return;
+    e.preventDefault();
+    ccSet(opt.dataset.code);
+    ccClose();
+  });
+  $('edCountry').addEventListener('blur', () => {
+    // 아무거나 쳐놓고 나가도 입력창엔 확정된 나라만 남는다(자유 입력 금지).
+    setTimeout(() => { ccClose(); ccSet(ccCode); }, 120);
+  });
+  $('edCountryClear').addEventListener('click', () => { ccSet(''); ccClose(); $('edCountry').focus(); });
+
   $('editBtn').addEventListener('click', () => openEdit(false));
   $('edCancel').addEventListener('click', closeEdit);
   $('edSave').addEventListener('click', saveEdit);
