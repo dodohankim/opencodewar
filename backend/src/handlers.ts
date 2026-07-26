@@ -199,16 +199,18 @@ export async function handleLeaderboard(url: URL, env: Env, ctx?: ExecutionConte
 }
 
 /**
- * GET /zones — 구역 셀렉터용 목록: 실제 활동 유저가 있는 국가 + 각 국가의 도시(인원수).
+ * GET /zones — 구역 셀렉터용 목록: 유저가 있는 국가 + 각 국가의 도시(인원수).
  * 세계 도시 사전이 아니라 우리 유저 실데이터에서 뽑는다(빈 구역 안 생김).
  * 도시는 대소문자 무시로 병합(리더보드 그룹키와 동일: LOWER(city)), 대표 라벨은 최다 표기.
+ *
+ * 활동 여부는 따지지 않는다 — 구역 리더보드가 활동 0인 가입자도 보여주므로(snapshot.ts),
+ * 여기서 걸러내면 드롭다운에 없는 국가에 사람만 서 있는 상태가 된다.
  */
 export async function handleZones(env: Env): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT u.country AS country, u.city AS city, COUNT(*) AS n
      FROM users u
      WHERE u.country IS NOT NULL
-       AND EXISTS (SELECT 1 FROM daily_stats d WHERE d.user_id = u.user_id)
      GROUP BY u.country, u.city`,
   ).all<{ country: string; city: string | null; n: number }>();
 
@@ -262,8 +264,9 @@ export async function handleMe(url: URL, env: Env): Promise<Response> {
   // 도시 구역 키 = (country, LOWER(city)) — 동명 도시 분리(파리 FR/US) + Hangul 은 LOWER 무영향.
   const sql = `
     WITH agg AS (
-      SELECT s.user_id, SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
-      FROM daily_stats s WHERE ${dayCond} GROUP BY s.user_id
+      SELECT u.user_id AS user_id, COALESCE(SUM(s.prompts), 0) AS prompts, COALESCE(SUM(s.chars), 0) AS chars
+      FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND ${dayCond}
+      GROUP BY u.user_id
     ),
     me AS (SELECT prompts, chars FROM agg WHERE user_id = ?),
     prof AS (SELECT nickname, bio, role, company, links, projects, country, city FROM users WHERE user_id = ?),
@@ -638,18 +641,23 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
       `SELECT day, SUM(prompts) AS prompts, SUM(chars) AS chars FROM daily_stats WHERE user_id = ${sub} GROUP BY day`,
     ).bind(bind),
     // 전체·국가 순위(전 기간 누적 prompts 기준, 리더보드 total 탭과 동일 개념).
-    // tot = 유저별 전 기간 prompts 합. 규모 커지면 리더보드 스냅샷 재사용 고려(지금은 라이브 집계).
+    // tot = 유저별 전 기간 prompts 합. 리더보드와 같은 모수를 써야 하므로 users 에서 출발한다 —
+    // daily_stats 기준이면 활동 0인 가입자가 보드에는 서 있는데 자기 프로필엔 순위가 없다.
+    // 규모 커지면 리더보드 스냅샷 재사용 고려(지금은 라이브 집계).
     env.DB.prepare(
-      `WITH tot AS (SELECT s.user_id AS uid, SUM(s.prompts) AS p FROM daily_stats s GROUP BY s.user_id),
-            me AS (SELECT t.p AS p, u.country AS c FROM tot t JOIN users u ON u.user_id = t.uid WHERE u.${where})
+      `WITH tot AS (
+              SELECT u.user_id AS uid, u.country AS c, COALESCE(SUM(s.prompts), 0) AS p
+              FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id
+              GROUP BY u.user_id, u.country
+            ),
+            me AS (SELECT t.p AS p, t.c AS c FROM tot t JOIN users u ON u.user_id = t.uid WHERE u.${where})
        SELECT
          (SELECT COUNT(*) FROM me) AS hasme,
          (SELECT c FROM me) AS mecountry,
          (SELECT COUNT(*) FROM tot) AS gtotal,
          (SELECT COUNT(*) + 1 FROM tot WHERE p > (SELECT p FROM me)) AS grank,
-         (SELECT COUNT(*) FROM tot t JOIN users u ON u.user_id = t.uid WHERE u.country = (SELECT c FROM me)) AS ctotal,
-         (SELECT COUNT(*) + 1 FROM tot t JOIN users u ON u.user_id = t.uid
-            WHERE u.country = (SELECT c FROM me) AND t.p > (SELECT p FROM me)) AS crank`,
+         (SELECT COUNT(*) FROM tot WHERE c = (SELECT c FROM me)) AS ctotal,
+         (SELECT COUNT(*) + 1 FROM tot WHERE c = (SELECT c FROM me) AND p > (SELECT p FROM me)) AS crank`,
     ).bind(bind),
   ]);
 

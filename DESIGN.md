@@ -522,6 +522,37 @@ GET /auth/callback            ← CLI 연동과 같은 redirect_uri 를 공유�
 - 웹에서의 계정 삭제(`/delete` 웹판) — CLI `/ocw delete all` 만 있다.
 - 연동 해제, 세션 목록/원격 로그아웃.
 
+### 14.10 리더보드 모수를 users 로 바꾼 이유 (2026-07-26)
+
+웹 가입자는 events 가 0건이라 `daily_stats` 에 행이 없다. 그런데 리더보드·순위 쿼리가 전부
+`daily_stats` 를 드라이빙 테이블로 쓰고 있어서, **가입만 한 사람은 보드에서 통째로 사라졌다.**
+가입 직후 자기 이름이 어디에도 없는 건 §14.9(진입장벽 낮추기)를 정면으로 깨뜨린다.
+
+모수를 `users` 로 뒤집었다 — `FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND <기간>`.
+
+- **기간 조건은 WHERE 가 아니라 JOIN 의 ON 에 둔다.** WHERE 로 내리면 LEFT JOIN 이 INNER 로 무너져
+  (그 기간에 행이 없는 유저가 탈락) daily 보드에서 다시 0인 사람이 사라진다. 이게 이 변경의 유일한 함정.
+- 동점(특히 0점) 정렬은 `created_at ASC` — 먼저 온 사람이 위. user_id 순이면 사실상 무작위다.
+- `LIMIT 100` 은 그대로라 규모가 커져도 스냅샷 크기는 안 변한다. 활동자가 100명을 넘으면 0점은
+  자연히 밀려난다 — "보드가 한산할 때만 신입이 보인다"는 원하는 동작 그대로.
+
+**같이 바꾼 것 — 모수가 어긋나면 안 되는 곳들.** 보드에는 14위로 서 있는데 자기 프로필엔 순위가
+없으면 버그로 읽힌다.
+
+| 위치 | 무엇 |
+|---|---|
+| `snapshot.ts` `computeRanking` / `computeZoneRanking` | 글로벌·구역 보드 |
+| `handlers.ts` `handleUser` | 프로필의 전체·국가 순위 |
+| `handlers.ts` `handleMe` | CLI `/ocw status` 순위·구역 |
+| `og.ts` `handleProfilePage` | 공유 미리보기 설명의 "#N on the board" |
+| `handlers.ts` `handleZones` | 구역 드롭다운 — `EXISTS(daily_stats)` 조건 제거(없으면 드롭다운에 없는 국가에 사람만 서 있게 된다) |
+
+`briefing.ts` 는 스냅샷을 그대로 읽으므로 자동으로 따라온다. `SNAPSHOT_KEY` 는 v3 → **v4** 로 올려
+배포 즉시 재빌드되게 했다(안 올리면 최대 5분간 옛 스냅샷이 나간다).
+
+웹 가입 시 `users.country`·`users.timezone` 을 `request.cf` 에서 채운다 — `/track` 은 이벤트마다
+채우지만 이 사람에겐 이벤트가 없다. 안 넣으면 보드에 국기 없이 서고 상세 페이지가 UTC 로 떨어진다.
+
 ---
 
 ## 15. 언어 (i18n) — 기본 언어 자동 판정

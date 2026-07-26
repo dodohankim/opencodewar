@@ -18,8 +18,9 @@ import { utcToday, monthDays, weekDays, weekendDays } from './time';
 import { displayNickname } from './nickname';
 import { isValidUrl, parseProjects } from './validate';
 
-// v2: 'all'(전체 기간) 보드 추가 / v3: 랭킹 항목에 대표 프로젝트 추가 — 배포 즉시 재빌드 유도
-export const SNAPSHOT_KEY = 'lb:snapshot:v3';
+// v2: 'all'(전체 기간) 보드 추가 / v3: 랭킹 항목에 대표 프로젝트 추가
+// v4: 활동 0인 가입자도 랭킹에 포함 — 배포 즉시 재빌드 유도
+export const SNAPSHOT_KEY = 'lb:snapshot:v4';
 const SNAPSHOT_LIMIT = 100;
 const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30분
 const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend', 'monthly', 'all'];
@@ -103,14 +104,20 @@ export async function computeRanking(
   const now = Date.now();
 
   // daily_stats 는 (user_id, day, agent) 단위 행 — daily 도 유저별 합산이 필요해 전 보드 동일 쿼리.
+  //
+  // **users 에서 출발한다**(daily_stats 가 아니라). 가입만 하고 아직 한 번도 안 친 사람도
+  // 0으로 보드에 서 있어야 하기 때문 — 웹 가입자(§14.9)는 events 가 아예 없어서, 예전처럼
+  // daily_stats 를 드라이빙 테이블로 쓰면 리더보드에서 통째로 사라진다.
+  // 기간 조건은 WHERE 가 아니라 **JOIN 의 ON** 에 둔다. WHERE 로 내리면 LEFT JOIN 이 INNER 로
+  // 무너져(그 기간에 행이 없는 유저가 탈락) daily 보드에서 다시 0인 사람이 사라진다.
   const { sql: dayCond, binds: dayBinds } = dayFilter(type, now);
   const result = await env.DB.prepare(
-    `SELECT s.user_id, u.nickname, u.public_id, u.projects, MAX(s.country) AS country,
-            SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
-     FROM daily_stats s LEFT JOIN users u ON u.user_id = s.user_id
-     WHERE ${dayCond}
-     GROUP BY s.user_id, u.nickname, u.public_id, u.projects
-     ORDER BY ${orderCol} DESC, s.user_id ASC
+    `SELECT u.user_id, u.nickname, u.public_id, u.projects,
+            COALESCE(MAX(s.country), u.country) AS country,
+            COALESCE(SUM(s.prompts), 0) AS prompts, COALESCE(SUM(s.chars), 0) AS chars
+     FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND ${dayCond}
+     GROUP BY u.user_id, u.nickname, u.public_id, u.projects, u.country, u.created_at
+     ORDER BY ${orderCol} DESC, u.created_at ASC, u.user_id ASC
      LIMIT ?`,
   )
     .bind(...dayBinds, limit)
@@ -140,13 +147,15 @@ export async function computeZoneRanking(
   if (cityLower != null) binds.push(cityLower);
   binds.push(limit);
 
+  // computeRanking 과 같은 이유로 users 에서 출발하고 기간 조건은 ON 에 둔다(활동 0인 가입자 포함).
+  // 구역 필터(u.country / u.city)는 유저 속성이라 WHERE 에 남는다.
   const result = await env.DB.prepare(
-    `SELECT s.user_id, u.nickname, u.public_id, u.projects, u.country AS country,
-            SUM(s.prompts) AS prompts, SUM(s.chars) AS chars
-     FROM daily_stats s JOIN users u ON u.user_id = s.user_id
-     WHERE ${dayCond} AND u.country = ? ${cityClause}
-     GROUP BY s.user_id, u.nickname, u.public_id, u.projects
-     ORDER BY ${orderCol} DESC, s.user_id ASC
+    `SELECT u.user_id, u.nickname, u.public_id, u.projects, u.country AS country,
+            COALESCE(SUM(s.prompts), 0) AS prompts, COALESCE(SUM(s.chars), 0) AS chars
+     FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND ${dayCond}
+     WHERE u.country = ? ${cityClause}
+     GROUP BY u.user_id, u.nickname, u.public_id, u.projects, u.country, u.created_at
+     ORDER BY ${orderCol} DESC, u.created_at ASC, u.user_id ASC
      LIMIT ?`,
   )
     .bind(...binds)

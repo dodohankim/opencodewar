@@ -111,7 +111,7 @@ export default {
         return await handleAuthLink(url, env, pathname.slice('/auth/link/'.length));
       }
       if (pathname === '/auth/callback' && request.method === 'GET') {
-        return await handleAuthCallback(url, env);
+        return await handleAuthCallback(request, url, env);
       }
       if (pathname === '/auth/confirm' && request.method === 'POST') {
         return await handleAuthConfirm(request, env);

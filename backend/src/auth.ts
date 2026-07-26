@@ -7,6 +7,7 @@
 import type { Env } from './types';
 import { json, readJson } from './http';
 import { isValidUserId } from './validate';
+import { isValidTimezone } from './tz';
 import { displayNickname } from './nickname';
 import { newPublicId } from './publicid';
 import {
@@ -187,14 +188,14 @@ async function exchangeCode(url: URL, env: Env, gcode: string): Promise<GoogleCl
 }
 
 /** GET /auth/callback — Google 리다이렉트 수신 → id_token 검증 → 연동 확인 페이지(웹 로그인은 세션 발급). */
-export async function handleAuthCallback(url: URL, env: Env): Promise<Response> {
+export async function handleAuthCallback(request: Request, url: URL, env: Env): Promise<Response> {
   if (url.searchParams.get('error')) return errorPage('Google 로그인이 취소되었습니다.');
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return errorPage('서버에 Google 로그인이 아직 설정되지 않았습니다.');
 
   const state = url.searchParams.get('state') ?? '';
   // 두 플로우가 같은 redirect_uri 를 쓴다(GCP 콘솔에 하나만 등록돼 있으므로) — state 접두사로 가른다.
   //   'web.<code>.<nonce>' = 브라우저 로그인,  '<code>.<nonce>' = CLI 연동(§14.3).
-  if (state.startsWith(`${WEB_STATE_PREFIX}.`)) return handleWebCallback(url, env, state);
+  if (state.startsWith(`${WEB_STATE_PREFIX}.`)) return handleWebCallback(request, url, env, state);
 
   const [code, nonce] = state.split('.');
   const rec = await loadRecord(env, code);
@@ -394,7 +395,7 @@ export async function handleWebLogin(url: URL, env: Env): Promise<Response> {
 }
 
 /** 웹 로그인 콜백 — 계정 조회(없으면 생성) → 세션 쿠키 → 원래 보던 경로로 302. */
-async function handleWebCallback(url: URL, env: Env, state: string): Promise<Response> {
+async function handleWebCallback(request: Request, url: URL, env: Env, state: string): Promise<Response> {
   const [, code, nonce] = state.split('.');
   if (!code || !TOKEN_RE.test(code) || !nonce) return errorPage('요청이 올바르지 않습니다.');
   const rec = await env.KV.get<WebLoginRecord>(webKey(code), 'json');
@@ -423,10 +424,17 @@ async function handleWebCallback(url: URL, env: Env, state: string): Promise<Res
     // 나중에 그 사람이 /ocw signup 을 하면 기존 병합 로직(§14.4)이 기기 사용량을 이 userId 로 합친다.
     firstSignup = true;
     userId = newWebUserId();
+    // 국가·타임존을 가입 시점에 남긴다. /track 은 매 이벤트마다 채우지만 이 사람은 아직 이벤트가
+    // 없다 — 안 넣으면 리더보드에 국기 없이 서고, 상세 페이지가 UTC 로 떨어진다.
+    const cfTz = request.cf?.timezone;
     await env.DB.batch([
-      env.DB.prepare('INSERT INTO users (user_id, public_id, created_at) VALUES (?, ?, ?)').bind(
+      env.DB.prepare(
+        'INSERT INTO users (user_id, public_id, country, timezone, created_at) VALUES (?, ?, ?, ?, ?)',
+      ).bind(
         userId,
         newPublicId(),
+        request.cf?.country ?? null,
+        isValidTimezone(cfTz) ? cfTz : null,
         Date.now(),
       ),
       env.DB.prepare(

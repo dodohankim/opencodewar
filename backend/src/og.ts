@@ -250,7 +250,12 @@ export async function handleProfilePage(
   const rankPromise: Promise<number | null> =
     byNick || byId
       ? env.DB.prepare(
-          `WITH tot AS (SELECT user_id AS uid, SUM(prompts) AS p FROM daily_stats GROUP BY user_id),
+          // 모수는 리더보드와 같아야 한다 — users 기준(활동 0인 가입자 포함). snapshot.ts 참고.
+          `WITH tot AS (
+                  SELECT u.user_id AS uid, COALESCE(SUM(s.prompts), 0) AS p
+                  FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id
+                  GROUP BY u.user_id
+                ),
                 me AS (SELECT t.p AS p FROM tot t JOIN users u ON u.user_id = t.uid WHERE u.${rankCol} = ?)
            SELECT (SELECT COUNT(*) FROM me) AS hasme, (SELECT COUNT(*) + 1 FROM tot WHERE p > (SELECT p FROM me)) AS grank`,
         )
