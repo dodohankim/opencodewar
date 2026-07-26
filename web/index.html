@@ -203,25 +203,30 @@
   .march-track { position:absolute; bottom:6px; left:0; display:flex; align-items:flex-end; gap:18px;
     transform:translateX(-9999px); will-change:transform; }
   .march-clip .ground { position:absolute; left:0; right:0; bottom:6px; border-bottom:2px dotted var(--line); }
-  .marcher { position:relative; width:44px; height:44px; }
+  .marcher { position:relative; flex:none; width:44px; height:44px; }
   .marcher .f, .bearer .f { position:absolute; left:0; bottom:0; width:44px; height:44px; }
   .marcher .f2, .bearer .f2 { opacity:0; }
   .marcher .f1, .bearer .f1 { animation:gait1 .52s linear infinite; }
   .marcher .f2, .bearer .f2 { animation:gait2 .52s linear infinite; }
   @keyframes gait1 { 0%,49.9% { opacity:1; } 50%,99.9% { opacity:0; } 100% { opacity:1; } }
   @keyframes gait2 { 0%,49.9% { opacity:0; } 50%,99.9% { opacity:1; } 100% { opacity:0; } }
-  /* 깃발(y3–20)은 뒷사람 머리(y30~) 위 공중을 지나가므로 간격을 좁혀도 안 겹친다.
-     margin-left 는 깃발 폭에 맞춰 JS가 키운다(기본 20px). */
-  .bearer { position:relative; width:44px; height:74px; margin-left:20px;
+  /* 기수 상자 = [깃발][병사 44px]. 깃발이 흐름 안에 있어 상자 폭이 닉네임 길이만큼
+     자동으로 늘어난다 → 앞사람 깃발과 절대 안 겹친다(JS 폭 측정 불필요).
+     margin-left 는 음수 — flex gap(18)+깃발 여백(17) 과 합쳐 깃발 사이 실제 여백 29px. */
+  .bearer { position:relative; flex:none; min-width:44px; height:74px; margin-left:-6px;
+    padding-top:3px; box-sizing:border-box;
     display:block; color:inherit; text-decoration:none; cursor:pointer; }
+  .bearer .f { left:auto; right:0; } /* 병사는 상자 오른쪽 끝 — 왼쪽 남는 폭이 곧 깃발 자리 */
   /* 기수 클릭 → 유저 상세. 움직이는 표적은 못 맞추니 호버 시 퍼레이드 일시정지
      (이동 정지는 JS 마퀴가 담당, 여기선 걷기 프레임만 멈춘다) */
   .march-clip:hover .f1, .march-clip:hover .f2 { animation-play-state:paused; }
   .bearer:hover .flag, .bearer:focus-visible .flag { text-decoration:underline; text-underline-offset:2px; }
   .bearer:focus-visible { outline:2px solid var(--ok); outline-offset:2px; }
-  .bearer .pole { position:absolute; left:24px; top:4px; width:3px; height:26px; background:var(--fg); }
-  /* 깃발은 깃대 뒤(행진 반대 방향)로 나부낀다 — 제비꼬리 노치도 뒤쪽 끝에 */
-  .bearer .flag { position:absolute; right:17px; top:3px; height:17px; line-height:17px; padding:0 6px 0 11px;
+  .bearer .pole { position:absolute; right:17px; top:4px; width:3px; height:26px; background:var(--fg); }
+  /* 깃발은 깃대 뒤(행진 반대 방향)로 나부낀다 — 제비꼬리 노치도 뒤쪽 끝에.
+     margin-right:17px = 깃대 오른쪽부터 병사 오른쪽 끝까지(44-27) 만큼 상자를 넓혀 둔다. */
+  .bearer .flag { display:inline-block; vertical-align:top; margin-right:17px;
+    height:17px; line-height:17px; padding:0 6px 0 11px;
     font-size:10px; font-weight:700; letter-spacing:0.02em; white-space:nowrap; color:var(--bg);
     clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 6px 50%); }
   .bearer.army-claude   .flag { background:var(--fg); }
@@ -746,7 +751,7 @@
           <p class="ed-hint" id="edSetupHint" hidden data-i18n="setup_hint">Welcome! Pick a display name to appear on the board.</p>
           <div class="ed-grid">
             <label class="ed-row"><span><span data-i18n="f_nickname">coder</span> <b class="req" aria-hidden="true">*</b></span>
-              <input type="text" id="edNick" maxlength="20" autocomplete="off" spellcheck="false" required aria-required="true" /></label>
+              <input type="text" id="edNick" maxlength="15" autocomplete="off" spellcheck="false" required aria-required="true" /></label>
             <label class="ed-row"><span data-i18n="f_role">role</span>
               <input type="text" id="edRole" maxlength="40" data-i18n-ph="f_role_ph" placeholder="Backend Engineer" /></label>
             <label class="ed-row"><span data-i18n="f_company">company</span>
@@ -902,7 +907,7 @@
       f_main: 'MAIN', f_del: 'remove', add_project: '+ add project',
       f_email_public: 'show my Google email on my profile',
       save: 'save', cancel: 'cancel', saving: 'saving…', saved: '✓ saved',
-      err_nickname: 'Nickname must be 2–20 characters (letters, numbers, _ or spaces).',
+      err_nickname: 'Nickname must be 2–15 characters (letters, numbers, _ or spaces).',
       err_taken: 'That nickname is already taken.',
       err_url: 'Links must be full http(s) URLs.',
       err_proj_name: 'Every project needs a name.',
@@ -965,7 +970,7 @@
       f_main: '메인', f_del: '삭제', add_project: '+ 프로젝트 추가',
       f_email_public: '연동된 Google 이메일을 내 프로필에 공개',
       save: '저장', cancel: '취소', saving: '저장 중…', saved: '✓ 저장됨',
-      err_nickname: '닉네임은 2~20자여야 합니다 (한글·영문·숫자·_·공백).',
+      err_nickname: '닉네임은 2~15자여야 합니다 (한글·영문·숫자·_·공백).',
       err_taken: '이미 사용 중인 닉네임입니다.',
       err_url: '링크는 http(s) 로 시작하는 전체 주소여야 합니다.',
       err_proj_name: '프로젝트에는 이름이 필요합니다.',
@@ -1394,14 +1399,8 @@
       escort('army-pi', 0) + escort('army-opencode', 1) + escort('army-codex', 0) +
       groups.join('<i class="troopgap" aria-hidden="true"></i>') + escort('army-opencode', 1);
     box.hidden = false;
-    // 깃발 폭에 맞춰 유닛 간격을 동적 계산(긴 닉네임 겹침 방지) 후 마퀴 시작.
-    requestAnimationFrame(() => {
-      track.querySelectorAll('.bearer').forEach((b) => {
-        const f = b.querySelector('.flag');
-        b.style.marginLeft = Math.max(20, (f ? f.offsetWidth : 0) - 54) + 'px';
-      });
-      marchInit(track);
-    });
+    // 깃발 겹침은 CSS 흐름 배치가 보장한다(.bearer 폭 = 깃발 + 병사) — JS 폭 측정 없음.
+    marchInit(track);
   }
 
   // ── 퍼레이드 마퀴: rAF 로 translateX 를 직접 제어 — 호버 시 그 자리에 정지, 그대로 재개 ──
@@ -1411,7 +1410,10 @@
       track.style.transform = 'translateX(8px)'; // 모션 최소화: 왼쪽에 정지 배치
       return;
     }
+    // 보드가 숨겨진 상태(프로필 직접 진입)면 scrollWidth 가 0 이라 시작 위치를 못 잡는다.
+    // 그 땐 started 를 세우지 않고 두었다가, 보드가 보일 때 showBoard 가 다시 부른다.
     if (!MARCH.started) {
+      if (!track.scrollWidth) return;
       MARCH.x = -track.scrollWidth - 40;
       MARCH.started = true;
       requestAnimationFrame(marchTick);
@@ -1612,6 +1614,7 @@
     $('cmdEcho').textContent = `GET /leaderboard?${boardQuery()}`;
     document.title = BASE_TITLE;
     window.scrollTo(0, 0);
+    marchInit($('marchTrack')); // 보드가 숨겨진 동안 못 잡았던 퍼레이드 시작 위치를 여기서 잡는다
   }
   function showUser(nick) {
     curUser = nick;
@@ -2670,7 +2673,7 @@
 
   async function saveEdit() {
     const nickname = $('edNick').value.trim();
-    if (!/^[\w가-힣 ]{2,20}$/u.test(nickname)) return edMsg(t('err_nickname'));
+    if (!/^[\w가-힣 ]{2,15}$/u.test(nickname)) return edMsg(t('err_nickname'));
 
     const rows = readProjRows().filter((p) => p.name || p.desc || p.url);
     if (rows.some((p) => !p.name)) return edMsg(t('err_proj_name'));

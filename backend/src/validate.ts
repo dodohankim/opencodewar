@@ -28,12 +28,17 @@ export function clampChars(v: unknown): number {
   return Math.min(Math.floor(n), MAX_CHARS_PER_EVENT);
 }
 
-/** 닉네임: 한글/영숫자/underscore/공백, 2~20자. (공백 트림 후 검사) TODO: 비속어 필터. */
-const NICKNAME_RE = /^[\w가-힣 ]{2,20}$/u;
+/**
+ * 닉네임: 한글/영숫자/underscore/공백, 2~15자. (공백 트림 후 검사) TODO: 비속어 필터.
+ * 상한 15자는 표시 폭 때문 — 퍼레이드 깃발·리더보드·OG 카드가 한 줄에 담아야 한다.
+ * (한글은 폭이 2배라 15자면 이미 30칸이다.)
+ */
+export const MAX_NICKNAME_LEN = 15;
+const NICKNAME_RE = /^[\w가-힣 ]{2,15}$/u;
 export function isValidNickname(v: unknown): v is string {
   if (typeof v !== 'string') return false;
   const t = v.trim();
-  return t.length >= 2 && t.length <= 20 && NICKNAME_RE.test(t);
+  return t.length >= 2 && t.length <= MAX_NICKNAME_LEN && NICKNAME_RE.test(t);
 }
 
 /** 자기소개: 한 줄, 0~160자(트림 후). 빈 문자열은 "해제"로 허용. 제어문자 금지. */

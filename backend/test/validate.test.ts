@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   isValidDay,
+  isValidNickname,
   isValidShortText,
   isValidUrl,
+  MAX_NICKNAME_LEN,
   MAX_PROJECT_NAME_LEN,
   MAX_ROLE_LEN,
   MAX_URL_LEN,
@@ -187,5 +189,25 @@ describe('normalizeProjects', () => {
       { name: 'A' },
       { name: 'B' },
     ]);
+  });
+});
+
+describe('isValidNickname', () => {
+  it('2~15자(트림 후) 한글·영숫자·_·공백을 통과시킨다', () => {
+    expect(MAX_NICKNAME_LEN).toBe(15);
+    expect(isValidNickname('ab')).toBe(true);
+    expect(isValidNickname('  dododo  ')).toBe(true); // 트림 후 검사
+    expect(isValidNickname('code_war 99')).toBe(true);
+    expect(isValidNickname('가'.repeat(15))).toBe(true);
+  });
+
+  it('상한(15자)을 넘거나 허용 문자 밖이면 거른다', () => {
+    // 표시 폭 상한 — 퍼레이드 깃발·OG 카드가 한 줄에 담아야 한다.
+    expect(isValidNickname('a'.repeat(16))).toBe(false);
+    expect(isValidNickname('가'.repeat(16))).toBe(false);
+    expect(isValidNickname('a')).toBe(false);
+    expect(isValidNickname('hi!')).toBe(false); // 특수문자
+    expect(isValidNickname('  ')).toBe(false);
+    expect(isValidNickname(null)).toBe(false);
   });
 });

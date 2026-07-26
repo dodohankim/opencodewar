@@ -221,7 +221,7 @@ async function randomUser() {
 async function registerNickname(name) {
   const nickname = name.trim();
   if (!nickname) {
-    return print('사용법: `/ocw nickname <이름>` — 2~20자, 한글/영문/숫자/underscore/공백');
+    return print('사용법: `/ocw nickname <이름>` — 2~15자, 한글/영문/숫자/underscore/공백');
   }
   try {
     const res = await fetch(`${endpoint}/register`, {
@@ -242,7 +242,7 @@ async function registerNickname(name) {
       return print(`❌ 이미 사용 중인 닉네임입니다: ${nickname}`);
     }
     if (data.error === 'invalid_nickname') {
-      return print('❌ 닉네임 형식이 올바르지 않습니다 (2~20자, 한글/영문/숫자/underscore/공백).');
+      return print('❌ 닉네임 형식이 올바르지 않습니다 (2~15자, 한글/영문/숫자/underscore/공백).');
     }
     return print(`❌ 등록 실패 (status ${res.status}).`);
   } catch {
