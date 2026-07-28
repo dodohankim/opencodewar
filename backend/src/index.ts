@@ -39,10 +39,20 @@ import { isValidNickname } from './validate';
 /** 페이지·이미지 라우트는 GET/HEAD 둘 다 받는다 — HEAD 로 찔러보는 크롤러·링크체커가 404 를 받지 않도록. */
 const isPageRead = (method: string): boolean => method === 'GET' || method === 'HEAD';
 
+/** 운영 도메인. 평문 http 로 들어온 요청을 https 로 올릴 때만 쓴다(로컬 dev·프리뷰는 제외). */
+const SITE_HOST = 'opencodewar.dev';
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const { pathname } = url;
+
+    // http://opencodewar.dev/... → https 301. 안 하면 크롤러가 두 스킴을 각각 긁어
+    // Search Console 에 “적절한 표준 태그가 포함된 대체 페이지”로 쌓인다(canonical 로 막고는 있지만).
+    if (url.protocol === 'http:' && url.hostname === SITE_HOST) {
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 301);
+    }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
