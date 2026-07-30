@@ -3,7 +3,7 @@
 // 서버(/briefing)는 숫자만 준다. 무엇을 보여줄지(우선순위)와 어떤 문장으로 쓸지(i18n)는 전부 여기 있다.
 // 표시 경로는 에이전트마다 다르지만(systemMessage / notify / toast) 이 파일이 만든 "한 줄"을 그대로 쓴다.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONFIG_DIR } from './config.mjs';
 
@@ -11,6 +11,15 @@ export const BRIEFING_FILE = join(CONFIG_DIR, 'briefing.json');
 
 /** 캐시가 이보다 오래되면 표시하지 않는다 — 지난 순위를 오늘인 척 보여주면 거짓말이 된다. */
 export const MAX_AGE_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * 표시 기록 보존 기간. 이보다 오래 산 세션은 "안 본 것"으로 되돌린다 —
+ * 그쯤이면 데이터도 갈렸으니 다시 한 줄 볼 자격이 있다.
+ */
+export const SHOWN_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** 표시 기록 상한. 세션이 아무리 많아도 캐시 파일이 무한히 자라지 않게 한다. */
+const MAX_SHOWN_ENTRIES = 200;
 
 /** 다음 계급까지 이 비율 이하로 남으면 "임박"으로 본다(§19.5 3순위). */
 const NEAR_RANK_RATIO = 0.1;
@@ -37,22 +46,76 @@ const RANK_NAMES = {
   ],
 };
 
+/**
+ * 표시 기록을 `{ sessionId: 표시시각 }` 맵으로 정규화한다.
+ *
+ * 구버전 캐시는 `shownFor` 스칼라 **하나**였다. 캐시 파일은 홈 디렉토리에 하나뿐인데 세션은
+ * 프로젝트별로 여럿이 동시에 떠 있어서, 세션 B 가 표시하는 순간 세션 A 의 마커가 지워졌다.
+ * 그러면 A 가 다음 프롬프트에서 또 표시하고 → B 의 마커가 지워지고 → 무한 핑퐁이다.
+ * `--prefetch` 는 SessionStart 에서만 도니 그 사이 숫자는 그대로라, 유저 눈에는
+ * "같은 숫자가 계속 반복해서 뜬다"로 보인다. 세션마다 자기 칸을 갖게 해서 끊는다.
+ */
+export function normalizeShown(state) {
+  const out = {};
+  const src = state.shownBySession;
+  if (src && typeof src === 'object' && !Array.isArray(src)) {
+    for (const [id, at] of Object.entries(src)) {
+      if (id && Number.isFinite(at)) out[id] = at;
+    }
+  } else if (typeof state.shownFor === 'string' && state.shownFor) {
+    out[state.shownFor] = Number.isFinite(state.shownAt) ? state.shownAt : 0;
+  }
+  return out;
+}
+
+/** 이 세션에 이미 보여줬는가. TTL 지난 기록은 없는 것으로 본다. */
+export function wasShownTo(shown, sessionId, now) {
+  const at = shown ? shown[sessionId] : undefined;
+  return Number.isFinite(at) && now - at < SHOWN_TTL_MS;
+}
+
+/** 표시 기록에 이번 세션을 더하고 오래된 것·초과분을 쳐낸 새 맵. */
+export function markShown(shown, sessionId, now) {
+  const next = {};
+  for (const [id, at] of Object.entries(shown ?? {})) {
+    if (Number.isFinite(at) && now - at < SHOWN_TTL_MS) next[id] = at;
+  }
+  if (sessionId) next[sessionId] = now;
+
+  const ids = Object.keys(next);
+  if (ids.length <= MAX_SHOWN_ENTRIES) return next;
+  const trimmed = {};
+  for (const id of ids.sort((a, b) => next[b] - next[a]).slice(0, MAX_SHOWN_ENTRIES)) trimmed[id] = next[id];
+  return trimmed;
+}
+
 export function loadBriefing() {
   try {
     if (!existsSync(BRIEFING_FILE)) return null;
     const state = JSON.parse(readFileSync(BRIEFING_FILE, 'utf8'));
-    return state && typeof state === 'object' ? state : null;
+    if (!state || typeof state !== 'object') return null;
+    // 구버전 키(shownFor)는 흡수하고 버린다 — 다음 저장부터 파일에서 사라진다.
+    const { shownFor: _legacy, ...rest } = state;
+    return { ...rest, shownBySession: normalizeShown(state) };
   } catch {
     return null;
   }
 }
 
 export function saveBriefing(state) {
+  // 여러 세션이 같은 파일을 동시에 쓴다 — 임시 파일 + rename 으로 반쯤 쓰인 JSON 이 읽히는 걸 막는다.
+  const tmp = `${BRIEFING_FILE}.${process.pid}.tmp`;
   try {
     mkdirSync(CONFIG_DIR, { recursive: true });
-    writeFileSync(BRIEFING_FILE, JSON.stringify(state, null, 2) + '\n');
+    writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
+    renameSync(tmp, BRIEFING_FILE);
   } catch {
     // 캐시 저장 실패가 에이전트 사용을 막아선 안 된다
+    try {
+      rmSync(tmp, { force: true });
+    } catch {
+      // 임시 파일 정리 실패도 무시
+    }
   }
 }
 

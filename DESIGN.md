@@ -791,24 +791,31 @@ CLI 가 출력하는 `/u/<nick>` 링크 — 전부 **표식 없이 맨 URL**로 
 ### 19.2 원칙 (§4.3 fail-open 을 깨지 않는다)
 
 1. **프롬프트 제출은 절대 네트워크를 기다리지 않는다.** 표시용 훅은 로컬 파일만 읽는다.
-2. **미리 받아두고 나중에 띄운다.** 네트워크는 `SessionStart` 에서 detached 로 끝내고,
-   `UserPromptSubmit` 은 그 결과 파일을 읽기만 한다. §14.3 `pendingLinkCode` 와 같은
+2. **미리 받아두고 나중에 띄운다.** 네트워크는 `SessionStart` 와 **표시 직후**에 detached 로
+   끝내고, `UserPromptSubmit` 은 그 결과 파일을 읽기만 한다. §14.3 `pendingLinkCode` 와 같은
    "다음 실행 시 해소" 패턴.
 3. **침묵이 기본.** 보여줄 변화가 없으면 아무것도 띄우지 않는다. 매 세션 배너는 3일이면 소음이 된다.
-4. **세션당 최대 1회.** `session_id` 로 중복 표시를 막는다.
+4. **세션당 최대 1회.** `session_id` 로 중복 표시를 막는다. 캐시 파일은 홈에 하나뿐이고 세션은
+   여럿이 동시에 뜨므로, 표시 기록은 **세션별 맵**이어야 한다(§19.11).
 
 ### 19.3 흐름
 
 ```
 SessionStart 훅 (async, 출력 없음)
   → detached 자식: GET /briefing?userId=…
-  → ~/.open-code-war/briefing.json 저장 { generatedAt, lines, shownFor: null }
+  → ~/.open-code-war/briefing.json 저장 { data, fetchedAt, shownBySession(보존), prevRank }
 
 UserPromptSubmit 훅 (동기, 네트워크 없음)
   → briefing.json 읽기
-      · 없음 / 오래됨(> 6h) / shownFor == 현재 session_id  → 즉시 exit 0, 출력 없음
-      · 그 외 → {"systemMessage": "<한 줄>"} 출력 + shownFor = session_id 기록
+      · 없음 / 오래됨(> 6h) / shownBySession[현재 session_id] 존재  → 즉시 exit 0, 출력 없음
+      · 그 외 → {"systemMessage": "<한 줄>"} 출력
+                + shownBySession[session_id] = now
+                + detached 자식으로 다음 표시분 prefetch
 ```
+
+`shownBySession` 은 **prefetch 가 새 데이터를 받아와도 지우지 않는다.** 지우면 표시 → prefetch →
+마커 소멸 → 다음 프롬프트에 또 표시 로 같은 세션에서 무한 반복된다. 기록은 TTL 24h·최대 200개로
+정리한다.
 
 훅을 **두 개로 분리**하는 게 핵심이다. 기존 track 훅은 `async: true` 인데, **async 훅은 실행은 되지만
 `systemMessage` 가 화면에 뜨지 않는다**(§19.8 실측). 그래서 전송(async, 출력 없음)과 표시(동기,
@@ -978,6 +985,33 @@ pi·opencode 에는 SessionStart 훅이 없으므로 **확장/플러그인 로�
 **해법(미구현)**: 서버가 1위일 때 `ahead` 대신 **`behind`(추격자)** 를 내려주고, 문구를 방어 관점으로 쓴다.
 `🏆 KR 1위 · 2위 <닉> 이 12 뒤` — 5순위의 대칭이고, 쫓기는 쪽 심리가 쫓는 쪽만큼 강하다.
 `positionIn()` 에서 `idx+1` 이후를 같은 방식으로 찾으면 되므로 D1 추가 비용은 없다.
+
+### 19.11 버그 — 같은 숫자가 세션을 오갈 때마다 반복해서 떴다 (2026-07-30 수정)
+
+**증상.** `🎖 병장까지 182 프롬프트` 가 37분 동안 5개 세션에서 6번 떴다. 그 사이 실제 값은
+계속 줄고 있었는데(서버는 정상) 화면 숫자만 얼어 있었다. 유저 입장에서는 "뭘 쳐도 개수가 안 준다".
+
+**원인 두 개가 곱해졌다.**
+
+1. **표시 기록이 스칼라 하나였다** — 캐시 `briefing.json` 은 홈에 하나뿐인데 세션은 프로젝트별로
+   여럿이 동시에 뜬다. `shownFor` 가 값 하나라, 세션 B 가 표시하는 순간 A 의 마커가 지워지고 →
+   A 가 다음 프롬프트에 또 표시 → B 의 마커가 지워지고… 핑퐁이 무한히 돈다.
+   "세션당 1회"(§19.2-4)가 "세션 전환할 때마다 매번"이 됐다.
+2. **데이터는 `SessionStart` 에서만 갱신됐다** — 새 세션이 뜨기 전까지 캐시는 그대로다. 그래서
+   반복 표시된 그 줄이 **전부 같은 숫자**였다. 1번만 있었으면 숫자라도 달랐을 텐데 겹쳐서
+   "고장 난 카운터"로 보였다.
+
+**수정.**
+
+- `shownFor`(스칼라) → `shownBySession`(`{ sessionId: 표시시각 }` 맵). TTL 24h, 최대 200개로 정리.
+  구버전 캐시는 `loadBriefing()` 이 읽으면서 흡수한다.
+- **표시 직후 detached prefetch** — 다음에 뜰 줄이 최신이 되게. 표시 경로 자체는 여전히 로컬
+  파일만 읽으므로 §19.2-1 은 깨지지 않는다.
+- prefetch 는 `shownBySession` 을 **지우지 않는다**. 지우면 표시 → 갱신 → 마커 소멸 → 재표시로
+  같은 세션에서 무한 반복된다(예전 `shownFor: null` 리셋이 그 위험을 안고 있었다).
+- 캐시 쓰기는 임시 파일 + `rename` — 동시 세션이 반쯤 쓰인 JSON 을 읽는 것을 막는다.
+
+`backend/test/briefing-client.test.ts` 에 가드 회귀 테스트를 뒀다(핑퐁 시나리오 포함).
 
 **남은 것**
 - ⬜ §19.10 (1위 공백) 구현.

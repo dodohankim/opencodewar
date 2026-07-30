@@ -12,7 +12,15 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { endpointOf, loadConfig } from './lib/config.mjs';
-import { MAX_AGE_MS, composeBriefing, detectLang, loadBriefing, saveBriefing } from './lib/briefing.mjs';
+import {
+  MAX_AGE_MS,
+  composeBriefing,
+  detectLang,
+  loadBriefing,
+  markShown,
+  saveBriefing,
+  wasShownTo,
+} from './lib/briefing.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 const FETCH_TIMEOUT_MS = 4000;
@@ -37,6 +45,17 @@ function argOf(name) {
   return i !== -1 ? process.argv[i + 1] : undefined;
 }
 
+/** 갱신을 detached 자식에게 넘긴다. 부모는 기다리지 않는다(track.mjs 와 같은 패턴). */
+function spawnPrefetch() {
+  try {
+    const child = spawn(process.execPath, [SELF, '--prefetch-run'], { detached: true, stdio: 'ignore' });
+    child.on('error', () => {});
+    child.unref();
+  } catch {
+    // 갱신 실패가 세션 시작·표시를 막아선 안 된다
+  }
+}
+
 /** /briefing 을 받아 캐시에 저장한다. 실패는 조용히 무시(집계·대화를 막지 않는다). */
 async function runPrefetch() {
   const cfg = loadConfig();
@@ -53,7 +72,9 @@ async function runPrefetch() {
     saveBriefing({
       data,
       fetchedAt: Date.now(),
-      shownFor: null, // 새 데이터니 이번 세션에 다시 보여줄 수 있다
+      // 표시 기록은 새 데이터가 와도 지우지 않는다. 지우면 "세션당 1회"(§19.2)가 깨진다 —
+      // 표시 → 갱신 → 마커 소멸 → 다음 프롬프트에 또 표시 로 같은 세션에서 끝없이 반복된다.
+      shownBySession: prev?.shownBySession ?? {},
       // prevRank 는 "지난번 표시 시점"의 순위여야 변동이 의미를 갖는다 → prefetch 에서는 건드리지 않는다.
       prevRank: prev?.prevRank ?? null,
       shownAt: prev?.shownAt ?? 0,
@@ -75,9 +96,10 @@ function takeLine(sessionId) {
 
   const state = loadBriefing();
   if (!state || !state.data) return null;
-  if (Date.now() - (state.fetchedAt ?? 0) > MAX_AGE_MS) return null;
-  if (sessionId && state.shownFor === sessionId) return null;
-  if (!sessionId && state.shownAt && Date.now() - state.shownAt < MIN_INTERVAL_MS) return null;
+  const now = Date.now();
+  if (now - (state.fetchedAt ?? 0) > MAX_AGE_MS) return null;
+  if (sessionId && wasShownTo(state.shownBySession, sessionId, now)) return null;
+  if (!sessionId && state.shownAt && now - state.shownAt < MIN_INTERVAL_MS) return null;
 
   const line = composeBriefing(state.data, state.prevRank ?? null, detectLang(cfg, state.data));
   if (!line) return null;
@@ -85,10 +107,15 @@ function takeLine(sessionId) {
   const rank = state.data.rank;
   saveBriefing({
     ...state,
-    shownFor: sessionId ?? state.shownFor ?? null,
-    shownAt: Date.now(),
+    shownBySession: markShown(state.shownBySession, sessionId, now),
+    shownAt: now,
     prevRank: rank ? { global: rank.global ?? null, country: rank.country ?? null } : (state.prevRank ?? null),
   });
+
+  // 방금 띄운 숫자는 이미 낡았다 — prefetch 이후 친 프롬프트가 빠져 있고, 다른 세션이 이 캐시를
+  // 이어 쓴다. 표시 직후 갱신을 걸어 "다음에 뜰 줄"이 최신이 되게 한다. detached 라 여기서
+  // 기다리지 않으므로 §19.2(표시 경로는 네트워크를 타지 않는다)는 그대로다.
+  spawnPrefetch();
   return line;
 }
 
@@ -108,9 +135,7 @@ try {
   const mode = process.argv[2];
   if (mode === '--prefetch') {
     // 네트워크를 타므로 detached 자식에게 넘기고 부모는 즉시 종료한다(track.mjs 와 같은 패턴).
-    const child = spawn(process.execPath, [SELF, '--prefetch-run'], { detached: true, stdio: 'ignore' });
-    child.on('error', () => {});
-    child.unref();
+    spawnPrefetch();
   } else if (mode === '--prefetch-run') {
     await runPrefetch();
   } else if (mode === '--line') {
