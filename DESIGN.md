@@ -790,32 +790,40 @@ CLI 가 출력하는 `/u/<nick>` 링크 — 전부 **표식 없이 맨 URL**로 
 
 ### 19.2 원칙 (§4.3 fail-open 을 깨지 않는다)
 
-1. **프롬프트 제출은 절대 네트워크를 기다리지 않는다.** 표시용 훅은 로컬 파일만 읽는다.
+1. **프롬프트 제출 경로에는 아무것도 얹지 않는다.** 표시는 `SessionStart` 에서만 하고,
+   `UserPromptSubmit` 에는 집계(async, 출력 없음)만 남긴다.
 2. **미리 받아두고 나중에 띄운다.** 네트워크는 `SessionStart` 와 **표시 직후**에 detached 로
-   끝내고, `UserPromptSubmit` 은 그 결과 파일을 읽기만 한다. §14.3 `pendingLinkCode` 와 같은
+   끝내고, 표시 훅은 그 결과 파일을 읽기만 한다. §14.3 `pendingLinkCode` 와 같은
    "다음 실행 시 해소" 패턴.
 3. **침묵이 기본.** 보여줄 변화가 없으면 아무것도 띄우지 않는다. 매 세션 배너는 3일이면 소음이 된다.
-4. **세션당 최대 1회.** `session_id` 로 중복 표시를 막는다. 캐시 파일은 홈에 하나뿐이고 세션은
-   여럿이 동시에 뜨므로, 표시 기록은 **세션별 맵**이어야 한다(§19.11).
+4. **하루 최대 1회, 같은 얘기는 두 번 하지 않는다.** 세션 단위로 세면 안 된다 — 프로젝트별로
+   세션을 수십 개 띄우는 사용자에게 "세션당 1회"는 하루 수십 번이다(§19.12).
 
 ### 19.3 흐름
 
 ```
-SessionStart 훅 (async, 출력 없음)
-  → detached 자식: GET /briefing?userId=…
-  → ~/.open-code-war/briefing.json 저장 { data, fetchedAt, shownBySession(보존), prevRank }
-
-UserPromptSubmit 훅 (동기, 네트워크 없음)
+SessionStart 훅 ①  (동기, 네트워크 없음)          ← 표시
   → briefing.json 읽기
-      · 없음 / 오래됨(> 6h) / shownBySession[현재 session_id] 존재  → 즉시 exit 0, 출력 없음
-      · 그 외 → {"systemMessage": "<한 줄>"} 출력
-                + shownBySession[session_id] = now
+      · 없음 / 오래됨(> 6h)                       → 즉시 exit 0, 출력 없음
+      · 후보를 우선순위대로 훑어 가드 통과하는 첫 줄
+          - 오늘 이미 띄웠다(lastShownDay)        → 침묵
+          - 지난번과 같은 종류다(lastKey)         → 다음 후보로
+      · 통과 → {"systemMessage": "<한 줄>"} 출력
+                + lastShownDay/lastKey 기록
                 + detached 자식으로 다음 표시분 prefetch
+
+SessionStart 훅 ②  (async, 출력 없음)             ← 갱신
+  → detached 자식: GET /briefing?userId=…
+  → briefing.json 저장 { data, fetchedAt, lastShownDay·lastKey 보존, prevRank }
+
+UserPromptSubmit 훅 (async, 출력 없음)
+  → track.mjs 집계만
 ```
 
-`shownBySession` 은 **prefetch 가 새 데이터를 받아와도 지우지 않는다.** 지우면 표시 → prefetch →
-마커 소멸 → 다음 프롬프트에 또 표시 로 같은 세션에서 무한 반복된다. 기록은 TTL 24h·최대 200개로
-정리한다.
+표시 기록(`lastShownDay`/`lastKey`)은 **prefetch 가 새 데이터를 받아와도 지우지 않는다.**
+지우면 표시 → prefetch → 기록 소멸 → 또 표시 로 무한 반복된다.
+
+`matcher` 는 `startup|resume` — `compact` 에도 걸면 작업 중간에 끼어든다.
 
 훅을 **두 개로 분리**하는 게 핵심이다. 기존 track 훅은 `async: true` 인데, **async 훅은 실행은 되지만
 `systemMessage` 가 화면에 뜨지 않는다**(§19.8 실측). 그래서 전송(async, 출력 없음)과 표시(동기,
@@ -1012,6 +1020,37 @@ pi·opencode 에는 SessionStart 훅이 없으므로 **확장/플러그인 로�
 - 캐시 쓰기는 임시 파일 + `rename` — 동시 세션이 반쯤 쓰인 JSON 을 읽는 것을 막는다.
 
 `backend/test/briefing-client.test.ts` 에 가드 회귀 테스트를 뒀다(핑퐁 시나리오 포함).
+
+> ⚠️ 이 절의 `shownBySession` 은 **§19.12 에서 폐기됐다.** 세션 단위 자체가 틀린 단위였다.
+
+### 19.12 표시 단위를 세션 → 하루로 (2026-07-30)
+
+§19.11 로 핑퐁은 끊었지만 여전히 시끄러웠다. 실측: 85분에 **서로 다른 세션 9개**. 프로젝트마다
+세션을 띄우는 사용자에게 "세션당 1회"는 하루 수십 번이라, **세는 단위 자체가 틀렸다.**
+
+문구도 문제였다. 계급 임박·격차 같은 줄은 *변화*가 아니라 *상태*라서, 조건이 유지되는 몇 주
+내내 숫자 하나만 바뀐 같은 문장이 나온다. §19.2-3("보여줄 변화가 없으면 침묵")과 어긋났다.
+
+**바꾼 것**
+
+| | 전 | 후 |
+|---|---|---|
+| 세는 단위 | 세션 (`shownBySession` 맵) | 로컬 달력 하루 (`lastShownDay`) |
+| 중복 판정 | 없음 | 문구 **종류**(`lastKey`)가 같으면 침묵 |
+| 표시 시점 | `UserPromptSubmit` (타이핑에 끼어듦) | `SessionStart` (`startup\|resume`) |
+| 프롬프트당 비용 | node 기동 1회(동기) | 0 — 집계 훅(async)만 남음 |
+
+`key` 는 숫자가 아니라 종류로 잡는다 — `rank:2` 는 상병인 동안 내내 같은 key 라 한 번만 뜨고,
+`streak:11` 은 연속일수가 매일 바뀌니 매일 뜬다(그게 맞다), `gap:<닉네임>` 은 같은 사람을
+쫓는 동안 한 번만. `composeBriefing()` 은 후보 목록을 내는 `briefingCandidates()` 로 바뀌었고,
+1순위가 "이미 본 얘기"라 막히면 침묵하는 대신 다음 순위로 넘어간다.
+
+**SessionStart 표시 실측** — §19.8 에서 미실측으로 남아 있던 항목이다. 격리된 `CLAUDE_CONFIG_DIR`
+로 프로브 훅을 심어 확인했다: SessionStart 동기 훅의 stdout `systemMessage` 는 UserPromptSubmit
+과 **동일한 `hook_system_message` attachment** 를 만든다. `matcher: "startup|resume"` 도 정상 발화.
+
+pi·opencode 어댑터도 입력마다 `briefLine()` 을 부르던 것을 **프로세스당 1회**로 바꿨다
+(빈도 판정은 어차피 `brief.mjs` 가 하지만, 입력마다 node 를 띄울 이유가 없다).
 
 **남은 것**
 - ⬜ §19.10 (1위 공백) 구현.

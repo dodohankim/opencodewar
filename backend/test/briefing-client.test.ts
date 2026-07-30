@@ -1,80 +1,105 @@
-// 클라이언트(플러그인) 쪽 브리핑 캐시 가드 — plugin/scripts/lib/briefing.mjs.
+// 클라이언트(플러그인) 쪽 브리핑 표시 가드 — plugin/scripts/lib/briefing.mjs.
 //
-// 여기 있는 이유: 이 파일이 깨졌을 때 증상이 "같은 브리핑 줄이 세션을 오갈 때마다 반복해서 뜬다"
-// 였고(실측: 37분간 5개 세션에서 `병장까지 182 프롬프트` 6회), 원인은 표시 기록이 스칼라
-// 하나였던 것이다. 순수 함수라 FS 없이 검증된다.
+// 여기 있는 이유: 이 로직이 깨지면 증상이 "같은 줄이 계속 반복해서 뜬다"인데, 실측 전엔 잘
+// 안 보인다(85분간 서로 다른 세션 9개에서 17회 표시된 적이 있다). 순수 함수라 FS 없이 검증된다.
 
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error — 플러그인 스크립트는 타입 선언 없는 .mjs
-import { SHOWN_TTL_MS, markShown, normalizeShown, wasShownTo } from '../../plugin/scripts/lib/briefing.mjs';
+import { briefingCandidates, canShow, localDay, pickBriefing } from '../../plugin/scripts/lib/briefing.mjs';
 
-const NOW = Date.UTC(2026, 6, 30, 12, 0, 0);
+const NOW = new Date(2026, 6, 30, 12, 0, 0).getTime(); // 로컬 2026-07-30 정오
+const TOMORROW = NOW + 24 * 60 * 60 * 1000;
 
-describe('normalizeShown', () => {
-  it('구버전 shownFor 스칼라를 맵으로 흡수한다', () => {
-    expect(normalizeShown({ shownFor: 'sess-a', shownAt: 100 })).toEqual({ 'sess-a': 100 });
-  });
+/** 계급 임박(3순위)만 걸리는 데이터 — remaining 이 span 의 10% 이하. */
+function data(over: Record<string, unknown> = {}) {
+  return {
+    registered: true,
+    today: { prompts: 30, chars: 20000, qualified: true },
+    streak: { current: 11, longest: 11, minPrompts: 10, minChars: 500 },
+    rankTitle: { index: 2, remaining: 174, span: 2000 },
+    rank: { global: 1, country: 1, countryCode: 'KR' },
+    ahead: null,
+    ...over,
+  };
+}
 
-  it('shownAt 이 없던 캐시는 0 으로 (TTL 판정에서 만료 취급)', () => {
-    expect(normalizeShown({ shownFor: 'sess-a' })).toEqual({ 'sess-a': 0 });
-  });
-
-  it('shownFor 가 null 이거나 키가 아예 없으면 빈 맵', () => {
-    expect(normalizeShown({ shownFor: null })).toEqual({});
-    expect(normalizeShown({})).toEqual({});
-  });
-
-  it('이미 맵이면 그대로, 망가진 항목만 버린다', () => {
-    expect(normalizeShown({ shownBySession: { a: 1, b: 'nope', '': 3 } })).toEqual({ a: 1 });
-  });
-
-  it('맵이 있으면 구버전 키는 무시한다', () => {
-    expect(normalizeShown({ shownBySession: { a: 1 }, shownFor: 'b', shownAt: 2 })).toEqual({ a: 1 });
+describe('localDay', () => {
+  it('로컬 달력 기준 YYYY-MM-DD (로케일에 안 흔들린다)', () => {
+    expect(localDay(NOW)).toBe('2026-07-30');
+    expect(localDay(new Date(2026, 0, 5, 0, 30).getTime())).toBe('2026-01-05');
   });
 });
 
-describe('wasShownTo', () => {
-  it('기록이 있으면 이미 본 것', () => {
-    expect(wasShownTo({ a: NOW - 1000 }, 'a', NOW)).toBe(true);
+describe('canShow — 하루 1회 + 같은 종류 금지', () => {
+  it('기록이 비어 있으면 띄운다', () => {
+    expect(canShow({}, 'rank:2', NOW)).toBe(true);
   });
 
-  it('다른 세션의 기록은 내 기록이 아니다 — 이게 핑퐁 버그의 핵심', () => {
-    expect(wasShownTo({ b: NOW - 1000 }, 'a', NOW)).toBe(false);
-    // 그리고 b 의 기록은 a 를 표시해도 살아남아야 한다
-    expect(wasShownTo(markShown({ b: NOW - 1000 }, 'a', NOW), 'b', NOW)).toBe(true);
+  it('오늘 이미 띄웠으면 종류가 달라도 침묵', () => {
+    expect(canShow({ lastShownDay: '2026-07-30', lastKey: 'streak:11' }, 'rank:2', NOW)).toBe(false);
   });
 
-  it('TTL 지난 기록은 없는 것으로 본다', () => {
-    expect(wasShownTo({ a: NOW - SHOWN_TTL_MS - 1 }, 'a', NOW)).toBe(false);
+  it('날이 바뀌면 다시 띄운다', () => {
+    expect(canShow({ lastShownDay: '2026-07-30', lastKey: 'streak:11' }, 'rank:2', TOMORROW)).toBe(true);
   });
 
-  it('빈/누락 맵에서도 터지지 않는다', () => {
-    expect(wasShownTo(undefined, 'a', NOW)).toBe(false);
-    expect(wasShownTo({}, 'a', NOW)).toBe(false);
+  it('날이 바뀌어도 지난번과 같은 종류면 침묵 — 계급 줄이 몇 주 반복되던 문제', () => {
+    expect(canShow({ lastShownDay: '2026-07-30', lastKey: 'rank:2' }, 'rank:2', TOMORROW)).toBe(false);
+  });
+
+  it('계급이 실제로 오르면 key 가 바뀌므로 다시 띄운다', () => {
+    expect(canShow({ lastShownDay: '2026-07-30', lastKey: 'rank:2' }, 'rank:3', TOMORROW)).toBe(true);
+  });
+
+  it('state 나 key 가 없으면 침묵', () => {
+    expect(canShow(null, 'rank:2', NOW)).toBe(false);
+    expect(canShow({}, null, NOW)).toBe(false);
   });
 });
 
-describe('markShown', () => {
-  it('기존 기록을 유지한 채 이번 세션을 더한다', () => {
-    expect(markShown({ a: NOW - 5000 }, 'b', NOW)).toEqual({ a: NOW - 5000, b: NOW });
+describe('briefingCandidates — key 는 숫자가 아니라 종류로 잡는다', () => {
+  it('계급 임박 key 는 숫자가 줄어도 그대로', () => {
+    const a = briefingCandidates(data(), null, 'ko');
+    const b = briefingCandidates(data({ rankTitle: { index: 2, remaining: 12, span: 2000 } }), null, 'ko');
+    expect(a[0].key).toBe('rank:2');
+    expect(b[0].key).toBe('rank:2');
+    expect(a[0].line).not.toBe(b[0].line); // 문구는 다르지만 같은 얘기다
   });
 
-  it('TTL 지난 항목은 정리한다', () => {
-    const shown = { old: NOW - SHOWN_TTL_MS - 1, fresh: NOW - 10 };
-    expect(markShown(shown, 'b', NOW)).toEqual({ fresh: NOW - 10, b: NOW });
+  it('스트릭 key 는 연속일수를 담는다 — 매일 새로 알릴 값어치가 있다', () => {
+    const d = data({ today: { prompts: 3, chars: 100, qualified: false } });
+    expect(briefingCandidates(d, null, 'ko')[0].key).toBe('streak:11');
   });
 
-  it('sessionId 가 없으면(호스트가 못 주면) 기록만 정리하고 추가하지 않는다', () => {
-    expect(markShown({ a: NOW }, null, NOW)).toEqual({ a: NOW });
+  it('격차 key 는 상대 닉네임 — 같은 사람 쫓는 동안은 한 번만', () => {
+    const d = data({ rank: { global: 5, country: 3, countryCode: 'KR' }, ahead: { nickname: 'foo', gap: 7 } });
+    expect(briefingCandidates(d, null, 'ko').map((c: any) => c.key)).toContain('gap:foo');
   });
 
-  it('상한을 넘으면 오래된 것부터 버린다', () => {
-    const shown: Record<string, number> = {};
-    for (let i = 0; i < 250; i++) shown[`s${i}`] = NOW - (250 - i); // s0 이 가장 오래됨
-    const next = markShown(shown, 'newest', NOW);
-    expect(Object.keys(next)).toHaveLength(200);
-    expect(next.newest).toBe(NOW);
-    expect(next.s0).toBeUndefined();
-    expect(next.s249).toBe(NOW - 1);
+  it('우선순위 순서대로 나온다 (닉네임 > 스트릭 > 계급)', () => {
+    const d = data({ registered: false, today: { prompts: 3, chars: 100, qualified: false } });
+    expect(briefingCandidates(d, null, 'ko').map((c: any) => c.key)).toEqual(['nick', 'streak:11', 'rank:2']);
+  });
+});
+
+describe('pickBriefing — 막힌 후보는 건너뛰고 다음 순위로', () => {
+  it('1순위가 이미 본 얘기면 침묵하지 않고 다음 걸 띄운다', () => {
+    const d = data({ today: { prompts: 3, chars: 100, qualified: false } }); // streak + rank 둘 다 후보
+    const picked = pickBriefing({ lastKey: 'streak:11' }, d, null, 'ko', NOW);
+    expect(picked.key).toBe('rank:2');
+  });
+
+  it('오늘 이미 띄웠으면 전부 막힌다', () => {
+    const d = data({ today: { prompts: 3, chars: 100, qualified: false } });
+    expect(pickBriefing({ lastShownDay: '2026-07-30' }, d, null, 'ko', NOW)).toBeNull();
+  });
+
+  it('후보가 하나뿐인데 그게 막혔으면 침묵', () => {
+    expect(pickBriefing({ lastKey: 'rank:2' }, data(), null, 'ko', TOMORROW)).toBeNull();
+  });
+
+  it('보여줄 게 아예 없으면 침묵', () => {
+    const quiet = data({ rankTitle: { index: 2, remaining: 1500, span: 2000 } }); // 임박 아님
+    expect(pickBriefing({}, quiet, null, 'ko', NOW)).toBeNull();
   });
 });

@@ -12,15 +12,6 @@ export const BRIEFING_FILE = join(CONFIG_DIR, 'briefing.json');
 /** 캐시가 이보다 오래되면 표시하지 않는다 — 지난 순위를 오늘인 척 보여주면 거짓말이 된다. */
 export const MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
-/**
- * 표시 기록 보존 기간. 이보다 오래 산 세션은 "안 본 것"으로 되돌린다 —
- * 그쯤이면 데이터도 갈렸으니 다시 한 줄 볼 자격이 있다.
- */
-export const SHOWN_TTL_MS = 24 * 60 * 60 * 1000;
-
-/** 표시 기록 상한. 세션이 아무리 많아도 캐시 파일이 무한히 자라지 않게 한다. */
-const MAX_SHOWN_ENTRIES = 200;
-
 /** 다음 계급까지 이 비율 이하로 남으면 "임박"으로 본다(§19.5 3순위). */
 const NEAR_RANK_RATIO = 0.1;
 
@@ -47,46 +38,31 @@ const RANK_NAMES = {
 };
 
 /**
- * 표시 기록을 `{ sessionId: 표시시각 }` 맵으로 정규화한다.
+ * 로컬 달력 기준 날짜(YYYY-MM-DD). "하루 1회" 판정용.
  *
- * 구버전 캐시는 `shownFor` 스칼라 **하나**였다. 캐시 파일은 홈 디렉토리에 하나뿐인데 세션은
- * 프로젝트별로 여럿이 동시에 떠 있어서, 세션 B 가 표시하는 순간 세션 A 의 마커가 지워졌다.
- * 그러면 A 가 다음 프롬프트에서 또 표시하고 → B 의 마커가 지워지고 → 무한 핑퐁이다.
- * `--prefetch` 는 SessionStart 에서만 도니 그 사이 숫자는 그대로라, 유저 눈에는
- * "같은 숫자가 계속 반복해서 뜬다"로 보인다. 세션마다 자기 칸을 갖게 해서 끊는다.
+ * 스트릭 집계(§17)는 공용 UTC 지만 이건 표시 빈도라 **사람이 느끼는 하루**를 따라야 한다.
+ * 로케일 포맷터를 쓰지 않는 건 환경마다 결과가 달라지면 안 되기 때문.
  */
-export function normalizeShown(state) {
-  const out = {};
-  const src = state.shownBySession;
-  if (src && typeof src === 'object' && !Array.isArray(src)) {
-    for (const [id, at] of Object.entries(src)) {
-      if (id && Number.isFinite(at)) out[id] = at;
-    }
-  } else if (typeof state.shownFor === 'string' && state.shownFor) {
-    out[state.shownFor] = Number.isFinite(state.shownAt) ? state.shownAt : 0;
-  }
-  return out;
+export function localDay(now) {
+  const d = new Date(now);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/** 이 세션에 이미 보여줬는가. TTL 지난 기록은 없는 것으로 본다. */
-export function wasShownTo(shown, sessionId, now) {
-  const at = shown ? shown[sessionId] : undefined;
-  return Number.isFinite(at) && now - at < SHOWN_TTL_MS;
-}
-
-/** 표시 기록에 이번 세션을 더하고 오래된 것·초과분을 쳐낸 새 맵. */
-export function markShown(shown, sessionId, now) {
-  const next = {};
-  for (const [id, at] of Object.entries(shown ?? {})) {
-    if (Number.isFinite(at) && now - at < SHOWN_TTL_MS) next[id] = at;
-  }
-  if (sessionId) next[sessionId] = now;
-
-  const ids = Object.keys(next);
-  if (ids.length <= MAX_SHOWN_ENTRIES) return next;
-  const trimmed = {};
-  for (const id of ids.sort((a, b) => next[b] - next[a]).slice(0, MAX_SHOWN_ENTRIES)) trimmed[id] = next[id];
-  return trimmed;
+/**
+ * 이 문구를 지금 띄워도 되는가 — 하루 1회, 그리고 지난번과 같은 얘기면 금지.
+ *
+ * 왜 세션 단위가 아닌가: 캐시 파일은 홈에 하나뿐인데 이 유저는 프로젝트별로 세션을 수십 개
+ * 띄운다(실측: 85분에 서로 다른 세션 9개). "세션당 1회"는 그 패턴에서 하루 수십 번이 된다.
+ *
+ * 왜 문구 종류(key)까지 보나: 계급 임박·격차 같은 줄은 *변화*가 아니라 *상태*라, 조건이
+ * 유지되는 몇 주 내내 숫자 하나만 바뀐 같은 문장이 매일 나온다. §19.2-3("보여줄 변화가
+ * 없으면 침묵")을 지키려면 종류가 바뀌었을 때만 띄워야 한다.
+ */
+export function canShow(state, key, now) {
+  if (!state || !key) return false;
+  if (state.lastShownDay === localDay(now)) return false;
+  return state.lastKey !== key;
 }
 
 export function loadBriefing() {
@@ -94,9 +70,9 @@ export function loadBriefing() {
     if (!existsSync(BRIEFING_FILE)) return null;
     const state = JSON.parse(readFileSync(BRIEFING_FILE, 'utf8'));
     if (!state || typeof state !== 'object') return null;
-    // 구버전 키(shownFor)는 흡수하고 버린다 — 다음 저장부터 파일에서 사라진다.
-    const { shownFor: _legacy, ...rest } = state;
-    return { ...rest, shownBySession: normalizeShown(state) };
+    // 구버전 표시 기록 키(shownFor / shownBySession)는 버린다 — 하루 1회 가드로 대체됐다.
+    const { shownFor: _a, shownBySession: _b, ...rest } = state;
+    return rest;
   } catch {
     return null;
   }
@@ -145,47 +121,62 @@ function placeLabel(rank, code, lang) {
 }
 
 /**
- * 브리핑 한 줄을 만든다. 보여줄 게 없으면 null(침묵).
+ * 띄울 수 있는 문구 후보를 **우선순위 순서대로** 만든다. 각 항목은 `{ key, line }`.
  *
- * ⚠️ Claude Code·Codex 는 이 문구 앞에 `UserPromptSubmit says: ` 를 강제로 붙인다(§19.8).
+ * `key` 는 "같은 얘기인가"를 판정하는 식별자다 — 숫자가 아니라 종류로 잡는다.
+ * `rank:2` 는 상병인 동안 내내 같은 key 라, 한 번 띄우면 병장을 달기 전까지 다시 안 뜬다.
+ * 하나만 고르지 않고 목록으로 내는 이유는, 1순위가 "이미 본 얘기"라 막혔을 때 침묵하는 대신
+ * 다음 순위로 넘어가기 위해서다.
+ *
+ * ⚠️ Claude Code·Codex 는 이 문구 앞에 `SessionStart says: ` 같은 접두사를 강제로 붙인다(§19.8).
  * 그래서 인사말이나 주어로 시작하지 않고 상태·지시로 바로 들어간다.
  *
  * @param data  서버 /briefing 응답
  * @param prevRank 지난번 "표시" 시점의 순위 { global, country } | null
  * @param lang 'ko' | 'en'
  */
-export function composeBriefing(data, prevRank, lang) {
-  if (!data) return null;
+export function briefingCandidates(data, prevRank, lang) {
+  if (!data) return [];
   const ko = lang === 'ko';
+  const out = [];
 
   // 1순위 — 닉네임 미등록. 익명이면 리더보드에 이름이 없어 재방문·공유 동기가 0 이다.
   if (!data.registered) {
-    return ko
-      ? '익명으로 집계 중 — /ocw nickname <이름> 으로 리더보드에 이름을 올리세요'
-      : 'Tracking anonymously — run /ocw nickname <name> to claim your spot';
+    out.push({
+      key: 'nick',
+      line: ko
+        ? '익명으로 집계 중 — /ocw nickname <이름> 으로 리더보드에 이름을 올리세요'
+        : 'Tracking anonymously — run /ocw nickname <name> to claim your spot',
+    });
   }
 
   // 2순위 — 스트릭이 걸려 있는데 오늘 아직 미달(손실 회피가 가장 강한 리텐션 신호).
+  // key 에 연속일수를 넣는다 — 매일 달라지므로 이 줄만은 하루 한 번 다시 뜬다(그게 맞다).
   const streak = data.streak ?? {};
   const today = data.today ?? {};
   if ((streak.current ?? 0) >= 3 && !today.qualified) {
     const needPrompts = Math.max(0, (streak.minPrompts ?? 0) - (today.prompts ?? 0));
-    if (needPrompts > 0) {
-      return ko
-        ? `🔥 ${streak.current}일 연속 · 오늘 ${today.prompts ?? 0}/${streak.minPrompts} — ${needPrompts}개 더 치면 유지`
-        : `🔥 ${streak.current}-day streak · ${today.prompts ?? 0}/${streak.minPrompts} today — ${needPrompts} more to keep it`;
-    }
-    // 프롬프트 수는 채웠는데 글자수가 모자란 경우
-    return ko
-      ? `🔥 ${streak.current}일 연속 · 오늘 ${today.chars ?? 0}자 — ${streak.minChars}자 넘겨야 유지`
-      : `🔥 ${streak.current}-day streak · ${today.chars ?? 0} chars — need over ${streak.minChars} to keep it`;
+    const line =
+      needPrompts > 0
+        ? ko
+          ? `🔥 ${streak.current}일 연속 · 오늘 ${today.prompts ?? 0}/${streak.minPrompts} — ${needPrompts}개 더 치면 유지`
+          : `🔥 ${streak.current}-day streak · ${today.prompts ?? 0}/${streak.minPrompts} today — ${needPrompts} more to keep it`
+        : // 프롬프트 수는 채웠는데 글자수가 모자란 경우
+          ko
+          ? `🔥 ${streak.current}일 연속 · 오늘 ${today.chars ?? 0}자 — ${streak.minChars}자 넘겨야 유지`
+          : `🔥 ${streak.current}-day streak · ${today.chars ?? 0} chars — need over ${streak.minChars} to keep it`;
+    out.push({ key: `streak:${streak.current}`, line });
   }
 
   // 3순위 — 다음 계급 임박. 끝이 보이는 목표가 행동을 끌어낸다.
+  // key 는 계급 인덱스 — 상병인 동안 계속 임박 상태라도 딱 한 번만 알린다.
   const rt = data.rankTitle ?? {};
   if (rt.remaining != null && rt.span > 0 && rt.remaining <= rt.span * NEAR_RANK_RATIO) {
     const next = rankName((rt.index ?? 0) + 1, lang);
-    return ko ? `🎖 ${next}까지 ${rt.remaining} 프롬프트` : `🎖 ${rt.remaining} prompts to ${next}`;
+    out.push({
+      key: `rank:${rt.index ?? 0}`,
+      line: ko ? `🎖 ${next}까지 ${rt.remaining} 프롬프트` : `🎖 ${rt.remaining} prompts to ${next}`,
+    });
   }
 
   // 4순위 — 지난 브리핑 대비 순위 변동. 국가 순위를 우선한다(같은 리그라 체감이 크다).
@@ -196,18 +187,36 @@ export function composeBriefing(data, prevRank, lang) {
   if (cur != null && prev != null && cur !== prev) {
     const up = prev - cur; // 양수면 상승
     const arrow = up > 0 ? `↑${up}` : `↓${-up}`;
-    return `${placeLabel(cur, scope === 'country' ? rank.countryCode : null, lang)} (${arrow})`;
+    out.push({
+      key: `move:${scope}:${cur}`,
+      line: `${placeLabel(cur, scope === 'country' ? rank.countryCode : null, lang)} (${arrow})`,
+    });
   }
 
   // 5순위 — 바로 위 경쟁자와의 격차. 리더보드 전체보다 이 한 명이 더 강하게 작동한다.
+  // key 는 상대 닉네임 — 같은 사람을 쫓는 동안 격차 숫자만 바뀌는 반복을 막는다.
   const ahead = data.ahead;
   if (cur != null && ahead && ahead.gap > 0 && ahead.gap <= GAP_THRESHOLD) {
     const place = placeLabel(cur, scope === 'country' ? rank.countryCode : null, lang);
-    return ko
-      ? `${place} · ${cur - 1}위 ${ahead.nickname} 와 ${ahead.gap} 차이`
-      : `${place} · ${ahead.gap} behind #${cur - 1} ${ahead.nickname}`;
+    out.push({
+      key: `gap:${ahead.nickname}`,
+      line: ko
+        ? `${place} · ${cur - 1}위 ${ahead.nickname} 와 ${ahead.gap} 차이`
+        : `${place} · ${ahead.gap} behind #${cur - 1} ${ahead.nickname}`,
+    });
   }
 
+  return out;
+}
+
+/**
+ * 지금 띄울 문구 하나. 없으면 null(침묵).
+ * 우선순위대로 훑되 하루 1회·같은 얘기 금지 가드에 걸리는 후보는 건너뛴다.
+ */
+export function pickBriefing(state, data, prevRank, lang, now) {
+  for (const c of briefingCandidates(data, prevRank, lang)) {
+    if (canShow(state, c.key, now)) return c;
+  }
   // 보여줄 변화가 없으면 침묵한다. 매 세션 배너는 3일이면 소음이 된다.
   return null;
 }

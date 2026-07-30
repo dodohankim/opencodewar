@@ -1,49 +1,21 @@
 #!/usr/bin/env node
 // 세션 브리핑 진입점 (DESIGN.md §19). track.mjs(집계)와 역할이 다르다 — 이쪽은 "보여주기"만 한다.
 //
-//   brief.mjs --prefetch            SessionStart 용. detached 자식에게 넘기고 즉시 종료(세션 시작 지연 0).
-//   brief.mjs --hook                UserPromptSubmit 용(Claude Code·Codex). stdin JSON 에서 session_id 를
-//                                   읽어 {"systemMessage": "<한 줄>"} 을 출력한다. 보여줄 게 없으면 무출력.
-//   brief.mjs --line [--session ID] pi·opencode 어댑터 용. 문구 한 줄만 stdout 으로 낸다.
+//   brief.mjs --prefetch  SessionStart 용. detached 자식에게 넘기고 즉시 종료(세션 시작 지연 0).
+//   brief.mjs --hook      SessionStart 표시용(Claude Code·Codex, 동기).
+//                         {"systemMessage": "<한 줄>"} 을 출력한다. 보여줄 게 없으면 무출력.
+//   brief.mjs --line      pi·opencode 어댑터 용. 문구 한 줄만 stdout 으로 낸다.
 //
-// 원칙: 네트워크는 --prefetch 에서만 탄다. 표시 경로(--hook/--line)는 로컬 파일만 읽으므로
-// 프롬프트 제출을 절대 지연시키지 않는다(§19.2).
+// 원칙: 네트워크는 --prefetch 에서만 탄다. 표시 경로(--hook/--line)는 로컬 파일만 읽는다(§19.2).
+// 표시 빈도는 하루 1회 + 같은 종류 반복 금지 — 판정은 briefing.mjs 의 canShow (§19.12).
 
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { endpointOf, loadConfig } from './lib/config.mjs';
-import {
-  MAX_AGE_MS,
-  composeBriefing,
-  detectLang,
-  loadBriefing,
-  markShown,
-  saveBriefing,
-  wasShownTo,
-} from './lib/briefing.mjs';
+import { MAX_AGE_MS, detectLang, loadBriefing, localDay, pickBriefing, saveBriefing } from './lib/briefing.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 const FETCH_TIMEOUT_MS = 4000;
-const STDIN_TIMEOUT_MS = 800;
-
-/** session_id 를 못 얻는 호스트에서 중복 표시를 막는 대체 가드. */
-const MIN_INTERVAL_MS = 30 * 60 * 1000;
-
-function readStdin() {
-  return new Promise((resolve) => {
-    let data = '';
-    const done = () => resolve(data);
-    process.stdin.on('data', (c) => (data += c));
-    process.stdin.on('end', done);
-    process.stdin.on('error', done);
-    setTimeout(done, STDIN_TIMEOUT_MS);
-  });
-}
-
-function argOf(name) {
-  const i = process.argv.indexOf(name);
-  return i !== -1 ? process.argv[i + 1] : undefined;
-}
 
 /** 갱신을 detached 자식에게 넘긴다. 부모는 기다리지 않는다(track.mjs 와 같은 패턴). */
 function spawnPrefetch() {
@@ -72,9 +44,10 @@ async function runPrefetch() {
     saveBriefing({
       data,
       fetchedAt: Date.now(),
-      // 표시 기록은 새 데이터가 와도 지우지 않는다. 지우면 "세션당 1회"(§19.2)가 깨진다 —
-      // 표시 → 갱신 → 마커 소멸 → 다음 프롬프트에 또 표시 로 같은 세션에서 끝없이 반복된다.
-      shownBySession: prev?.shownBySession ?? {},
+      // 표시 기록은 새 데이터가 와도 지우지 않는다. 지우면 하루 1회 가드(§19.12)가 깨져서
+      // 표시 → 갱신 → 기록 소멸 → 또 표시 로 끝없이 반복된다.
+      lastShownDay: prev?.lastShownDay ?? null,
+      lastKey: prev?.lastKey ?? null,
       // prevRank 는 "지난번 표시 시점"의 순위여야 변동이 의미를 갖는다 → prefetch 에서는 건드리지 않는다.
       prevRank: prev?.prevRank ?? null,
       shownAt: prev?.shownAt ?? 0,
@@ -90,7 +63,7 @@ async function runPrefetch() {
  * 이번에 보여줄 문구를 정하고 "봤다"고 기록한다. 없으면 null.
  * 표시 시점에만 prevRank 를 갱신해, 다음 브리핑의 "변동"이 지난 표시 대비가 되게 한다.
  */
-function takeLine(sessionId) {
+function takeLine() {
   const cfg = loadConfig();
   if (!cfg || cfg.brief === false) return null;
 
@@ -98,37 +71,24 @@ function takeLine(sessionId) {
   if (!state || !state.data) return null;
   const now = Date.now();
   if (now - (state.fetchedAt ?? 0) > MAX_AGE_MS) return null;
-  if (sessionId && wasShownTo(state.shownBySession, sessionId, now)) return null;
-  if (!sessionId && state.shownAt && now - state.shownAt < MIN_INTERVAL_MS) return null;
 
-  const line = composeBriefing(state.data, state.prevRank ?? null, detectLang(cfg, state.data));
-  if (!line) return null;
+  const picked = pickBriefing(state, state.data, state.prevRank ?? null, detectLang(cfg, state.data), now);
+  if (!picked) return null;
 
   const rank = state.data.rank;
   saveBriefing({
     ...state,
-    shownBySession: markShown(state.shownBySession, sessionId, now),
+    lastShownDay: localDay(now),
+    lastKey: picked.key,
     shownAt: now,
     prevRank: rank ? { global: rank.global ?? null, country: rank.country ?? null } : (state.prevRank ?? null),
   });
 
-  // 방금 띄운 숫자는 이미 낡았다 — prefetch 이후 친 프롬프트가 빠져 있고, 다른 세션이 이 캐시를
-  // 이어 쓴다. 표시 직후 갱신을 걸어 "다음에 뜰 줄"이 최신이 되게 한다. detached 라 여기서
-  // 기다리지 않으므로 §19.2(표시 경로는 네트워크를 타지 않는다)는 그대로다.
+  // 방금 띄운 숫자는 이미 낡았다 — prefetch 이후 친 프롬프트가 빠져 있다. 표시 직후 갱신을 걸어
+  // "다음에 뜰 줄"이 최신이 되게 한다. detached 라 여기서 기다리지 않으므로
+  // §19.2(표시 경로는 네트워크를 타지 않는다)는 그대로다.
   spawnPrefetch();
-  return line;
-}
-
-async function hookMode() {
-  const raw = await readStdin();
-  let sessionId = null;
-  try {
-    sessionId = JSON.parse(raw).session_id ?? null;
-  } catch {
-    // 파싱 실패 시 세션 구분 없이 진행(MIN_INTERVAL_MS 가드가 중복을 막는다)
-  }
-  const line = takeLine(sessionId);
-  if (line) process.stdout.write(JSON.stringify({ systemMessage: line }));
+  return picked.line;
 }
 
 try {
@@ -139,10 +99,12 @@ try {
   } else if (mode === '--prefetch-run') {
     await runPrefetch();
   } else if (mode === '--line') {
-    const line = takeLine(argOf('--session') ?? null);
+    const line = takeLine();
     if (line) process.stdout.write(line + '\n');
   } else {
-    await hookMode();
+    // --hook: SessionStart 동기 훅. stdin 은 읽지 않는다 — 하루 1회 가드는 전역이라 session_id 가 필요 없다.
+    const line = takeLine();
+    if (line) process.stdout.write(JSON.stringify({ systemMessage: line }));
   }
 } catch {
   // 어떤 오류도 에이전트 사용을 막지 않는다

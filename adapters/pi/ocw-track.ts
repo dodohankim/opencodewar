@@ -85,14 +85,12 @@ function prefetchBrief(): void {
   }
 }
 
-/** 표시할 브리핑 한 줄. 없으면 null. 문구·우선순위 판정은 brief.mjs 안에 있다. */
-function briefLine(sessionId: string | null): Promise<string | null> {
+/** 표시할 브리핑 한 줄. 없으면 null. 문구·빈도 판정은 전부 brief.mjs 안에 있다(§19.12). */
+function briefLine(): Promise<string | null> {
   return new Promise((resolve) => {
     if (!BRIEF_SCRIPT || !NODE) return resolve(null);
     try {
-      const args = [BRIEF_SCRIPT, '--line'];
-      if (sessionId) args.push('--session', sessionId);
-      const child = spawn(NODE, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+      const child = spawn(NODE, [BRIEF_SCRIPT, '--line'], { stdio: ['ignore', 'pipe', 'ignore'] });
       let out = '';
       const timer = setTimeout(() => resolve(null), BRIEF_TIMEOUT_MS);
       child.stdout.on('data', (c) => (out += c));
@@ -131,21 +129,27 @@ export default function (pi: any) {
   // pi 에는 SessionStart 훅이 없다 — 확장 로드 시점에 한 번 미리 받아둔다.
   prefetchBrief();
 
+  // 브리핑은 이 프로세스가 사는 동안 한 번만 시도한다 — 입력마다 node 를 띄우지 않기 위해서다.
+  // 실제로 띄울지(하루 1회·같은 얘기 금지)는 brief.mjs 가 판정한다.
+  let briefTried = false;
+
   pi.on('input', async (event: any, ctx: any) => {
     try {
       if (COUNTED_SOURCES.has(event?.source)) {
         track(typeof event?.text === 'string' ? event.text : '');
 
         // 입력 처리를 기다리게 하지 않는다 — 뒤에서 조회하고 나오면 그때 띄운다.
-        void (async () => {
-          try {
-            const sessionId = ctx?.sessionManager?.getSessionFile?.() ?? null;
-            const line = await briefLine(sessionId);
-            if (line) ctx?.ui?.notify?.(line, 'info');
-          } catch {
-            // 브리핑 실패는 조용히 무시
-          }
-        })();
+        if (!briefTried) {
+          briefTried = true;
+          void (async () => {
+            try {
+              const line = await briefLine();
+              if (line) ctx?.ui?.notify?.(line, 'info');
+            } catch {
+              // 브리핑 실패는 조용히 무시
+            }
+          })();
+        }
       }
     } catch {
       // 어떤 오류도 입력 처리를 막지 않는다

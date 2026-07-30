@@ -2,8 +2,13 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "",
+        "matcher": "startup|resume",
         "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs --hook",
+            "timeout": 10
+          },
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs --prefetch",
@@ -22,11 +27,6 @@
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/track.mjs",
             "timeout": 10,
             "async": true
-          },
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs --hook",
-            "timeout": 10
           }
         ]
       }

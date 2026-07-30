@@ -81,14 +81,12 @@ function prefetchBrief() {
   }
 }
 
-/** 표시할 브리핑 한 줄. 없으면 null. 문구·우선순위 판정은 brief.mjs 안에 있다. */
-function briefLine(sessionID) {
+/** 표시할 브리핑 한 줄. 없으면 null. 문구·빈도 판정은 전부 brief.mjs 안에 있다(§19.12). */
+function briefLine() {
   return new Promise((resolve) => {
     if (!BRIEF_SCRIPT || !NODE) return resolve(null);
     try {
-      const args = [BRIEF_SCRIPT, '--line'];
-      if (sessionID) args.push('--session', String(sessionID));
-      const child = spawn(NODE, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+      const child = spawn(NODE, [BRIEF_SCRIPT, '--line'], { stdio: ['ignore', 'pipe', 'ignore'] });
       let out = '';
       const finish = (v) => resolve(v);
       const timer = setTimeout(() => finish(null), BRIEF_TIMEOUT_MS);
@@ -137,6 +135,10 @@ export const OpenCodeWar = async ({ client }) => {
   // opencode 에는 SessionStart 훅이 없다 — 플러그인 로드 시점에 한 번 미리 받아둔다.
   prefetchBrief();
 
+  // 브리핑은 이 프로세스가 사는 동안 한 번만 시도한다 — 입력마다 node 를 띄우지 않기 위해서다.
+  // 실제로 띄울지(하루 1회·같은 얘기 금지)는 brief.mjs 가 판정한다.
+  let briefTried = false;
+
   // 서브에이전트 세션(parentID 보유)은 사용자가 친 프롬프트가 아니므로 집계에서 뺀다.
   // 세션당 한 번만 조회하고 캐시한다.
   const subSessionCache = new Map();
@@ -164,8 +166,9 @@ export const OpenCodeWar = async ({ client }) => {
         try {
           if (await isSubSession(sessionID)) return;
           track(text);
-          // 세션당 1회 판정은 brief.mjs 가 sessionID 로 한다 — 여기서는 매번 물어봐도 된다.
-          const line = await briefLine(sessionID);
+          if (briefTried) return;
+          briefTried = true;
+          const line = await briefLine();
           if (line) {
             await client.tui.showToast({ body: { title: 'Open Code War', message: line, variant: 'info' } });
           }
