@@ -14,6 +14,8 @@ import {
   normalizeProjects,
   parseType,
   projectDisplayKey,
+  publicProjects,
+  shipDisplayMap,
 } from '../src/validate';
 
 describe('isValidDay', () => {
@@ -157,9 +159,11 @@ describe('normalizeProjects', () => {
     expect(normalizeProjects([{ name: 'A', desc: '', url: '' }])).toEqual([{ name: 'A' }]);
   });
 
-  it('최대 5개를 초과하면 null', () => {
-    const six = Array.from({ length: 6 }, (_, i) => ({ name: `p${i}` }));
-    expect(normalizeProjects(six)).toBeNull();
+  it('최대 10개를 초과하면 null', () => {
+    const ten = Array.from({ length: 10 }, (_, i) => ({ name: `p${i}` }));
+    expect(normalizeProjects(ten)).toHaveLength(10);
+    const eleven = Array.from({ length: 11 }, (_, i) => ({ name: `p${i}` }));
+    expect(normalizeProjects(eleven)).toBeNull();
   });
 
   it('name 누락/형식오류/잘못된 url 은 null', () => {
@@ -191,6 +195,52 @@ describe('normalizeProjects', () => {
       { name: 'A' },
       { name: 'B' },
     ]);
+  });
+
+  it('sub(잠수함, §20.7) 플래그를 보존한다 — true 만, 그 외 값은 버린다', () => {
+    expect(normalizeProjects([{ name: 'A', sub: true }, { name: 'B', sub: false }, { name: 'C', sub: 'yes' }])).toEqual([
+      { name: 'A', sub: true },
+      { name: 'B' },
+      { name: 'C' },
+    ]);
+  });
+});
+
+describe('publicProjects / shipDisplayMap (§20.7 잠수함)', () => {
+  const ships = [
+    { name: 'opencodewar', main: true, url: 'https://opencodewar.dev' },
+    { name: 'ghost-writer', sub: true, desc: '비밀', url: 'https://g.dev' },
+    { name: 'dobby' },
+    { name: 'moonrise', sub: true },
+  ];
+
+  it('공개 응답에서 잠수함은 secret #n(순서 기준 번호)으로 익명화하고 desc·url·main 을 숨긴다', () => {
+    expect(publicProjects(ships)).toEqual([
+      { name: 'opencodewar', main: true, url: 'https://opencodewar.dev' },
+      { name: 'secret #1', secret: true },
+      { name: 'dobby' },
+      { name: 'secret #2', secret: true },
+    ]);
+  });
+
+  it('잠수함이 없으면 그대로 통과한다', () => {
+    const plain = [{ name: 'A' }, { name: 'B', main: true }];
+    expect(publicProjects(plain)).toEqual(plain);
+  });
+
+  it('shipDisplayMap: 공개는 잠수함만 secret #n, 본인은 전부 실명', () => {
+    const pub = shipDisplayMap(ships, false);
+    expect(pub.get('opencodewar')).toBe('opencodewar');
+    expect(pub.get('ghost-writer')).toBe('secret #1');
+    expect(pub.get('moonrise')).toBe('secret #2');
+    const own = shipDisplayMap(ships, true);
+    expect(own.get('ghost-writer')).toBe('ghost-writer');
+  });
+
+  it('projectDisplayKey 와 결합: 잠수함 라벨 이벤트가 공개엔 secret #n 으로 집계된다', () => {
+    const pub = shipDisplayMap(ships, false);
+    expect(projectDisplayKey('Ghost-Writer', pub, false)).toBe('secret #1');
+    expect(projectDisplayKey('dobby', pub, false)).toBe('dobby');
   });
 });
 

@@ -23,6 +23,8 @@ import {
   parseProjects,
   parseType,
   projectDisplayKey,
+  publicProjects,
+  shipDisplayMap,
   type Links,
 } from './validate';
 import { getSession } from './session';
@@ -443,7 +445,7 @@ export async function handleBriefing(url: URL, env: Env, ctx?: ExecutionContext)
  * body: { userId, bio?, role?, company?, links?, projects? }
  * - 텍스트(bio/role/company): 빈 문자열이면 해제(NULL).
  * - links: {website?,blog?,github?,x?,linkedin?} 전체 교체(빈 객체 = 전체 해제).
- * - projects: [{name,desc?,url?}] 전체 교체, 최대 5개(빈 배열 = 전체 해제).
+ * - projects: [{name,desc?,url?,main?,sub?}] 전체 교체, 최대 10개(빈 배열 = 전체 해제).
  * 닉네임과 동일한 신뢰 모델(비밀 userId 소유자만 설정).
  */
 export async function handleProfile(request: Request, env: Env): Promise<Response> {
@@ -601,7 +603,7 @@ export async function handleRandom(env: Env): Promise<Response> {
       role: user.role ?? null,
       company: user.company ?? null,
       links: parseLinks(user.links),
-      projects: parseProjects(user.projects),
+      projects: publicProjects(parseProjects(user.projects)), // 잠수함은 "secret #n" 익명화(§20.7)
       // 이메일은 본인이 공개 옵트인한 경우에만 — 비공개 정보는 서버에서부터 내보내지 않는다.
       email: user.acct_email_public ? (user.acct_email ?? null) : null,
       country: user.country ?? null,
@@ -714,10 +716,12 @@ export async function handleUser(url: URL, env: Env, request: Request): Promise<
   const tz = isValidTimezone(user.timezone) ? user.timezone : 'UTC';
 
   // 프로젝트 표시 키(§20.4): shipping 이름은 공개, 비매칭 라벨은 세션 본인일 때만 실명(그 외 "기타"로 붕괴).
+  // 잠수함(sub, §20.7)은 공개 시 "secret #n" 으로 치환된다.
   // getSession 은 쿠키가 없으면 KV 를 읽지 않으므로 비로그인 열람(대부분)에 추가 비용이 없다.
   const sess = await getSession(request, env);
   const isOwner = sess !== null && sess.userId === user.user_id;
-  const shipByLower = new Map(parseProjects(user.projects).map((p) => [p.name.toLowerCase(), p.name]));
+  const shipProjects = parseProjects(user.projects);
+  const shipByLower = shipDisplayMap(shipProjects, isOwner);
 
   type DayAgg = {
     prompts: number;
@@ -796,7 +800,8 @@ export async function handleUser(url: URL, env: Env, request: Request): Promise<
     role: user.role ?? null,
     company: user.company ?? null,
     links: parseLinks(user.links),
-    projects: parseProjects(user.projects),
+    // 잠수함 프로젝트(§20.7)는 본인에게만 실명 — 공개 열람엔 {name:"secret #n", secret:true} 로 익명화.
+    projects: isOwner ? shipProjects : publicProjects(shipProjects),
     email: publicEmail, // 옵트인(/ocw email public)한 연동 이메일만. 기본 비공개.
     country: user.country ?? null,
     flag: countryFlag(user.country), // 국가 구역 표시용 국기(없으면 '')
@@ -872,10 +877,10 @@ export async function handleUserHours(url: URL, env: Env, request: Request): Pro
   // 넓은 창에서 이 유저 로컬 하루의 정확한 UTC 범위만 남기고, 로컬 시로 버킷팅(:30 오프셋 TZ 도 정확).
   const range = zonedDayRange(day, tz);
 
-  // 프로젝트 표시 키(§20.4) — /user 와 동일 규칙(공개=shipping 실명, 본인=전체, 그 외 "기타" 붕괴).
+  // 프로젝트 표시 키(§20.4) — /user 와 동일 규칙(공개=shipping 실명·잠수함은 "secret #n", 본인=전체, 그 외 "기타" 붕괴).
   const sess = await getSession(request, env);
   const isOwner = sess !== null && sess.userId === user.user_id;
-  const shipByLower = new Map(parseProjects(user.projects).map((p) => [p.name.toLowerCase(), p.name]));
+  const shipByLower = shipDisplayMap(parseProjects(user.projects), isOwner);
 
   type HourAgg = {
     prompts: number;

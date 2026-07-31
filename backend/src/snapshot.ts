@@ -67,10 +67,11 @@ export function periodOf(type: BoardType, now: number): Period {
 /**
  * 리더보드에 실을 대표 프로젝트 1개. main 표식이 있으면 그것, 없으면 첫 항목 —
  * 유저 상세(main 우선, 나머지는 등록 순)에서 맨 위에 보이는 것과 같은 프로젝트다.
+ * 잠수함(sub, §20.7)은 공개 지면에 이름을 낼 수 없으므로 후보에서 제외한다(전부 잠수함이면 칩 없음).
  * name 이 없으면 버리고, url 이 http(s) 절대 URL 이 아니면 링크 없이 이름만 남긴다.
  */
 export function pickMainProject(raw: string | null): RankProject | null {
-  const list = parseProjects(raw);
+  const list = parseProjects(raw).filter((p) => p && p.sub !== true);
   const picked = list.find((p) => p && p.main === true) ?? list[0];
   const name = picked && typeof picked.name === 'string' ? picked.name.trim() : '';
   if (!name) return null;

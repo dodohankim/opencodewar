@@ -442,7 +442,7 @@
   .ed-sub { margin:22px 0 10px; font-size:11px; color:var(--faint); letter-spacing:.05em; text-transform:uppercase;
     border-top:1px solid var(--line); padding-top:14px; }
   .ed-sub .ed-note { text-transform:none; letter-spacing:0; color:var(--faint); opacity:.8; }
-  .ed-proj { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto auto; gap:8px; align-items:center; margin-bottom:8px; }
+  .ed-proj { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto auto auto; gap:8px; align-items:center; margin-bottom:8px; }
   .ed-proj .ed-url { grid-column:1 / -1; }
   .ed-proj .ed-main { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--faint); white-space:nowrap; cursor:pointer; }
   .ed-proj .ed-del { border:1px solid var(--line); background:var(--bg); color:var(--faint); font:inherit; font-size:12px;
@@ -485,16 +485,32 @@
 
   /* ── shipping (사이드프로젝트 = 홍보 지면) ── */
   .ships { display:grid; gap:10px; }
-  .ship { display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:6px; padding:12px 14px; }
+  /* 카드 클릭 → 아래 차트를 그 프로젝트만 단독 표시(§20.7). 다시 클릭하면 해제. */
+  .ship { display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:6px; padding:12px 14px; cursor:pointer; }
   .ship:hover { background:var(--hover); }
   .ship.main { border-color:var(--ok); }  /* 대표 프로젝트 강조 */
+  .ship.sel { border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
   .ship-main { min-width:0; flex:1; }
   .ship-name { font-size:13.5px; font-weight:700; color:var(--fg); overflow-wrap:break-word; }
   .ship-badge { display:inline-block; vertical-align:1px; margin-left:8px; font-size:9.5px; font-weight:700;
     letter-spacing:0.06em; text-transform:uppercase; color:var(--rev-fg); background:var(--ok);
     border-radius:4px; padding:1px 5px; line-height:1.5; }
+  .ship-badge.sub { background:var(--amber); }  /* 잠수함(본인 뷰) */
   .ship-desc { font-size:12.5px; color:var(--dim); margin-top:3px; overflow-wrap:break-word; }
   .ship-host { font-size:11px; color:var(--faint); margin-top:5px; word-break:break-all; }
+  .ship-hint { font-size:11px; color:var(--amber); margin-top:5px; }  /* 잠수함 공개 표기 안내(본인 뷰) */
+  /* 잠수함의 공개 표기(§20.7) — 점선 카드 "secret #n". 이름·설명·링크 없음, 활동량만 차트로 */
+  .ship.secret { border-style:dashed; }
+  .ship.secret .ship-name { color:var(--dim); font-style:italic; }
+  .ship.secret.sel { border-color:var(--fg); }
+  /* 선택 프로젝트 표시줄 — shipping 카드 클릭 시 차트 위에 등장 */
+  .selstat { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; padding:9px 13px;
+    border:1px solid var(--fg); border-radius:6px; font-size:12.5px; }
+  .selstat[hidden] { display:none; }
+  .selstat .ss-name { font-weight:700; }
+  .selstat .ss-note { color:var(--dim); }
+  .selstat .ss-x { margin-left:auto; border:0; background:none; color:var(--faint); font:inherit; font-size:12px; cursor:pointer; padding:2px 4px; }
+  .selstat .ss-x:hover { color:var(--fg); }
   .visit { flex:none; font-size:12px; color:var(--fg); text-decoration:none; border:1px solid var(--line); border-radius:5px; padding:6px 12px; white-space:nowrap; }
   .visit:hover { border-color:var(--ok); color:var(--ok); }
   .field { display:flex; flex-direction:column; gap:4px; }
@@ -822,6 +838,8 @@
               <button class="ustack" data-stack="agent" aria-pressed="false" data-i18n="stack_agent">agents</button>
             </div>
           </div>
+          <!-- 선택 프로젝트 표시줄(§20.7) — shipping 카드 클릭 시 그 프로젝트만 단독 차트로 -->
+          <div class="selstat" id="uSelStat" hidden></div>
           <span class="ag-legend" id="uAgentLegend"></span>
           <div class="ustats" id="uStats"></div>
           <div class="chart-wrap" id="uChartWrap">
@@ -885,6 +903,9 @@
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', no_activity_2d: 'No activity in the last 2 days.', visit: 'Visit ↗', main_badge: 'MAIN',
       stack_project: 'projects', stack_agent: 'agents', pj_other: 'other', pj_priv: 'private',
+      pj_sub: '🤿 submarine', secret_desc: 'this coder is quietly building something',
+      sub_hint: (n) => `shown publicly as “secret #${n}”`,
+      sel_note: 'showing this project only', sel_clear: '✕ clear',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
       card: '🖼 card', card_title: "TODAY'S CARD", card_close: '✕ close',
       card_copy: '⧉ copy image', card_save: '⬇ save PNG', card_loading: 'rendering…',
@@ -908,9 +929,9 @@
       f_country: 'country', f_country_none: '— not set —',
       f_country_ph: 'type to search…', f_country_empty: 'no match',
       f_city: 'city', f_city_ph: 'Seoul', f_bio: 'bio', f_links: 'links', f_website: 'website', f_blog: 'blog',
-      f_projects: 'shipping', f_projects_note: '· up to 5, one can be MAIN',
+      f_projects: 'shipping', f_projects_note: '· up to 10, one can be MAIN · 🤿 SUB shows as “secret #n” publicly',
       f_proj_name: 'name', f_proj_desc: 'one-line description', f_proj_url: 'https://…',
-      f_main: 'MAIN', f_del: 'remove', add_project: '+ add project',
+      f_main: 'MAIN', f_sub: '🤿 SUB', f_del: 'remove', add_project: '+ add project',
       f_email_public: 'show my Google email on my profile',
       save: 'save', cancel: 'cancel', saving: 'saving…', saved: '✓ saved',
       err_nickname: 'Nickname must be 2–15 characters (letters, numbers, _ or spaces).',
@@ -949,6 +970,9 @@
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', no_activity_2d: '최근 2일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
       stack_project: '프로젝트', stack_agent: '에이전트', pj_other: '기타', pj_priv: '비공개',
+      pj_sub: '🤿 잠수함', secret_desc: '이 코더는 무언가를 조용히 만들고 있다',
+      sub_hint: (n) => `공개 페이지에는 “secret #${n}”로 표시됩니다`,
+      sel_note: '이 프로젝트만 표시 중', sel_clear: '✕ 해제',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
       card: '🖼 카드', card_title: '오늘의 카드', card_close: '✕ 닫기',
       card_copy: '⧉ 이미지 복사', card_save: '⬇ PNG 저장', card_loading: '카드 굽는 중…',
@@ -972,9 +996,9 @@
       f_country: '국가', f_country_none: '— 설정 안 함 —',
       f_country_ph: '입력해서 검색…', f_country_empty: '검색 결과 없음',
       f_city: '도시', f_city_ph: 'Seoul', f_bio: '자기소개', f_links: '링크', f_website: '웹사이트', f_blog: '블로그',
-      f_projects: '만든 것', f_projects_note: '· 최대 5개, 하나를 메인으로',
+      f_projects: '만든 것', f_projects_note: '· 최대 10개, 하나를 메인으로 · 🤿 잠수함은 남에게 “secret #n”으로',
       f_proj_name: '이름', f_proj_desc: '한 줄 설명', f_proj_url: 'https://…',
-      f_main: '메인', f_del: '삭제', add_project: '+ 프로젝트 추가',
+      f_main: '메인', f_sub: '🤿 잠수함', f_del: '삭제', add_project: '+ 프로젝트 추가',
       f_email_public: '연동된 Google 이메일을 내 프로필에 공개',
       save: '저장', cancel: '취소', saving: '저장 중…', saved: '✓ 저장됨',
       err_nickname: '닉네임은 2~15자여야 합니다 (한글·영문·숫자·_·공백).',
@@ -1692,6 +1716,8 @@
     uMetric = 'prompts';
     uData = null;
     uView = '30d';
+    uPjSel = null; // 프로젝트 단독 선택(§20.7)은 유저 단위 상태 — 이동 시 해제
+    $('uSelStat').hidden = true;
     uHoursCache.clear();
     syncUsortButtons();
     syncViewButtons();
@@ -1811,11 +1837,20 @@
     const box = $('uShipBox');
     const list = Array.isArray(projects) ? projects.slice() : [];
     if (!list.length) { box.hidden = true; $('uShips').innerHTML = ''; return; }
+    // 잠수함 순번(secret #n, §20.7) — 정렬 전 원래 순서 기준(서버 공개 표기와 동일 규칙).
+    let subNo = 0;
+    const secretNoOf = new Map(list.filter((p) => p && p.sub).map((p) => [p.name, ++subNo]));
     // 메인으로 지정된 프로젝트를 맨 위로(안정 정렬 — 나머지는 원래 순서 유지).
     list.sort((a, b) => (b && b.main ? 1 : 0) - (a && a.main ? 1 : 0));
     $('uShipLegend').textContent = `shipping · ${list.length}`;
     $('uShips').innerHTML = list
       .map((p) => {
+        const name = (p && p.name) || '';
+        const selCls = uPjSel && uPjSel === name ? ' sel' : '';
+        // 잠수함의 공개 표기(서버가 익명화해서 내려줌): 점선 카드, 이름·설명·링크 없음.
+        if (p && p.secret) {
+          return `<div class="ship secret${selCls}" data-pj="${escapeHtml(name)}"><div class="ship-main"><div class="ship-name">🤿 ${escapeHtml(name)}</div><div class="ship-desc">${escapeHtml(t('secret_desc'))}</div></div></div>`;
+        }
         const url = p && p.url ? safeUrl(p.url) : '';
         const host = url ? `<div class="ship-host">${escapeHtml(linkLabel(url))}</div>` : '';
         const visit = url
@@ -1823,8 +1858,14 @@
           : '';
         const desc = p && p.desc ? `<div class="ship-desc">${escapeHtml(p.desc)}</div>` : '';
         const isMain = !!(p && p.main);
-        const badge = isMain ? `<span class="ship-badge">${t('main_badge')}</span>` : '';
-        return `<div class="ship${isMain ? ' main' : ''}"><div class="ship-main"><div class="ship-name">${escapeHtml((p && p.name) || '')}${badge}</div>${desc}${host}</div>${visit}</div>`;
+        let badge = isMain ? `<span class="ship-badge">${t('main_badge')}</span>` : '';
+        // 잠수함(본인 뷰): 배지 + 공개 표기 안내. 서버가 sub 플래그를 본인에게만 내려준다.
+        let hint = '';
+        if (p && p.sub) {
+          badge += `<span class="ship-badge sub">${t('pj_sub')}</span>`;
+          hint = `<div class="ship-hint">${escapeHtml(t('sub_hint')(secretNoOf.get(name) || 1))}</div>`;
+        }
+        return `<div class="ship${isMain ? ' main' : ''}${selCls}" data-pj="${escapeHtml(name)}"><div class="ship-main"><div class="ship-name">${escapeHtml(name)}${badge}</div>${desc}${host}${hint}</div>${visit}</div>`;
       })
       .join('');
     box.hidden = false;
@@ -2020,10 +2061,16 @@
   // 서버는 이름 있는 프로젝트(공개=shipping, 본인=링크 라벨 전체)만 내려주고,
   // 나머지(일 합계 − 이름 있는 합)는 웹이 "기타"(회색)로 그린다.
   let uStackSel = null; // 토글 선택('agent'|'project'). null = 자동(프로젝트 데이터 있으면 project)
+  let uPjSel = null; // shipping 카드 클릭으로 고른 프로젝트(§20.7) — 차트를 그 프로젝트만 단독 표시. null = 전체
   let uPjList = []; // 현재 렌더의 프로젝트 순서(색 인덱스·툴팁이 공유)
-  const PJ_COLORS = ['#D97757', '#3E8E6E', '#4E7DC4', '#B8862E', '#9A66C9'];
+  // shipping 한도 10개에 맞춘 고정 팔레트 10색(앞 5색은 기존 유지 — 이미 배포된 화면과 색 호환)
+  const PJ_COLORS = ['#D97757', '#3E8E6E', '#4E7DC4', '#B8862E', '#9A66C9',
+                     '#C2527A', '#4A9A96', '#8A8F3C', '#A8674B', '#6B7DB3'];
   const PJ_OTHER_STYLE = 'background:var(--dim);opacity:.45';
   const shipNames = () => (uData && Array.isArray(uData.projects) ? uData.projects.map((p) => p.name) : []);
+  // 잠수함/secret 이름 집합 — 범례에 🤿 를 붙인다(본인 뷰=sub 실명, 공개 뷰=secret #n).
+  const subNames = () =>
+    new Set((uData && Array.isArray(uData.projects) ? uData.projects : []).filter((p) => p && (p.sub || p.secret)).map((p) => p.name));
   // items(각 원소에 .projects) 안에 등장하는 프로젝트를 shipping 순서 → 그 외(가나다)로.
   function projectsIn(items) {
     const seen = new Set();
@@ -2055,15 +2102,38 @@
     const rest = v - acc;
     return segs + (rest > 0 ? `<div class="bseg" style="height:${(rest / v) * 100}%;${PJ_OTHER_STYLE}"></div>` : '');
   }
-  // project 모드 범례. 본인만 보이는 비 shipping 라벨은 (비공개)로 구분.
+  // project 모드 범례. 본인만 보이는 비 shipping 라벨은 (비공개)로, 잠수함/secret 은 🤿 로 구분.
+  // 카드로 프로젝트를 골랐으면(uPjSel) 선택 외 항목을 흐리게 눌러 준다.
   function pjLegendHtml() {
     const ships = shipNames();
+    const subs = subNames();
     const parts = uPjList.map((n) => {
       const priv = !ships.includes(n);
-      return `<span class="ag-dot" style="background:${pjColor(n)}"></span>${escapeHtml(n)}${priv ? `<span style="opacity:.6"> (${t('pj_priv')})</span>` : ''}`;
+      const dim = uPjSel && uPjSel !== n ? ' style="opacity:.35"' : '';
+      return `<span${dim}><span class="ag-dot" style="background:${pjColor(n)}"></span>${escapeHtml(n)}${subs.has(n) ? ' 🤿' : ''}${priv ? `<span style="opacity:.6"> (${t('pj_priv')})</span>` : ''}</span>`;
     });
-    parts.push(`<span class="ag-dot" style="${PJ_OTHER_STYLE}"></span>${t('pj_other')}`);
+    parts.push(`<span${uPjSel ? ' style="opacity:.35"' : ''}><span class="ag-dot" style="${PJ_OTHER_STYLE}"></span>${t('pj_other')}</span>`);
     return parts.join('');
+  }
+
+  /**
+   * 선택 프로젝트 표시줄(§20.7). project 스택 모드에서 uPjSel 이 있을 때만 보인다.
+   * 숫자 스탯은 4칸 타일이 이미 그 프로젝트 기준으로 바뀌므로 여기선 이름·안내·해제만 담는다.
+   */
+  function renderSelStat(visible) {
+    const box = $('uSelStat');
+    if (!visible || !uPjSel) { box.hidden = true; return; }
+    box.innerHTML =
+      `<span class="ag-dot" style="background:${pjColor(uPjSel)};margin:0"></span>` +
+      `<span class="ss-name">${escapeHtml(uPjSel)}${subNames().has(uPjSel) ? ' 🤿' : ''}</span>` +
+      `<span class="ss-note">${escapeHtml(t('sel_note'))}</span>` +
+      `<button class="ss-x" id="uSelClear" type="button">${escapeHtml(t('sel_clear'))}</button>`;
+    box.hidden = false;
+    $('uSelClear').addEventListener('click', () => {
+      uPjSel = null;
+      renderProjects(uData ? uData.projects : []);
+      renderUserChart();
+    });
   }
 
   // 스택 세그먼트 HTML(에이전트 2종 이상 & 값>0일 때만). 아래부터 고정 순서로 쌓는다.
@@ -2095,6 +2165,13 @@
     uPjList = projectsIn(days);
     const mode = syncStackToggle(uPjList.length > 0);
     const pjMode = mode === 'project';
+    // 단독 모드(§20.7): 카드로 고른 프로젝트만, 자체 최대값 기준으로 리스케일해 그린다.
+    // 스탯 타일·피크·막대 전부 그 프로젝트 값으로 바뀐다(합계 대비가 아니라 패턴이 보이게).
+    const solo = pjMode && uPjSel ? uPjSel : null;
+    renderSelStat(pjMode);
+    const pOf = (d) => (solo ? (((d.projects || {})[solo] || {}).prompts || 0) : d.prompts || 0);
+    const cOf = (d) => (solo ? (((d.projects || {})[solo] || {}).chars || 0) : d.chars || 0);
+    const vOf = (d) => (metric === 'chars' ? cOf(d) : pOf(d));
     // 30일 내 활동이 있는 에이전트 — 2종 이상일 때만 스택 표시(1종이면 단색 막대)
     const agents = agentsIn(days);
     const multi = !pjMode && agents.length >= 2;
@@ -2104,10 +2181,10 @@
         ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
         : '';
 
-    const vals = days.map((d) => d[metric] || 0);
+    const vals = days.map(vOf);
     const total = vals.reduce((a, b) => a + b, 0);
-    const sumP = days.reduce((s, d) => s + (d.prompts || 0), 0);
-    const sumC = days.reduce((s, d) => s + (d.chars || 0), 0);
+    const sumP = days.reduce((s, d) => s + pOf(d), 0);
+    const sumC = days.reduce((s, d) => s + cOf(d), 0);
     const activeDays = vals.filter((v) => v > 0).length;
     const peakVal = Math.max(0, ...vals);
     const peakIdx = peakVal > 0 ? vals.indexOf(peakVal) : -1;
@@ -2134,18 +2211,23 @@
     const todayStr = days.length ? days[days.length - 1].day : '';
     $('uChart').innerHTML = days
       .map((d, i) => {
-        const v = d[metric] || 0;
+        const v = vOf(d);
         const h = Math.max(2, Math.round((v / max) * 100));
         const dow = new Date(d.day + 'T00:00:00Z').getUTCDay();
         const isWknd = dow === 0 || dow === 6;
         const isToday = d.day === todayStr;
         const cls = v === 0 ? 'zero' : isToday ? 'today' : isWknd ? 'wknd' : '';
-        const segs = pjMode ? pjSegs(v, d.projects, metric) : barSegs(multi, v, d.agents, agents, metric);
-        const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(d.agents || {}))}"` : '';
-        const pj = pjMode && v > 0 ? ` data-pj="${escapeHtml(JSON.stringify(d.projects || {}))}"` : '';
+        // 단독 모드: 그 프로젝트 색 단색 막대(스택 없음). 아니면 기존 스택 규칙.
+        const segs = solo
+          ? (v > 0 ? `<div class="bseg" style="height:100%;background:${pjColor(solo)}"></div>` : '')
+          : pjMode
+            ? pjSegs(v, d.projects, metric)
+            : barSegs(multi, v, d.agents, agents, metric);
+        const ag = !solo && multi ? ` data-ag="${escapeHtml(JSON.stringify(d.agents || {}))}"` : '';
+        const pj = !solo && pjMode && v > 0 ? ` data-pj="${escapeHtml(JSON.stringify(d.projects || {}))}"` : '';
         // 최고 기록일 = 고지 점령 — 피크 막대 위에 픽셀 깃발
         const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
-        return `<div class="col ${cls}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}${pj}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        return `<div class="col ${cls}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${pOf(d)}" data-c="${cOf(d)}"${ag}${pj}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
@@ -2208,10 +2290,15 @@
     const colLbl = (c) => `${mmdd(c.day)} ${hhLabel(c.h)}`;
     $('uChartLegend').textContent = `${t('chart_2d')} · ${metric}`;
 
-    // 30일 뷰와 동일한 스택 기준 규칙(§20.5)
+    // 30일 뷰와 동일한 스택 기준 규칙(§20.5) + 단독 모드(§20.7)
     uPjList = projectsIn(cols);
     const mode = syncStackToggle(uPjList.length > 0);
     const pjMode = mode === 'project';
+    const solo = pjMode && uPjSel ? uPjSel : null;
+    renderSelStat(pjMode);
+    const pOf = (c) => (solo ? (((c.projects || {})[solo] || {}).prompts || 0) : c.prompts || 0);
+    const cOf = (c) => (solo ? (((c.projects || {})[solo] || {}).chars || 0) : c.chars || 0);
+    const vOf = (c) => (metric === 'chars' ? cOf(c) : pOf(c));
     const agents = agentsIn(cols);
     const multi = !pjMode && agents.length >= 2;
     $('uAgentLegend').innerHTML = pjMode
@@ -2220,10 +2307,10 @@
         ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
         : '';
 
-    const vals = cols.map((c) => c[metric] || 0);
+    const vals = cols.map(vOf);
     const total = vals.reduce((a, b) => a + b, 0);
-    const sumP = cols.reduce((s, c) => s + (c.prompts || 0), 0);
-    const sumC = cols.reduce((s, c) => s + (c.chars || 0), 0);
+    const sumP = cols.reduce((s, c) => s + pOf(c), 0);
+    const sumC = cols.reduce((s, c) => s + cOf(c), 0);
     const activeHours = vals.filter((v) => v > 0).length;
     const peakVal = Math.max(0, ...vals);
     const peakIdx = peakVal > 0 ? vals.indexOf(peakVal) : -1;
@@ -2249,16 +2336,20 @@
 
     $('uChart').innerHTML = cols
       .map((c, i) => {
-        const v = c[metric] || 0;
+        const v = vOf(c);
         const h = Math.max(2, Math.round((v / max) * 100));
         // 둘째 날 00시에 날짜 경계 점선(dsplit)
         const cls = [v === 0 ? 'zero' : i === peakIdx ? 'peak' : '', c.h === 0 && i > 0 ? 'dsplit' : ''].filter(Boolean).join(' ');
-        const segs = pjMode ? pjSegs(v, c.projects, metric) : barSegs(multi, v, c.agents, agents, metric);
-        const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(c.agents || {}))}"` : '';
-        const pj = pjMode && v > 0 ? ` data-pj="${escapeHtml(JSON.stringify(c.projects || {}))}"` : '';
+        const segs = solo
+          ? (v > 0 ? `<div class="bseg" style="height:100%;background:${pjColor(solo)}"></div>` : '')
+          : pjMode
+            ? pjSegs(v, c.projects, metric)
+            : barSegs(multi, v, c.agents, agents, metric);
+        const ag = !solo && multi ? ` data-ag="${escapeHtml(JSON.stringify(c.agents || {}))}"` : '';
+        const pj = !solo && pjMode && v > 0 ? ` data-pj="${escapeHtml(JSON.stringify(c.projects || {}))}"` : '';
         // 30일 뷰와 동일하게 — 피크 시각 막대 위에 픽셀 깃발
         const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
-        return `<div class="col ${cls}" data-lbl="${colLbl(c)}" data-p="${c.prompts}" data-c="${c.chars}"${ag}${pj}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        return `<div class="col ${cls}" data-lbl="${colLbl(c)}" data-p="${pOf(c)}" data-c="${cOf(c)}"${ag}${pj}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
@@ -2447,9 +2538,25 @@
     b.addEventListener('click', () => {
       if (uStackSel === b.dataset.stack) return;
       uStackSel = b.dataset.stack;
+      // 에이전트 스택으로 바꾸면 프로젝트 단독 선택은 의미가 없다 — 헷갈리지 않게 함께 해제.
+      if (uStackSel === 'agent' && uPjSel) {
+        uPjSel = null;
+        renderProjects(uData ? uData.projects : []);
+      }
       renderUserChart();
     }),
   );
+
+  // shipping 카드 클릭 → 그 프로젝트만 단독 차트(§20.7). 다시 클릭하면 해제. visit 링크는 제외.
+  $('uShips').addEventListener('click', (e) => {
+    if (e.target.closest && e.target.closest('.visit')) return;
+    const card = e.target.closest && e.target.closest('.ship');
+    if (!card || !card.dataset.pj || !uData) return;
+    uPjSel = uPjSel === card.dataset.pj ? null : card.dataset.pj;
+    if (uPjSel) uStackSel = 'project'; // 선택하면 프로젝트 스택 기준으로 강제(카드가 곧 프로젝트니까)
+    renderProjects(uData.projects);
+    renderUserChart();
+  });
 
   // 차트 바 호버 → 커스텀 툴팁(날짜/시각 · 프롬프트 · 글자수). #uChart 에 위임해 리렌더에도 유지.
   (function setupChartTip() {
@@ -2595,7 +2702,7 @@
     ['github', 'edGithub'], ['x', 'edX'], ['linkedin', 'edLinkedin'],
     ['website', 'edWebsite'], ['blog', 'edBlog'],
   ];
-  const MAX_PROJECTS = 5;
+  const MAX_PROJECTS = 10; // 서버 validate.ts MAX_PROJECTS 와 동일
 
   // 국가 셀렉트 — ISO 3166-1 alpha-2. 이름은 Intl.DisplayNames 로 현재 언어에 맞춰 뽑고(사전 불필요),
   // 국기는 flagOf 로 코드에서 유도한다. 목록은 표시 이름 기준 가나다/알파벳 순.
@@ -2697,6 +2804,7 @@
       <input type="text" class="ed-pname" maxlength="40" placeholder="${escapeHtml(t('f_proj_name'))}" value="${v(p.name)}" />
       <input type="text" class="ed-desc" maxlength="80" placeholder="${escapeHtml(t('f_proj_desc'))}" value="${v(p.desc)}" />
       <label class="ed-main"><input type="radio" name="edMain"${p.main ? ' checked' : ''} /> ${escapeHtml(t('f_main'))}</label>
+      <label class="ed-main"><input type="checkbox" class="ed-subchk"${p.sub ? ' checked' : ''} /> ${escapeHtml(t('f_sub'))}</label>
       <button type="button" class="ed-del" title="${escapeHtml(t('f_del'))}" aria-label="${escapeHtml(t('f_del'))}">✕</button>
       <input type="url" class="ed-url" maxlength="200" placeholder="${escapeHtml(t('f_proj_url'))}" value="${v(p.url)}" />
     </div>`;
@@ -2707,6 +2815,7 @@
       desc: row.querySelector('.ed-desc').value.trim(),
       url: row.querySelector('.ed-url').value.trim(),
       main: row.querySelector('input[type=radio]').checked,
+      sub: row.querySelector('.ed-subchk').checked, // 잠수함(§20.7) — 저장 시 보존해야 CLI 설정이 안 날아간다
     }));
   }
   function renderProjRows(list) {
@@ -2780,6 +2889,7 @@
       if (p.desc) out.desc = p.desc;
       if (p.url) out.url = p.url;
       if (p.main) out.main = true;
+      if (p.sub) out.sub = true; // 잠수함(§20.7)
       return out;
     });
 

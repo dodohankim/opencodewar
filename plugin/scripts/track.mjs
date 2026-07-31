@@ -7,7 +7,7 @@
 
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { ensureConfig, endpointOf, projectFor } from './lib/config.mjs';
+import { autoProjectLabel, ensureConfig, endpointOf, projectFor } from './lib/config.mjs';
 import { countChars } from './lib/chars.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
@@ -68,9 +68,10 @@ async function hookMode() {
       // 파싱 실패 시 chars=0으로 진행 (여전히 1건으로 집계)
     }
 
-    // 프로젝트 귀속(DESIGN.md §20): 유저가 /ocw project link 로 연결한 폴더일 때만 라벨을 보낸다.
-    // 링크 안 된 폴더는 project 자체를 보내지 않는다(경로·폴더명 유출 0).
-    const project = projectFor(cfg, cwd);
+    // 프로젝트 귀속(DESIGN.md §20): 유저가 /ocw project link 로 연결한 폴더면 그 라벨.
+    // 링크 안 된 폴더는 자동 집계 옵트인(projectAuto, §20.7) 시에만 폴더 이름을 보내고
+    // (git 루트 이름, 경로 전체는 안 감), 아니면 project 자체를 보내지 않는다(유출 0).
+    const project = projectFor(cfg, cwd) ?? (cfg.projectAuto === true ? autoProjectLabel(cwd) : null);
     const payload = JSON.stringify({
       userId: cfg.userId,
       chars: countChars(prompt),

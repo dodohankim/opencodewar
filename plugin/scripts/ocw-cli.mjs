@@ -5,13 +5,15 @@
 //   link <website|github|x|linkedin> <url>
 //   project add <이름> :: <설명> :: <url> | project list | project main <번호|이름> | project remove|delete <번호|이름> | project clear
 //   project link <이름> | project unlink — 현재 폴더를 프로젝트에 연결/해제 (프롬프트 귀속, DESIGN.md §20)
+//   project auto on|off — 링크 안 된 폴더의 폴더명 자동 집계 (옵트인, DESIGN.md §20.7)
+//   project submarine <번호|이름> — 잠수함 모드 토글 (공개 페이지엔 "secret #n", DESIGN.md §20.7)
 //   signup | login — Google 계정 연동 (DESIGN.md §14)
 //   email public|private — 연동 이메일 프로필 공개 여부 (기본 비공개)
 //   random — 등록 유저 중 무작위 한 명의 공개 프로필 카드
 //   brief on|off — 세션 시작 브리핑 표시 여부 (DESIGN.md §19)
 //   status | whoami | enable | disable | help
 
-import { ensureConfig, saveConfig, endpointOf, normalizeDir, projectFor } from './lib/config.mjs';
+import { autoProjectLabel, ensureConfig, saveConfig, endpointOf, normalizeDir, projectFor } from './lib/config.mjs';
 
 // ocw.md 는 인자를 "$ARGUMENTS" 로 감싸 넘기므로 보통 argv 는 하나의 문자열이다.
 // 따옴표 없이 여러 토큰으로 와도 안전하도록 공백으로 재조립한 뒤 첫 토큰만 서브커맨드로 분리한다.
@@ -24,7 +26,7 @@ const cfg = ensureConfig();
 const endpoint = endpointOf(cfg);
 
 const LINK_KEYS = ['website', 'blog', 'github', 'x', 'linkedin'];
-const MAX_PROJECTS = 5;
+const MAX_PROJECTS = 10; // 서버 validate.ts MAX_PROJECTS 와 동일
 
 // 직함/회사/자기소개/도시 공통 텍스트 필드 메타.
 const TEXT_FIELDS = {
@@ -314,7 +316,7 @@ async function pushProjects(projects, okMsg) {
       return print(okMsg);
     }
     if (data.error === 'invalid_projects') {
-      return print('❌ 프로젝트 형식 오류 (이름 ≤40자, 설명 ≤80자, url 은 http(s), 최대 5개).');
+      return print(`❌ 프로젝트 형식 오류 (이름 ≤40자, 설명 ≤80자, url 은 http(s), 최대 ${MAX_PROJECTS}개).`);
     }
     return print(`❌ 저장 실패 (status ${res.status}).`);
   } catch {
@@ -325,10 +327,12 @@ async function pushProjects(projects, okMsg) {
 function projectUsage() {
   return [
     '사용법:',
-    '- `/ocw project add <이름> :: <설명> :: <url>` (설명·url 선택, 최대 5개)',
+    `- \`/ocw project add <이름> :: <설명> :: <url>\` (설명·url 선택, 최대 ${MAX_PROJECTS}개)`,
     '- `/ocw project list`',
     '- `/ocw project main <번호|이름>` — 대표 프로젝트 지정(맨 위·MAIN 표시, `none`으로 해제)',
     '- `/ocw project link <이름>` — 현재 폴더의 프롬프트를 이 프로젝트로 집계 (`unlink`로 해제)',
+    '- `/ocw project auto on|off` — 링크 안 된 폴더도 폴더 이름으로 자동 집계 (옵트인)',
+    '- `/ocw project submarine <번호|이름>` — 🤿 잠수함 모드 토글 (남에겐 "secret #n"으로 표시)',
     '- `/ocw project remove <번호|이름>` (별칭: delete)',
     '- `/ocw project clear`',
     '예) `/ocw project add Open Code War :: Claude Code 리더보드 :: https://opencodewar.dev`',
@@ -390,11 +394,52 @@ function projectLink(action, remainder, ships) {
   );
 }
 
-/** project add|list|remove|clear — 홍보용 사이드프로젝트(최대 5개) 관리. */
+/**
+ * project auto on|off — 링크 안 된 폴더의 자동 집계(폴더 이름 라벨, DESIGN.md §20.7).
+ * 로컬 config 만 바꾼다(서버 통신 없음). 인자 없으면 현재 상태 + 이 폴더의 자동 라벨을 보여준다.
+ */
+function projectAuto(remainder) {
+  const v = remainder.trim().toLowerCase();
+  if (v === 'on' || v === 'off') {
+    cfg.projectAuto = v === 'on';
+    saveConfig(cfg);
+    if (v === 'on') {
+      return print(
+        [
+          '● 디렉토리 자동 집계 ON — 링크 안 된 폴더는 **폴더 이름**으로 집계됩니다.',
+          '  · 전체 경로는 전송되지 않습니다 (git 저장소면 루트 폴더 이름, 아니면 현재 폴더 이름)',
+          '  · 공개 페이지에는 전부 "기타"로 합산 — 본인 로그인 시에만 이름으로 보입니다',
+          '끄기: `/ocw project auto off`',
+        ].join('\n'),
+      );
+    }
+    return print('⏸ 디렉토리 자동 집계 OFF — 링크 안 된 폴더는 다시 미지정("기타")으로 집계됩니다.');
+  }
+  const label = autoProjectLabel(process.cwd());
+  return print(
+    [
+      `디렉토리 자동 집계: ${cfg.projectAuto === true ? '켜짐' : '꺼짐(기본)'}`,
+      cfg.projectAuto === true && label ? `이 폴더의 자동 라벨: **${label}**` : null,
+      '사용법: `/ocw project auto on` | `/ocw project auto off`',
+      '',
+      '켜면 링크 안 된 폴더의 프롬프트도 폴더 이름(git 루트 기준)으로 집계됩니다.',
+      '경로 전체는 서버로 가지 않으며, 공개 차트에는 "기타"로 합산됩니다(본인만 이름 확인).',
+    ]
+      .filter((l) => l !== null)
+      .join('\n'),
+  );
+}
+
+/** project add|list|remove|clear — 홍보용 사이드프로젝트(최대 10개) 관리. */
 async function project(input) {
   const sp = input.indexOf(' ');
   const action = (sp === -1 ? input : input.slice(0, sp)).toLowerCase() || 'list';
   const remainder = (sp === -1 ? '' : input.slice(sp + 1)).trim();
+
+  // 자동 집계 토글은 로컬 설정만 만지므로 서버 조회 전에 처리한다.
+  if (action === 'auto') {
+    return projectAuto(remainder);
+  }
 
   // 다른 항목 보존을 위해 서버의 현재 projects 를 기준값으로 삼는다(실패 시 로컬 캐시).
   const me = await fetchMe();
@@ -414,7 +459,7 @@ async function project(input) {
     }
     const lines = ['**Shipping — 내 프로젝트**'];
     current.forEach((p, i) => {
-      const parts = [`${i + 1}. ${p.name}${p.main ? ' ⭐ (메인)' : ''}`];
+      const parts = [`${i + 1}. ${p.name}${p.main ? ' ⭐ (메인)' : ''}${p.sub ? ' 🤿 (잠수함)' : ''}`];
       if (p.desc) parts.push(`— ${p.desc}`);
       if (p.url) parts.push(`(${p.url})`);
       lines.push(parts.join(' '));
@@ -432,6 +477,9 @@ async function project(input) {
     } else {
       lines.push('폴더 연결: 프로젝트 폴더에서 `/ocw project link <이름>` — 프롬프트가 그 프로젝트로 집계됩니다.');
     }
+    lines.push(
+      `디렉토리 자동 집계: ${cfg.projectAuto === true ? '켜짐' : '꺼짐'} (\`/ocw project auto on|off\`)`,
+    );
     return print(lines.join('\n'));
   }
 
@@ -480,6 +528,38 @@ async function project(input) {
       ...current.filter((_, i) => i !== idx - 1).map(strip),
     ];
     return pushProjects(next, `✅ 메인 지정: ${chosen.name} (맨 위 · MAIN)`);
+  }
+
+  if (action === 'submarine' || action === 'sub') {
+    if (!current.length) {
+      return print('등록된 프로젝트가 없습니다.\n' + projectUsage());
+    }
+    let idx = Number(remainder);
+    if (!Number.isInteger(idx) || idx < 1 || idx > current.length) {
+      // 번호가 아니면 이름으로 찾는다(대소문자 무시).
+      const byName = current.findIndex((p) => p.name.toLowerCase() === remainder.toLowerCase());
+      if (!remainder || byName === -1) {
+        return print(
+          `사용법: \`/ocw project submarine <번호|이름>\` — 잠수함 모드 토글. 번호는 1~${current.length}, 목록은 \`/ocw project list\`.`,
+        );
+      }
+      idx = byName + 1;
+    }
+    const chosen = current[idx - 1];
+    const turningOn = chosen.sub !== true;
+    const next = current.map((p, i) => {
+      if (i !== idx - 1) return p;
+      const { sub, ...restP } = p;
+      return turningOn ? { ...restP, sub: true } : restP;
+    });
+    // 잠수함 순번(secret #n) = 목록 순서상 잠수함 중 몇 번째인지 — 서버 공개 표기와 동일 규칙.
+    const secretNo = next.slice(0, idx).filter((p) => p.sub === true).length;
+    return pushProjects(
+      next,
+      turningOn
+        ? `🤿 **${chosen.name}** 잠수함 모드 ON — 내 페이지에서만 실명, 다른 사람에게는 **"secret #${secretNo}"** 로 보입니다.\n해제: \`/ocw project submarine ${chosen.name}\``
+        : `✅ **${chosen.name}** 잠수함 모드 OFF — 다시 공개 프로젝트로 표시됩니다.`,
+    );
   }
 
   if (action === 'remove' || action === 'delete' || action === 'rm') {
@@ -656,9 +736,11 @@ function help() {
       '- `/ocw company <회사>` — 소속/회사',
       '- `/ocw city <도시>` — 내 도시 (도시 구역 랭킹 "이 구역 코드워리어")',
       '- `/ocw link <종류> <url>` — 링크 (종류: website/blog/github/x/linkedin · website·blog는 주소 표시, SNS는 아이콘)',
-      '- `/ocw project add <이름> :: <설명> :: <url>` — 사이드프로젝트 (최대 5개)',
+      '- `/ocw project add <이름> :: <설명> :: <url>` — 사이드프로젝트 (최대 10개)',
       '- `/ocw project main <번호|이름>` — 대표 프로젝트 지정 (맨 위·MAIN)',
       '- `/ocw project link <이름>` / `unlink` — 현재 폴더의 프롬프트를 프로젝트로 집계 (상세 차트 표시)',
+      '- `/ocw project auto on|off` — 링크 안 된 폴더도 폴더 이름으로 자동 집계 (옵트인)',
+      '- `/ocw project submarine <번호|이름>` — 🤿 잠수함 모드 (남에겐 "secret #n", 본인만 실명)',
       '- `/ocw project list | remove|delete <번호|이름> | clear` — 프로젝트 관리',
       '- `/ocw signup` — Google 계정 연동 (계정 복구·여러 기기 합산 · 별칭: login)',
       '- `/ocw email public|private` — 연동 이메일 프로필 공개/비공개 (기본 비공개)',

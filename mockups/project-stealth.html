@@ -1,0 +1,513 @@
+<meta charset="utf-8">
+<title>OCW 시안 — 디렉토리 자동 집계 & 잠수함 모드</title>
+<style>
+  /* 본 서비스(web/index.html)의 토큰을 그대로 가져온 시안. */
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg);
+    font-size:14px; line-height:1.5; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:920px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+
+  .titlebar { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .titlebar h1 { font-size:15px; margin:0; letter-spacing:.03em; }
+  .titlebar .tag { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--rev-fg);
+    background:var(--amber); border-radius:4px; padding:1px 7px; font-weight:700; }
+  .titlebar .sub { font-size:12px; color:var(--dim); }
+  .themebtn { margin-left:auto; font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg);
+    color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; }
+  .themebtn:hover { color:var(--fg); border-color:var(--fg); }
+
+  .panel { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:18px 20px; }
+  .panel h2 { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--faint);
+    margin:0 0 14px; font-weight:700; }
+  .panel h2 .h-note { text-transform:none; letter-spacing:0; font-weight:400; margin-left:8px; }
+
+  /* ── 뷰어 토글: 이 시안의 핵심 인터랙션 ── */
+  .viewer { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .vseg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .vseg button { font:inherit; font-size:13px; border:0; background:var(--bg); color:var(--dim);
+    padding:8px 16px; cursor:pointer; }
+  .vseg button + button { border-left:1px solid var(--line); }
+  .vseg button[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); font-weight:700; }
+  .vcap { font-size:12.5px; color:var(--dim); flex:1; min-width:220px; }
+  .vcap b { color:var(--fg); font-weight:700; }
+
+  /* ── 프로필 미니 헤더 ── */
+  .p-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .p-nick { font-size:22px; font-weight:700; letter-spacing:.02em; }
+  .p-rank { font-size:11px; color:var(--dim); border:1px solid var(--line); border-radius:5px; padding:3px 9px; }
+  .p-sub { font-size:12px; color:var(--faint); width:100%; }
+
+  /* ── shipping 카드 (클릭 → 차트 필터) ── */
+  .ships { display:grid; gap:10px; }
+  .ship { display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:6px;
+    padding:12px 14px; cursor:pointer; }
+  .ship:hover { background:var(--hover); }
+  .ship.main { border-color:var(--ok); }
+  .ship.sel { border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
+  .ship-main { min-width:0; flex:1; }
+  .ship-name { font-size:13.5px; font-weight:700; overflow-wrap:break-word; }
+  .ship-badge { display:inline-block; vertical-align:1px; margin-left:8px; font-size:9.5px; font-weight:700;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--rev-fg); background:var(--ok);
+    border-radius:4px; padding:1px 5px; line-height:1.5; }
+  .ship-badge.sub { background:var(--amber); }
+  .ship-desc { font-size:12.5px; color:var(--dim); margin-top:3px; }
+  .ship-host { font-size:11px; color:var(--faint); margin-top:5px; word-break:break-all; }
+  .ship-hint { font-size:11px; color:var(--amber); margin-top:5px; }
+  .visit { flex:none; font-size:12px; color:var(--fg); text-decoration:none; border:1px solid var(--line);
+    border-radius:5px; padding:6px 12px; white-space:nowrap; }
+  .visit:hover { border-color:var(--ok); color:var(--ok); }
+  /* 잠수함 프로젝트의 공개 표기 — 점선 카드, 링크·설명 없음. 개수만큼 secret #n 으로 노출 */
+  .ship.secret { border-style:dashed; color:var(--dim); }
+  .ship.secret .ship-name { color:var(--dim); font-style:italic; }
+  .ship.secret .ship-name .sdot { display:inline-block; width:9px; height:9px; border-radius:2px;
+    margin-right:6px; vertical-align:-1px; }
+  .ship.secret.sel { border-color:var(--fg); }
+
+  /* ── 차트 (본 서비스 구조 그대로) ── */
+  .utop { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .uviews { display:inline-flex; gap:6px; flex-wrap:wrap; }
+  .uview { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    padding:5px 11px; border-radius:5px; cursor:default; white-space:nowrap; }
+  .uview[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  /* 선택 프로젝트 스탯 라인 — 카드 클릭 시 등장 */
+  .selstat { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:14px; padding:10px 13px;
+    border:1px solid var(--fg); border-radius:6px; font-size:12.5px; }
+  .selstat[hidden] { display:none; }
+  .selstat .ss-name { font-weight:700; }
+  .selstat .ss-x { margin-left:auto; border:0; background:none; color:var(--faint); font:inherit; cursor:pointer; padding:2px 4px; }
+  .selstat .ss-x:hover { color:var(--fg); }
+  .selstat .v { font-variant-numeric:tabular-nums; }
+  .selstat .sep { color:var(--faint); }
+  .chart-wrap { margin-top:16px; position:relative; }
+  .chart-tip { position:absolute; z-index:5; pointer-events:none; transform:translate(-50%,-100%);
+    background:var(--rev-bg); color:var(--rev-fg); border-radius:5px; padding:6px 9px; font-size:11.5px;
+    line-height:1.6; white-space:nowrap; box-shadow:0 2px 10px rgba(0,0,0,.22); opacity:0; transition:opacity .1s; }
+  .chart-tip.on { opacity:1; }
+  .chart-tip .d { font-weight:700; }
+  .chart-tip .v { font-variant-numeric:tabular-nums; }
+  .chart-tip .trow { display:flex; align-items:center; gap:6px; }
+  .chart { display:flex; align-items:flex-end; gap:2px; height:150px; padding-top:24px;
+    border-bottom:1px solid var(--line); cursor:crosshair; }
+  .chart .col { flex:1 1 0; min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; position:relative; }
+  .chart .col .barv { width:100%; max-width:15px; min-height:2px; border-radius:2px 2px 0 0;
+    background:transparent; display:flex; flex-direction:column-reverse; overflow:hidden; }
+  .chart .col.zero .barv { background:var(--line); }   /* 필터 모드에서 활동 없는 날 */
+  .chart .col:hover .barv { opacity:.6; }
+  .chart .col .bseg { width:100%; min-height:1px; }
+  .chart-x { display:flex; justify-content:space-between; margin-top:7px; font-size:11px; color:var(--faint);
+    font-variant-numeric:tabular-nums; }
+  .ag-legend { margin-top:12px; font-size:11px; color:var(--dim); line-height:2; }
+  .ag-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin:0 4px 0 12px; vertical-align:-1px; }
+  .ag-legend .ag-dot:first-child { margin-left:0; }
+  .lg-note { opacity:.6; }
+  .lg-item { white-space:nowrap; }
+
+  /* ── 규칙 표 ── */
+  .rules { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .rules th, .rules td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .rules th { font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); font-weight:700; }
+  .rules td:first-child { white-space:nowrap; font-weight:700; }
+  .rules tr:last-child td { border-bottom:0; }
+  .rules .cmd { font-size:11.5px; color:var(--faint); font-weight:400; display:block; margin-top:2px; }
+  .rules .no { color:var(--faint); }
+  .rules .safe { color:var(--ok); }
+  .rules-scroll { overflow-x:auto; }
+
+  /* ── 터미널 목업 ── */
+  .term { background:var(--rev-bg); color:var(--rev-fg); border-radius:6px; padding:14px 16px;
+    font-size:12.5px; line-height:1.8; overflow-x:auto; }
+  .term .ln { white-space:pre; }
+  .term .ps { color:var(--ok); }
+  .term .mut { opacity:.55; }
+  .term .amb { color:var(--amber); }
+
+  .foot { text-align:center; font-size:11.5px; color:var(--faint); padding:4px 0 10px; }
+
+  @media (max-width:560px) { .ship { flex-wrap:wrap; } .p-nick { font-size:19px; } }
+  @media (prefers-reduced-motion:reduce) { .chart-tip { transition:none; } }
+</style>
+
+<div class="wrap">
+
+  <div class="titlebar">
+    <h1>OPEN CODE WAR</h1>
+    <span class="tag">시안</span>
+    <span class="sub">디렉토리 자동 집계 + 잠수함 모드 (§20 확장)</span>
+    <button class="themebtn" id="themeBtn" type="button">☾ 테마</button>
+  </div>
+
+  <!-- 뷰어 토글 -->
+  <div class="panel">
+    <div class="viewer">
+      <div class="vseg" role="group" aria-label="보는 사람">
+        <button type="button" id="vOwner" aria-pressed="true">🔑 내가 볼 때</button>
+        <button type="button" id="vPublic" aria-pressed="false">👀 남이 볼 때</button>
+      </div>
+      <div class="vcap" id="vCap"></div>
+    </div>
+  </div>
+
+  <!-- 프로필 미니 헤더 + shipping -->
+  <div class="panel">
+    <div class="p-head">
+      <span class="p-nick">dohan</span>
+      <span class="p-rank">🎖 상사 · KR</span>
+      <span class="p-sub" id="shipSub"></span>
+    </div>
+    <div class="ships" id="ships" style="margin-top:14px"></div>
+  </div>
+
+  <!-- 상세 차트 -->
+  <div class="panel">
+    <h2>지난 30일 <span class="h-note" id="chartNote"></span></h2>
+    <div class="utop">
+      <div class="uviews">
+        <button class="uview" aria-pressed="true">30d</button>
+        <button class="uview" aria-pressed="false">day</button>
+      </div>
+      <div class="uviews">
+        <button class="uview" aria-pressed="true">prompts</button>
+        <button class="uview" aria-pressed="false">chars</button>
+        <span style="width:8px"></span>
+        <button class="uview" aria-pressed="true">프로젝트</button>
+        <button class="uview" aria-pressed="false">에이전트</button>
+      </div>
+    </div>
+    <div class="selstat" id="selStat" hidden></div>
+    <div class="chart-wrap">
+      <div class="chart-tip" id="tip"></div>
+      <div class="chart" id="chart"></div>
+      <div class="chart-x"><span id="x0"></span><span id="x1"></span></div>
+      <div class="ag-legend" id="legend"></div>
+    </div>
+  </div>
+
+  <!-- 동작 규칙 -->
+  <div class="panel">
+    <h2>수집·표시 규칙 <span class="h-note">— 경로 전체는 어떤 경우에도 서버로 가지 않는다</span></h2>
+    <div class="rules-scroll">
+      <table class="rules">
+        <thead>
+          <tr><th>폴더 상태</th><th>서버에 가는 것</th><th>🔑 본인 뷰</th><th>👀 공개 뷰</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>링크됨<span class="cmd">/ocw project link &lt;이름&gt;</span></td>
+            <td>내가 정한 라벨</td>
+            <td>실명</td>
+            <td>shipping 일치 시 실명<br>아니면 <span class="no">기타</span></td>
+          </tr>
+          <tr>
+            <td>자동 집계 <b>ON</b><span class="cmd">/ocw project auto on (옵트인)</span></td>
+            <td>폴더 <b>이름만</b> <span class="safe">(경로 ✕)</span></td>
+            <td>📁 폴더명 <span class="no">(비공개)</span></td>
+            <td><span class="no">기타</span>로 합산</td>
+          </tr>
+          <tr>
+            <td>🤿 잠수함<span class="cmd">/ocw ship submarine &lt;이름&gt;</span></td>
+            <td>프로젝트명 (shipping 등록됨)</td>
+            <td>실명 + 🤿 배지</td>
+            <td><b>“secret #n”</b> — 이름·설명·링크 숨김<br>여러 개면 번호로만 구분(개수만 노출)<br>차트 색은 프로젝트 색 그대로</td>
+          </tr>
+          <tr>
+            <td>자동 집계 OFF (기본)</td>
+            <td><span class="safe">아무것도 안 감</span> (NULL)</td>
+            <td><span class="no">기타</span></td>
+            <td><span class="no">기타</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CLI 목업 -->
+  <div class="panel">
+    <h2>설정 명령 (플러그인)</h2>
+    <div class="term">
+      <div class="ln"><span class="ps">$</span> /ocw project auto on</div>
+      <div class="ln">✔ 디렉토리 자동 집계 ON — 링크 안 된 폴더는 <b>폴더 이름</b>으로 집계됩니다</div>
+      <div class="ln mut">  · 전체 경로는 전송되지 않습니다 · 공개 페이지에는 전부 “기타”로 합산</div>
+      <div class="ln">&nbsp;</div>
+      <div class="ln"><span class="ps">$</span> /ocw ship submarine ghost-writer</div>
+      <div class="ln"><span class="amb">🤿 ghost-writer 잠수함 모드 ON</span></div>
+      <div class="ln mut">  · 내 페이지에서만 실명 표시 · 다른 사람에게는 “secret #1”로 보입니다</div>
+      <div class="ln">&nbsp;</div>
+      <div class="ln"><span class="ps">$</span> /ocw ship submarine moonrise</div>
+      <div class="ln"><span class="amb">🤿 moonrise 잠수함 모드 ON</span> <span class="mut">— 잠수함 2척 (secret #2)</span></div>
+    </div>
+  </div>
+
+  <div class="foot">mockups/project-stealth.html — 데이터는 시연용 가짜 · shipping 한도 10개 기준</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ── 시연 데이터 (시드 고정 난수 → 새로고침해도 동일) ──
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  var rnd = mulberry32(42);
+
+  // shipping 한도 10개 → 고정 팔레트도 10색 (앞 5색은 기존 PJ_COLORS 그대로)
+  var PJ_COLORS = ['#D97757', '#3E8E6E', '#4E7DC4', '#B8862E', '#9A66C9',
+                   '#C2527A', '#4A9A96', '#8A8F3C', '#A8674B', '#6B7DB3'];
+
+  // 프로젝트 정의 — kind: ship(공개) / sub(잠수함) / auto(디렉토리 자동)
+  var PROJECTS = [
+    { key: 'ocw',   name: 'opencodewar',     kind: 'ship', main: true,  color: PJ_COLORS[0],
+      desc: '코딩 에이전트 타이핑 리더보드', host: 'opencodewar.dev' },
+    { key: 'dobby', name: 'dobby-reports',   kind: 'ship', main: false, color: PJ_COLORS[1],
+      desc: '개인 디스코드 일일 리포트 봇', host: 'github.com/dodohankim' },
+    { key: 'ghost', name: 'ghost-writer',    kind: 'sub',  main: false, color: PJ_COLORS[2], secretNo: 1,
+      desc: 'AI 대필 SaaS (조용히 만드는 중)', host: 'localhost:3000' },
+    { key: 'moon',  name: 'moonrise',        kind: 'sub',  main: false, color: PJ_COLORS[3], secretNo: 2,
+      desc: '주말에만 파는 두 번째 비밀 프로젝트', host: 'localhost:5173' },
+    { key: 'kdf',   name: 'k-datafast',      kind: 'auto', color: PJ_COLORS[4] },
+    { key: 'mt',    name: 'mention-tracker', kind: 'auto', color: PJ_COLORS[5] }
+  ];
+
+  // 30일 일별 프롬프트 수. ghost 는 최근 2주 집중, moon 은 주말에만 — 서사가 다른 잠수함 2척.
+  var DAYS = [];
+  (function () {
+    for (var i = 0; i < 30; i++) {
+      var wknd = (i % 7 === 5 || i % 7 === 6);
+      DAYS.push({
+        label: '7/' + (i + 2),
+        ocw:   Math.round((wknd ? 10 : 26) + rnd() * 30),
+        dobby: rnd() < 0.4 ? Math.round(4 + rnd() * 12) : 0,
+        ghost: i > 16 ? Math.round(8 + rnd() * 24 * ((i - 16) / 13)) : 0,
+        moon:  wknd && i > 8 ? Math.round(8 + rnd() * 16) : 0,
+        kdf:   rnd() < 0.25 ? Math.round(3 + rnd() * 10) : 0,
+        mt:    (i % 7 === 0) ? Math.round(5 + rnd() * 8) : 0,
+        rest:  rnd() < 0.5 ? Math.round(rnd() * 6) : 0   // auto OFF 폴더 등 미지정(NULL)
+      });
+    }
+  })();
+
+  var fmt = function (n) { return n.toLocaleString('en-US'); };
+  var OTHER_STYLE = 'background:var(--dim);opacity:.45';
+
+  // ── 뷰별 세그먼트 구성 ──
+  // owner: 모든 프로젝트 실명(잠수함 포함) + 기타(미지정)
+  // public: shipping 실명 → 잠수함은 secret #n(색은 그대로, 이름만 숨김) → 자동·미지정은 전부 기타
+  function segList(view) {
+    if (view === 'owner') {
+      return PROJECTS.map(function (p) {
+        return { key: p.key, label: p.name + (p.kind === 'sub' ? ' 🤿' : ''),
+          note: p.kind === 'auto' ? '(자동 · 비공개)'
+            : (p.kind === 'sub' ? '(잠수함 · 남에겐 secret #' + p.secretNo + ')' : ''),
+          color: p.color,
+          val: function (d) { return d[p.key]; } };
+      }).concat([{ key: 'other', label: '기타', note: '', color: null,
+        val: function (d) { return d.rest; } }]);
+    }
+    var segs = PROJECTS.filter(function (p) { return p.kind === 'ship'; }).map(function (p) {
+      return { key: p.key, label: p.name, note: '', color: p.color,
+        val: function (d) { return d[p.key]; } };
+    });
+    PROJECTS.filter(function (p) { return p.kind === 'sub'; }).forEach(function (p) {
+      segs.push({ key: p.key, label: 'secret #' + p.secretNo, note: '🤿', color: p.color,
+        val: function (d) { return d[p.key]; } });
+    });
+    segs.push({ key: 'other', label: '기타', note: '', color: null,
+      val: function (d) { return d.kdf + d.mt + d.rest; } });
+    return segs;
+  }
+
+  // ── 렌더 ──
+  var view = 'owner';
+  var sel = null; // 선택된 프로젝트 key (shipping 카드 클릭). null = 전체 보기
+
+  function segStyle(s) {
+    if (s.color) return 'background:' + s.color;
+    return OTHER_STYLE;
+  }
+
+  function segTotal(s) { return DAYS.reduce(function (a, d) { return a + s.val(d); }, 0); }
+
+  function renderChart() {
+    var segs = segList(view);
+    var one = sel ? segs.filter(function (s) { return s.key === sel; })[0] : null;
+
+    if (one) {
+      // 필터 모드: 선택 프로젝트만, 자체 최대값 기준으로 리스케일
+      var maxOne = Math.max.apply(null, DAYS.map(function (d) { return one.val(d); }));
+      $('chart').innerHTML = DAYS.map(function (d, i) {
+        var v = one.val(d);
+        var h = maxOne ? (v / maxOne) * 100 : 0;
+        var inner = v > 0
+          ? '<div class="bseg" style="height:100%;' + segStyle(one) + '"></div>'
+          : '';
+        return '<div class="col' + (v > 0 ? '' : ' zero') + '" data-i="' + i +
+          '"><div class="barv" style="height:' + h + '%">' + inner + '</div></div>';
+      }).join('');
+    } else {
+      var max = 0;
+      DAYS.forEach(function (d) {
+        var t = segs.reduce(function (a, s) { return a + s.val(d); }, 0);
+        if (t > max) max = t;
+      });
+      $('chart').innerHTML = DAYS.map(function (d, i) {
+        var total = segs.reduce(function (a, s) { return a + s.val(d); }, 0);
+        var h = max ? (total / max) * 100 : 0;
+        var inner = segs.map(function (s) {
+          var v = s.val(d);
+          if (v <= 0) return '';
+          return '<div class="bseg" style="height:' + (v / total) * 100 + '%;' + segStyle(s) + '"></div>';
+        }).join('');
+        return '<div class="col" data-i="' + i + '"><div class="barv" style="height:' + h + '%">' + inner + '</div></div>';
+      }).join('');
+    }
+    $('x0').textContent = DAYS[0].label;
+    $('x1').textContent = DAYS[DAYS.length - 1].label + ' (오늘)';
+
+    $('legend').innerHTML = segs.map(function (s) {
+      var dot = '<span class="ag-dot" style="' + segStyle(s) + '"></span>';
+      var note = s.note ? ' <span class="lg-note">' + s.note + '</span>' : '';
+      var dim = sel && s.key !== sel ? 'opacity:.35' : '';
+      return '<span class="lg-item" style="' + dim + '">' + dot + s.label + note + '</span>';
+    }).join(' ');
+  }
+
+  // 선택 프로젝트 스탯 라인: 합계 · 점유율 · 활동일 · 최고 하루
+  function renderSelStat() {
+    var box = $('selStat');
+    if (!sel) { box.hidden = true; return; }
+    var segs = segList(view);
+    var s = segs.filter(function (x) { return x.key === sel; })[0];
+    if (!s) { sel = null; box.hidden = true; return; }
+    var total = segTotal(s);
+    var active = DAYS.filter(function (d) { return s.val(d) > 0; }).length;
+    var peak = Math.max.apply(null, DAYS.map(function (d) { return s.val(d); }));
+    var dot = '<span class="ag-dot" style="margin:0;' + segStyle(s) + '"></span>';
+    box.innerHTML = dot + '<span class="ss-name">' + s.label + '</span>' +
+      '<span class="v">' + fmt(total) + ' prompts</span><span class="sep">·</span>' +
+      '<span class="v">활동 ' + active + '/30일</span><span class="sep">·</span>' +
+      '<span class="v">최고 하루 ' + fmt(peak) + '</span>' +
+      '<button class="ss-x" id="ssClear" type="button" aria-label="선택 해제">✕ 해제</button>';
+    box.hidden = false;
+    $('ssClear').addEventListener('click', function () { sel = null; render(); });
+  }
+
+  function renderShips() {
+    var pub = view === 'public';
+    $('ships').innerHTML = PROJECTS.filter(function (p) { return p.kind === 'ship' || p.kind === 'sub'; })
+      .map(function (p) {
+        var selCls = sel === p.key ? ' sel' : '';
+        if (p.kind === 'sub' && pub) {
+          return '<div class="ship secret' + selCls + '" data-key="' + p.key + '"><div class="ship-main">' +
+            '<div class="ship-name"><span class="sdot" style="background:' + p.color + '"></span>🤿 secret #' + p.secretNo + '</div>' +
+            '<div class="ship-desc">이 코더는 무언가를 조용히 만들고 있다</div>' +
+            '</div></div>';
+        }
+        var badge = p.main ? '<span class="ship-badge">대표</span>' : '';
+        if (p.kind === 'sub') badge += '<span class="ship-badge sub">🤿 잠수함</span>';
+        var hint = (p.kind === 'sub' && !pub)
+          ? '<div class="ship-hint">공개 페이지에는 “secret #' + p.secretNo + '”로 표시됩니다</div>' : '';
+        return '<div class="ship' + (p.main ? ' main' : '') + selCls + '" data-key="' + p.key + '"><div class="ship-main">' +
+          '<div class="ship-name">' + p.name + badge + '</div>' +
+          '<div class="ship-desc">' + p.desc + '</div>' +
+          '<div class="ship-host">' + p.host + '</div>' + hint +
+          '</div><a class="visit" href="#" onclick="return false">visit →</a></div>';
+      }).join('');
+    $('shipSub').textContent = (pub
+      ? 'shipping 4/10 — 잠수함 2척은 이름 대신 secret #1·#2'
+      : 'shipping 4/10 등록 (잠수함 2척)') + ' · 카드를 클릭하면 차트에서 그 프로젝트만 강조';
+  }
+
+  function renderCaption() {
+    if (view === 'owner') {
+      $('vCap').innerHTML = '<b>본인 로그인 뷰</b> — 잠수함·자동 집계 폴더까지 전부 실명으로 보입니다.';
+      $('chartNote').textContent = '— 프로젝트 스택 · 본인에게만 전체 공개';
+    } else {
+      $('vCap').innerHTML = '<b>방문자 뷰</b> — 잠수함은 “secret #n”, 자동 집계 폴더는 “기타”로 합산됩니다.';
+      $('chartNote').textContent = '— 프로젝트 스택 · 공개 표기';
+    }
+  }
+
+  function render() { renderChart(); renderShips(); renderSelStat(); renderCaption(); }
+
+  // ── shipping 카드 클릭 → 차트 필터 (다시 클릭하면 해제) ──
+  $('ships').addEventListener('click', function (e) {
+    if (e.target.closest('.visit')) return;
+    var card = e.target.closest('.ship');
+    if (!card || !card.dataset.key) return;
+    sel = sel === card.dataset.key ? null : card.dataset.key;
+    render();
+  });
+
+  // ── 툴팁 ──
+  var tip = $('tip');
+  $('chart').addEventListener('mousemove', function (e) {
+    var col = e.target.closest('.col');
+    if (!col) { tip.classList.remove('on'); return; }
+    var d = DAYS[+col.dataset.i];
+    var segs = segList(view);
+    var show = sel ? segs.filter(function (s) { return s.key === sel; }) : segs;
+    var total = show.reduce(function (a, s) { return a + s.val(d); }, 0);
+    var rows = show.map(function (s) {
+      var v = s.val(d);
+      if (v <= 0) return '';
+      var dot = '<span class="ag-dot" style="margin:0;' +
+        (s.color ? 'background:' + s.color : 'background:var(--rev-fg);opacity:.5') + '"></span>';
+      return '<div class="trow">' + dot + '<span>' + s.label + '</span><span class="v">' + fmt(v) + '</span></div>';
+    }).join('');
+    tip.innerHTML = '<div class="d">' + d.label + ' · ' + fmt(total) + ' prompts</div>' + rows;
+    var wrap = col.closest('.chart-wrap').getBoundingClientRect();
+    var r = col.getBoundingClientRect();
+    tip.style.left = (r.left - wrap.left + r.width / 2) + 'px';
+    tip.style.top = (r.top - wrap.top - 6) + 'px';
+    tip.classList.add('on');
+  });
+  $('chart').addEventListener('mouseleave', function () { tip.classList.remove('on'); });
+
+  // ── 뷰어 토글 (전환 시 선택 해제) ──
+  function setView(v) {
+    view = v; sel = null;
+    $('vOwner').setAttribute('aria-pressed', String(v === 'owner'));
+    $('vPublic').setAttribute('aria-pressed', String(v === 'public'));
+    render();
+  }
+  $('vOwner').addEventListener('click', function () { setView('owner'); });
+  $('vPublic').addEventListener('click', function () { setView('public'); });
+
+  // ── 테마 토글 (시안 열람 편의용) ──
+  $('themeBtn').addEventListener('click', function () {
+    var root = document.documentElement;
+    var dark = root.getAttribute('data-theme') === 'dark' ||
+      (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+  });
+
+  render();
+})();
+</script>

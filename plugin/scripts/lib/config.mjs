@@ -3,7 +3,7 @@
 // 재설치/기기 이동에도 유지되도록 홈 디렉토리에 저장한다.
 
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
@@ -35,6 +35,7 @@ export function loadConfig() {
       links: {},
       projects: [],
       projectDirs: {}, // { "<절대경로>": "<라벨>" } — 폴더→프로젝트 링크(DESIGN.md §20). 로컬 전용, 경로는 서버로 안 감.
+      projectAuto: false, // 링크 안 된 폴더도 폴더 이름으로 자동 집계(옵트인, DESIGN.md §20.7)
       account: null,
       ...cfg,
     };
@@ -96,4 +97,29 @@ export function projectFor(cfg, cwd) {
   if (bestKey === null) return null;
   const label = dirs[bestKey];
   return typeof label === 'string' && label.trim() ? label.trim() : null;
+}
+
+/**
+ * 자동 집계 라벨(DESIGN.md §20.7, 옵트인). 링크 안 된 폴더에서 projectAuto 가 켜져 있을 때
+ * **폴더 이름만** 라벨로 쓴다 — 경로 전체는 여전히 서버로 가지 않는다.
+ * 하위 폴더에서 쳐도 같은 프로젝트로 묶이도록 git 저장소 루트(.git 보유 폴더)의 이름을 쓰고,
+ * git 프로젝트가 아니면 cwd 폴더 이름으로 폴백한다. 서버 라벨 상한(40자)에 맞춰 자른다.
+ */
+export function autoProjectLabel(cwd) {
+  const start = normalizeDir(cwd);
+  if (!start) return null;
+  let dir = start;
+  let root = null;
+  // 홈/루트까지 올라가며 .git 탐색(워크트리는 .git 이 파일이라 existsSync 로 둘 다 잡힌다).
+  for (let i = 0; i < 50; i++) {
+    if (existsSync(join(dir, '.git'))) {
+      root = dir;
+      break;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  const label = basename(root ?? start).trim().slice(0, 40);
+  return label || null;
 }

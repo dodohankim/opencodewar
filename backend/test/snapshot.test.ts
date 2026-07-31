@@ -38,4 +38,13 @@ describe('pickMainProject', () => {
   it('이름은 앞뒤 공백을 떼고 담는다', () => {
     expect(pickMainProject(JSON.stringify([{ name: '  moonlog  ' }]))).toEqual({ name: 'moonlog' });
   });
+
+  it('잠수함(sub, §20.7)은 후보에서 제외한다 — main 이어도 공개 칩에 이름을 내지 않는다', () => {
+    const raw = JSON.stringify([
+      { name: 'ghost', sub: true, main: true, url: 'https://g.dev' },
+      { name: 'moonlog' },
+    ]);
+    expect(pickMainProject(raw)).toEqual({ name: 'moonlog' });
+    expect(pickMainProject(JSON.stringify([{ name: 'ghost', sub: true }]))).toBeNull();
+  });
 });

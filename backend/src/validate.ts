@@ -116,7 +116,7 @@ export function normalizeLinks(v: unknown): Links | null {
 }
 
 /** 홍보용 사이드프로젝트. name 필수, desc·url 선택. */
-export const MAX_PROJECTS = 5;
+export const MAX_PROJECTS = 10;
 export const MAX_PROJECT_NAME_LEN = 40;
 export const MAX_PROJECT_DESC_LEN = 80;
 export interface Project {
@@ -124,10 +124,11 @@ export interface Project {
   desc?: string;
   url?: string;
   main?: boolean; // 대표 프로젝트 1개. 유저 상세에서 맨 위로 올라가고 MAIN 배지가 붙는다.
+  sub?: boolean; // 잠수함 모드(§20.7). 본인에게만 실명 — 공개 표기는 publicProjects 의 "secret #n".
 }
 
 /**
- * projects 배열을 검증·정규화한다. 최대 5개, 각 항목 {name, desc?, url?, main?}.
+ * projects 배열을 검증·정규화한다. 최대 10개, 각 항목 {name, desc?, url?, main?, sub?}.
  * 빈 desc/url 은 결과에서 생략한다. main 은 최대 1개만 유지(첫 항목 우선).
  * 유효하지 않으면 null, 빈 배열은 "전체 해제".
  */
@@ -156,9 +157,37 @@ export function normalizeProjects(v: unknown): Project[] | null {
       project.main = true;
       seenMain = true; // 메인은 1개만 — 이후 항목의 main 은 무시한다.
     }
+    if (rec.sub === true) project.sub = true;
     out.push(project);
   }
   return out;
+}
+
+/**
+ * 잠수함 프로젝트의 공개 표기 이름 — 목록 순서상 잠수함 중 n번째(1-base)를 "secret #n" 으로.
+ * 이름·설명·링크는 숨기고 **개수와 활동량만** 노출된다(§20.7).
+ */
+export function secretName(projects: Project[], index: number): string {
+  const no = projects.slice(0, index + 1).filter((p) => p.sub === true).length;
+  return `secret #${no}`;
+}
+
+/**
+ * 공개 응답용 projects(§20.7): 잠수함 항목은 {name:"secret #n", secret:true} 로 익명화한다
+ * (desc·url·main 제거 — MAIN 여부도 비밀). 순서는 유지해 웹 색 배정이 본인 뷰와 같게 한다.
+ */
+export function publicProjects(projects: Project[]): Array<Project & { secret?: boolean }> {
+  return projects.map((p, i) => (p.sub === true ? { name: secretName(projects, i), secret: true } : p));
+}
+
+/**
+ * 상세 집계용 "shipping 소문자 이름 → 표시 키" 맵(§20.4·§20.7).
+ * 본인은 전부 실명, 공개는 잠수함만 "secret #n" 으로 치환된다. projectDisplayKey 가 소비한다.
+ */
+export function shipDisplayMap(projects: Project[], isOwner: boolean): Map<string, string> {
+  return new Map(
+    projects.map((p, i) => [p.name.toLowerCase(), !isOwner && p.sub === true ? secretName(projects, i) : p.name]),
+  );
 }
 
 /** /track 의 project 라벨(DESIGN.md §20.3). trim 후 1~40자 텍스트만 통과, 그 외는 null(미지정 취급). */
@@ -171,8 +200,9 @@ export function normalizeProjectLabel(v: unknown): string | null {
 
 /**
  * 상세 집계의 프로젝트 표시 키(DESIGN.md §20.4).
- * shipping 이름과 일치(대소문자 무시)하면 캐노니컬 shipping 표기, 비매칭 라벨은
- * 본인(isOwner)일 때만 실명 — 아니면 ''(웹이 "기타"로 표기). 미지정(null)은 항상 ''.
+ * shipping 이름과 일치(대소문자 무시)하면 맵의 표시 키(캐노니컬 표기, 잠수함은 공개 시 "secret #n" —
+ * shipDisplayMap 참조), 비매칭 라벨은 본인(isOwner)일 때만 실명 — 아니면 ''(웹이 "기타"로 표기).
+ * 미지정(null)은 항상 ''.
  */
 export function projectDisplayKey(label: string | null, shipByLower: Map<string, string>, isOwner: boolean): string {
   if (!label) return '';
