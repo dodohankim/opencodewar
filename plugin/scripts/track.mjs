@@ -7,7 +7,7 @@
 
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { ensureConfig, endpointOf } from './lib/config.mjs';
+import { ensureConfig, endpointOf, projectFor } from './lib/config.mjs';
 import { countChars } from './lib/chars.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
@@ -58,18 +58,24 @@ async function hookMode() {
 
     const raw = await readStdin();
     let prompt = '';
+    let cwd = '';
     try {
       const data = JSON.parse(raw);
       // 필드명은 버전에 따라 user_prompt / prompt — 둘 다 대응
       prompt = data.user_prompt ?? data.prompt ?? '';
+      cwd = typeof data.cwd === 'string' ? data.cwd : '';
     } catch {
       // 파싱 실패 시 chars=0으로 진행 (여전히 1건으로 집계)
     }
 
+    // 프로젝트 귀속(DESIGN.md §20): 유저가 /ocw project link 로 연결한 폴더일 때만 라벨을 보낸다.
+    // 링크 안 된 폴더는 project 자체를 보내지 않는다(경로·폴더명 유출 0).
+    const project = projectFor(cfg, cwd);
     const payload = JSON.stringify({
       userId: cfg.userId,
       chars: countChars(prompt),
       agent: parseAgent(process.argv),
+      ...(project ? { project } : {}),
     });
 
     // 전송은 detached 자식에게 위임하고 부모는 즉시 종료 → 프롬프트 지연 0

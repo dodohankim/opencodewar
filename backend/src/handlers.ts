@@ -17,12 +17,15 @@ import {
   MAX_COMPANY_LEN,
   MAX_ROLE_LEN,
   normalizeLinks,
+  normalizeProjectLabel,
   normalizeProjects,
   parseMetric,
   parseProjects,
   parseType,
+  projectDisplayKey,
   type Links,
 } from './validate';
+import { getSession } from './session';
 import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, dayFilter, getSnapshot, periodOf } from './snapshot';
 import { buildBriefing } from './briefing';
 import { displayNickname } from './nickname';
@@ -43,7 +46,7 @@ function parseLinks(raw: string | null): Links {
   }
 }
 
-/** POST /track — 입력 이벤트 1건 수집. body: { userId, chars, agent? } (agent 미지정 = claude-code) */
+/** POST /track — 입력 이벤트 1건 수집. body: { userId, chars, agent?, project? } (agent 미지정 = claude-code) */
 export async function handleTrack(request: Request, env: Env): Promise<Response> {
   // 남용 방지: 본문 파싱 전에 IP 기준으로 먼저 차단(플러드 시 비용 최소화).
   // userId는 클라이언트가 임의 생성/회전 가능하므로 회전 비용이 큰 IP를 키로 쓴다.
@@ -61,6 +64,8 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
   const userId = body.userId;
   const chars = clampChars(body.chars);
   const agent = normalizeAgent(body.agent);
+  // 유저가 /ocw project link 로 붙인 라벨(§20). 형식 불일치는 미지정(NULL)으로 눕힌다 — track 은 절대 거절하지 않는다.
+  const project = normalizeProjectLabel(body.project);
   const now = Date.now();
   const day = utcToday(now); // 리더보드 집계는 공용 UTC 일자
   const country = request.cf?.country ?? null;
@@ -71,11 +76,12 @@ export async function handleTrack(request: Request, env: Env): Promise<Response>
   // events insert + users insert(신규만) + daily_stats upsert 를 단일 트랜잭션(batch)으로.
   // 쓰기 절감: 기존 유저는 users를 다시 쓰지 않는다(DO NOTHING). last_seen 매번 갱신 X.
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO events (user_id, chars, country, agent, created_at) VALUES (?, ?, ?, ?, ?)').bind(
+    env.DB.prepare('INSERT INTO events (user_id, chars, country, agent, project, created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(
       userId,
       chars,
       country,
       agent,
+      project,
       now,
     ),
     // 신규는 INSERT, 기존은 원칙적으로 건드리지 않는다(쓰기 절감 — last_seen_at 매번 갱신 X).
@@ -631,7 +637,7 @@ function userWhere(url: URL): { where: string; bind: string } | { error: Respons
  * 공개 페이지다. 등록 유저는 닉네임으로, 닉네임 미등록(익명) 유저는 공개 slug(public_id)로 조회한다.
  * user_id(비밀키)는 어느 경우에도 반환하지 않는다.
  */
-export async function handleUser(url: URL, env: Env): Promise<Response> {
+export async function handleUser(url: URL, env: Env, request: Request): Promise<Response> {
   const built = userWhere(url);
   if ('error' in built) return built.error;
   const { where, bind } = built;
@@ -652,10 +658,9 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
          FROM users WHERE ${where}`,
     ).bind(bind),
     env.DB.prepare(`SELECT email, email_public FROM accounts WHERE user_id = ${sub} LIMIT 1`).bind(bind),
-    env.DB.prepare(`SELECT created_at, agent, chars FROM events WHERE user_id = ${sub} AND created_at >= ?`).bind(
-      bind,
-      sinceUtc,
-    ),
+    env.DB.prepare(
+      `SELECT created_at, agent, chars, project FROM events WHERE user_id = ${sub} AND created_at >= ?`,
+    ).bind(bind, sinceUtc),
     env.DB.prepare(
       `SELECT day, SUM(prompts) AS prompts, SUM(chars) AS chars FROM daily_stats WHERE user_id = ${sub} GROUP BY day`,
     ).bind(bind),
@@ -708,13 +713,24 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
   // 상세 페이지는 "그 유저의 로컬 시간"으로 본다(리더보드의 공용 UTC 와 별개). TZ 미상이면 UTC 폴백.
   const tz = isValidTimezone(user.timezone) ? user.timezone : 'UTC';
 
-  type DayAgg = { prompts: number; chars: number; agents: Record<string, { prompts: number; chars: number }> };
+  // 프로젝트 표시 키(§20.4): shipping 이름은 공개, 비매칭 라벨은 세션 본인일 때만 실명(그 외 "기타"로 붕괴).
+  // getSession 은 쿠키가 없으면 KV 를 읽지 않으므로 비로그인 열람(대부분)에 추가 비용이 없다.
+  const sess = await getSession(request, env);
+  const isOwner = sess !== null && sess.userId === user.user_id;
+  const shipByLower = new Map(parseProjects(user.projects).map((p) => [p.name.toLowerCase(), p.name]));
+
+  type DayAgg = {
+    prompts: number;
+    chars: number;
+    agents: Record<string, { prompts: number; chars: number }>;
+    projects: Record<string, { prompts: number; chars: number }>;
+  };
   const byDay = new Map<string, DayAgg>();
-  for (const r of eventRes.results as Array<{ created_at: number; agent: string; chars: number }>) {
+  for (const r of eventRes.results as Array<{ created_at: number; agent: string; chars: number; project: string | null }>) {
     const day = localDay(Number(r.created_at), tz);
     let d = byDay.get(day);
     if (!d) {
-      d = { prompts: 0, chars: 0, agents: {} };
+      d = { prompts: 0, chars: 0, agents: {}, projects: {} };
       byDay.set(day, d);
     }
     const c = Number(r.chars) || 0;
@@ -723,12 +739,19 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
     const a = d.agents[r.agent] ?? (d.agents[r.agent] = { prompts: 0, chars: 0 });
     a.prompts += 1;
     a.chars += c;
+    // "기타"('')는 응답에 싣지 않는다 — 웹이 (일 합계 − 이름 있는 합)으로 계산한다.
+    const pk = projectDisplayKey(r.project ?? null, shipByLower, isOwner);
+    if (pk) {
+      const p = d.projects[pk] ?? (d.projects[pk] = { prompts: 0, chars: 0 });
+      p.prompts += 1;
+      p.chars += c;
+    }
   }
 
   const graphDays = recentLocalDays(now, tz, PROFILE_WINDOW_DAYS); // 30일, 오래된 날 → 오늘
   const series = graphDays.map((day) => {
     const d = byDay.get(day);
-    return { day, prompts: d?.prompts ?? 0, chars: d?.chars ?? 0, agents: d?.agents ?? {} };
+    return { day, prompts: d?.prompts ?? 0, chars: d?.chars ?? 0, agents: d?.agents ?? {}, projects: d?.projects ?? {} };
   });
   const totals = series.reduce(
     (acc, s) => ({ prompts: acc.prompts + s.prompts, chars: acc.chars + s.chars }),
@@ -803,7 +826,7 @@ export async function handleUser(url: URL, env: Env): Promise<Response> {
  * 그룹핑한다(DST 정확). 상세 페이지 "하루(시간별)" 뷰 전용 — 열람 시에만 온디맨드로 호출.
  * 응답은 항상 24칸(활동 없는 시각은 0)으로 채워, 웹은 일별 차트와 같은 렌더 경로를 재사용한다.
  */
-export async function handleUserHours(url: URL, env: Env): Promise<Response> {
+export async function handleUserHours(url: URL, env: Env, request: Request): Promise<Response> {
   const built = userWhere(url);
   if ('error' in built) return built.error;
   const { where, bind } = built;
@@ -834,12 +857,12 @@ export async function handleUserHours(url: URL, env: Env): Promise<Response> {
 
   const sub = `(SELECT user_id FROM users WHERE ${where})`;
   const [userRes, eventRes] = await env.DB.batch([
-    env.DB.prepare(`SELECT user_id, timezone FROM users WHERE ${where}`).bind(bind),
+    env.DB.prepare(`SELECT user_id, timezone, projects FROM users WHERE ${where}`).bind(bind),
     env.DB.prepare(
-      `SELECT created_at, agent, chars FROM events WHERE user_id = ${sub} AND created_at >= ? AND created_at < ?`,
+      `SELECT created_at, agent, chars, project FROM events WHERE user_id = ${sub} AND created_at >= ? AND created_at < ?`,
     ).bind(bind, winStart, winEnd),
   ]);
-  const user = userRes.results[0] as { user_id: string; timezone: string | null } | undefined;
+  const user = userRes.results[0] as { user_id: string; timezone: string | null; projects: string | null } | undefined;
   if (!user) {
     return json({ error: 'user_not_found' }, 404);
   }
@@ -849,15 +872,25 @@ export async function handleUserHours(url: URL, env: Env): Promise<Response> {
   // 넓은 창에서 이 유저 로컬 하루의 정확한 UTC 범위만 남기고, 로컬 시로 버킷팅(:30 오프셋 TZ 도 정확).
   const range = zonedDayRange(day, tz);
 
-  type HourAgg = { prompts: number; chars: number; agents: Record<string, { prompts: number; chars: number }> };
+  // 프로젝트 표시 키(§20.4) — /user 와 동일 규칙(공개=shipping 실명, 본인=전체, 그 외 "기타" 붕괴).
+  const sess = await getSession(request, env);
+  const isOwner = sess !== null && sess.userId === user.user_id;
+  const shipByLower = new Map(parseProjects(user.projects).map((p) => [p.name.toLowerCase(), p.name]));
+
+  type HourAgg = {
+    prompts: number;
+    chars: number;
+    agents: Record<string, { prompts: number; chars: number }>;
+    projects: Record<string, { prompts: number; chars: number }>;
+  };
   const byHour = new Map<number, HourAgg>();
-  for (const r of eventRes.results as Array<{ created_at: number; agent: string; chars: number }>) {
+  for (const r of eventRes.results as Array<{ created_at: number; agent: string; chars: number; project: string | null }>) {
     const ts = Number(r.created_at);
     if (ts < range.start || ts >= range.end) continue;
     const h = localHour(ts, tz);
     let b = byHour.get(h);
     if (!b) {
-      b = { prompts: 0, chars: 0, agents: {} };
+      b = { prompts: 0, chars: 0, agents: {}, projects: {} };
       byHour.set(h, b);
     }
     const c = Number(r.chars) || 0;
@@ -866,10 +899,16 @@ export async function handleUserHours(url: URL, env: Env): Promise<Response> {
     const a = b.agents[r.agent] ?? (b.agents[r.agent] = { prompts: 0, chars: 0 });
     a.prompts += 1;
     a.chars += c;
+    const pk = projectDisplayKey(r.project ?? null, shipByLower, isOwner);
+    if (pk) {
+      const p = b.projects[pk] ?? (b.projects[pk] = { prompts: 0, chars: 0 });
+      p.prompts += 1;
+      p.chars += c;
+    }
   }
   const hours = Array.from({ length: 24 }, (_, h) => {
     const b = byHour.get(h);
-    return { hour: h, prompts: b?.prompts ?? 0, chars: b?.chars ?? 0, agents: b?.agents ?? {} };
+    return { hour: h, prompts: b?.prompts ?? 0, chars: b?.chars ?? 0, agents: b?.agents ?? {}, projects: b?.projects ?? {} };
   });
   const totals = hours.reduce(
     (acc, s) => ({ prompts: acc.prompts + s.prompts, chars: acc.chars + s.chars }),

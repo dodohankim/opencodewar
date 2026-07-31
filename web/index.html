@@ -515,9 +515,9 @@
   @media (max-width:560px) { .ustats { grid-template-columns:repeat(2,1fr); } .tnum { font-size:23px; } }
   /* 차트 뷰 토글(30d/day) · 지표 토글(prompts/chars) — 반전 배경으로 선택 표시 */
   .uviews { display:inline-flex; gap:6px; }
-  .uview, .usort { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; white-space:nowrap; }
-  .uview:hover, .usort:hover { color:var(--fg); }
-  .uview[aria-pressed="true"], .usort[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .uview, .usort, .ustack { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .uview:hover, .usort:hover, .ustack:hover { color:var(--fg); }
+  .uview[aria-pressed="true"], .usort[aria-pressed="true"], .ustack[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
   .chart-wrap { margin-top:16px; position:relative; }
   .chart-tip { position:absolute; z-index:5; pointer-events:none; transform:translate(-50%,-100%);
     background:var(--rev-bg); color:var(--rev-fg); border-radius:5px; padding:6px 9px; font-size:11.5px;
@@ -816,6 +816,11 @@
               <button class="usort" data-metric="prompts" aria-pressed="true">prompts</button>
               <button class="usort" data-metric="chars" aria-pressed="false">chars</button>
             </div>
+            <!-- 스택 기준 토글(DESIGN.md §20.5) — 프로젝트 데이터가 있는 유저에게만 노출 -->
+            <div class="sorts" id="uStackWrap" hidden>
+              <button class="ustack" data-stack="project" aria-pressed="true" data-i18n="stack_project">projects</button>
+              <button class="ustack" data-stack="agent" aria-pressed="false" data-i18n="stack_agent">agents</button>
+            </div>
           </div>
           <span class="ag-legend" id="uAgentLegend"></span>
           <div class="ustats" id="uStats"></div>
@@ -879,6 +884,7 @@
       tz_note: (z) => `🕒 times in ${z}`,
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', no_activity_2d: 'No activity in the last 2 days.', visit: 'Visit ↗', main_badge: 'MAIN',
+      stack_project: 'projects', stack_agent: 'agents', pj_other: 'other', pj_priv: 'private',
       share: '⧉ share', copied: '✓ link copied', copy_fail: '✗ copy failed', copy_cmd: 'copy command',
       card: '🖼 card', card_title: "TODAY'S CARD", card_close: '✕ close',
       card_copy: '⧉ copy image', card_save: '⬇ save PNG', card_loading: 'rendering…',
@@ -942,6 +948,7 @@
       tz_note: (z) => `🕒 ${z} 기준`,
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', no_activity_2d: '최근 2일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
+      stack_project: '프로젝트', stack_agent: '에이전트', pj_other: '기타', pj_priv: '비공개',
       share: '⧉ 공유', copied: '✓ 링크 복사됨', copy_fail: '✗ 복사 실패', copy_cmd: '명령어 복사',
       card: '🖼 카드', card_title: '오늘의 카드', card_close: '✕ 닫기',
       card_copy: '⧉ 이미지 복사', card_save: '⬇ PNG 저장', card_loading: '카드 굽는 중…',
@@ -2009,6 +2016,56 @@
     return [...AGENT_ORDER.filter((a) => keys.includes(a)), ...keys.filter((a) => !AGENT_ORDER.includes(a))];
   }
 
+  // ── 프로젝트 스택(DESIGN.md §20.5) ──
+  // 서버는 이름 있는 프로젝트(공개=shipping, 본인=링크 라벨 전체)만 내려주고,
+  // 나머지(일 합계 − 이름 있는 합)는 웹이 "기타"(회색)로 그린다.
+  let uStackSel = null; // 토글 선택('agent'|'project'). null = 자동(프로젝트 데이터 있으면 project)
+  let uPjList = []; // 현재 렌더의 프로젝트 순서(색 인덱스·툴팁이 공유)
+  const PJ_COLORS = ['#D97757', '#3E8E6E', '#4E7DC4', '#B8862E', '#9A66C9'];
+  const PJ_OTHER_STYLE = 'background:var(--dim);opacity:.45';
+  const shipNames = () => (uData && Array.isArray(uData.projects) ? uData.projects.map((p) => p.name) : []);
+  // items(각 원소에 .projects) 안에 등장하는 프로젝트를 shipping 순서 → 그 외(가나다)로.
+  function projectsIn(items) {
+    const seen = new Set();
+    for (const it of items) for (const k in it.projects || {}) seen.add(k);
+    const ships = shipNames().filter((n) => seen.has(n));
+    const rest = [...seen].filter((n) => !ships.includes(n)).sort();
+    return [...ships, ...rest];
+  }
+  const pjColor = (name) => PJ_COLORS[Math.max(0, uPjList.indexOf(name)) % PJ_COLORS.length];
+  // 프로젝트 데이터 유무에 따라 토글을 노출하고 이번 렌더의 스택 기준을 정한다.
+  function syncStackToggle(hasPj) {
+    $('uStackWrap').hidden = !hasPj;
+    const mode = hasPj ? uStackSel || 'project' : 'agent';
+    document.querySelectorAll('.ustack').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.stack === mode)));
+    return mode;
+  }
+  // project 모드 세그먼트: 이름 있는 프로젝트를 아래부터(고정 순서), 남는 값(기타)은 회색으로 맨 위.
+  function pjSegs(v, pjMap, metric) {
+    if (v <= 0) return '';
+    let acc = 0;
+    const segs = uPjList
+      .map((n) => ({ n, val: (pjMap && pjMap[n] && pjMap[n][metric]) || 0 }))
+      .filter((s) => s.val > 0)
+      .map((s) => {
+        acc += s.val;
+        return `<div class="bseg" style="height:${(s.val / v) * 100}%;background:${pjColor(s.n)}"></div>`;
+      })
+      .join('');
+    const rest = v - acc;
+    return segs + (rest > 0 ? `<div class="bseg" style="height:${(rest / v) * 100}%;${PJ_OTHER_STYLE}"></div>` : '');
+  }
+  // project 모드 범례. 본인만 보이는 비 shipping 라벨은 (비공개)로 구분.
+  function pjLegendHtml() {
+    const ships = shipNames();
+    const parts = uPjList.map((n) => {
+      const priv = !ships.includes(n);
+      return `<span class="ag-dot" style="background:${pjColor(n)}"></span>${escapeHtml(n)}${priv ? `<span style="opacity:.6"> (${t('pj_priv')})</span>` : ''}`;
+    });
+    parts.push(`<span class="ag-dot" style="${PJ_OTHER_STYLE}"></span>${t('pj_other')}`);
+    return parts.join('');
+  }
+
   // 스택 세그먼트 HTML(에이전트 2종 이상 & 값>0일 때만). 아래부터 고정 순서로 쌓는다.
   function barSegs(multi, v, agentsMap, agents, metric) {
     if (!multi || v <= 0) return '';
@@ -2034,12 +2091,18 @@
     const metric = uMetric;
     $('uChartLegend').textContent = `${t('chart_30d')} · ${metric}`;
 
+    // 스택 기준: 프로젝트 데이터가 있으면 기본 project(토글로 agent 전환), 없으면 기존 에이전트 스택.
+    uPjList = projectsIn(days);
+    const mode = syncStackToggle(uPjList.length > 0);
+    const pjMode = mode === 'project';
     // 30일 내 활동이 있는 에이전트 — 2종 이상일 때만 스택 표시(1종이면 단색 막대)
     const agents = agentsIn(days);
-    const multi = agents.length >= 2;
-    $('uAgentLegend').innerHTML = multi
-      ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
-      : '';
+    const multi = !pjMode && agents.length >= 2;
+    $('uAgentLegend').innerHTML = pjMode
+      ? pjLegendHtml()
+      : multi
+        ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
+        : '';
 
     const vals = days.map((d) => d[metric] || 0);
     const total = vals.reduce((a, b) => a + b, 0);
@@ -2077,11 +2140,12 @@
         const isWknd = dow === 0 || dow === 6;
         const isToday = d.day === todayStr;
         const cls = v === 0 ? 'zero' : isToday ? 'today' : isWknd ? 'wknd' : '';
-        const segs = barSegs(multi, v, d.agents, agents, metric);
+        const segs = pjMode ? pjSegs(v, d.projects, metric) : barSegs(multi, v, d.agents, agents, metric);
         const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(d.agents || {}))}"` : '';
+        const pj = pjMode && v > 0 ? ` data-pj="${escapeHtml(JSON.stringify(d.projects || {}))}"` : '';
         // 최고 기록일 = 고지 점령 — 피크 막대 위에 픽셀 깃발
         const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
-        return `<div class="col ${cls}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        return `<div class="col ${cls}" data-lbl="${escapeHtml(mmdd(d.day))}" data-p="${d.prompts}" data-c="${d.chars}"${ag}${pj}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
@@ -2144,11 +2208,17 @@
     const colLbl = (c) => `${mmdd(c.day)} ${hhLabel(c.h)}`;
     $('uChartLegend').textContent = `${t('chart_2d')} · ${metric}`;
 
+    // 30일 뷰와 동일한 스택 기준 규칙(§20.5)
+    uPjList = projectsIn(cols);
+    const mode = syncStackToggle(uPjList.length > 0);
+    const pjMode = mode === 'project';
     const agents = agentsIn(cols);
-    const multi = agents.length >= 2;
-    $('uAgentLegend').innerHTML = multi
-      ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
-      : '';
+    const multi = !pjMode && agents.length >= 2;
+    $('uAgentLegend').innerHTML = pjMode
+      ? pjLegendHtml()
+      : multi
+        ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
+        : '';
 
     const vals = cols.map((c) => c[metric] || 0);
     const total = vals.reduce((a, b) => a + b, 0);
@@ -2183,11 +2253,12 @@
         const h = Math.max(2, Math.round((v / max) * 100));
         // 둘째 날 00시에 날짜 경계 점선(dsplit)
         const cls = [v === 0 ? 'zero' : i === peakIdx ? 'peak' : '', c.h === 0 && i > 0 ? 'dsplit' : ''].filter(Boolean).join(' ');
-        const segs = barSegs(multi, v, c.agents, agents, metric);
+        const segs = pjMode ? pjSegs(v, c.projects, metric) : barSegs(multi, v, c.agents, agents, metric);
         const ag = multi ? ` data-ag="${escapeHtml(JSON.stringify(c.agents || {}))}"` : '';
+        const pj = pjMode && v > 0 ? ` data-pj="${escapeHtml(JSON.stringify(c.projects || {}))}"` : '';
         // 30일 뷰와 동일하게 — 피크 시각 막대 위에 픽셀 깃발
         const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
-        return `<div class="col ${cls}" data-lbl="${colLbl(c)}" data-p="${c.prompts}" data-c="${c.chars}"${ag}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
+        return `<div class="col ${cls}" data-lbl="${colLbl(c)}" data-p="${c.prompts}" data-c="${c.chars}"${ag}${pj}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
       })
       .join('');
 
@@ -2371,6 +2442,15 @@
     }),
   );
 
+  // 스택 기준 토글(프로젝트 / 에이전트 — §20.5).
+  document.querySelectorAll('.ustack').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (uStackSel === b.dataset.stack) return;
+      uStackSel = b.dataset.stack;
+      renderUserChart();
+    }),
+  );
+
   // 차트 바 호버 → 커스텀 툴팁(날짜/시각 · 프롬프트 · 글자수). #uChart 에 위임해 리렌더에도 유지.
   (function setupChartTip() {
     const chartEl = $('uChart');
@@ -2392,6 +2472,24 @@
           const parts = orderedAgents(Object.keys(ag))
             .filter((a) => (ag[a][uMetric] || 0) > 0)
             .map((a) => `<span class="ag-dot" style="background:${agColor(a, true)}"></span>${escapeHtml(a)} <span class="v">${fmt(ag[a][uMetric] || 0)}</span>`);
+          if (parts.length) agLine = '<br>' + parts.join('');
+        } catch {}
+      }
+      // 프로젝트 스택 모드(§20.5): 이름 있는 프로젝트 + 나머지는 "기타"로 (현재 지표 기준)
+      if (col.dataset.pj) {
+        try {
+          const pj = JSON.parse(col.dataset.pj);
+          const tot = uMetric === 'chars' ? c : p;
+          let acc = 0;
+          const parts = uPjList
+            .map((n) => ({ n, val: (pj[n] && pj[n][uMetric]) || 0 }))
+            .filter((s) => s.val > 0)
+            .map((s) => {
+              acc += s.val;
+              return `<span class="ag-dot" style="background:${pjColor(s.n)}"></span>${escapeHtml(s.n)} <span class="v">${fmt(s.val)}</span>`;
+            });
+          const rest = tot - acc;
+          if (rest > 0) parts.push(`<span class="ag-dot" style="${PJ_OTHER_STYLE}"></span>${t('pj_other')} <span class="v">${fmt(rest)}</span>`);
           if (parts.length) agLine = '<br>' + parts.join('');
         } catch {}
       }

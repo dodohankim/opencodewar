@@ -34,6 +34,7 @@ export function loadConfig() {
       city: null,
       links: {},
       projects: [],
+      projectDirs: {}, // { "<절대경로>": "<라벨>" } — 폴더→프로젝트 링크(DESIGN.md §20). 로컬 전용, 경로는 서버로 안 감.
       account: null,
       ...cfg,
     };
@@ -65,4 +66,34 @@ export function ensureConfig() {
 export function endpointOf(cfg) {
   const raw = process.env.OCW_API_URL || (cfg && cfg.endpoint) || DEFAULT_ENDPOINT;
   return raw.replace(/\/+$/, '');
+}
+
+/** 경로 끝 구분자 제거(루트 "/" 는 유지). link 저장·매칭이 같은 표기를 쓰게 한다. */
+export function normalizeDir(p) {
+  const s = String(p || '');
+  return s.length > 1 ? s.replace(/[\\/]+$/, '') : s;
+}
+
+/**
+ * cwd 가 어느 프로젝트에 링크돼 있는지(DESIGN.md §20.3).
+ * projectDirs 의 키(절대경로)와 최장 접두사 매칭 — 하위 폴더에서 쳐도 상위 링크에 귀속된다.
+ * 매칭 없으면 null(= 서버에 project 미전송).
+ */
+export function projectFor(cfg, cwd) {
+  const dirs = cfg && cfg.projectDirs;
+  if (!dirs || !cwd) return null;
+  const c = normalizeDir(cwd);
+  let bestLen = -1;
+  let bestKey = null;
+  for (const dir of Object.keys(dirs)) {
+    const d = normalizeDir(dir);
+    if (c !== d && !c.startsWith(d + '/') && !c.startsWith(d + '\\')) continue;
+    if (d.length > bestLen) {
+      bestLen = d.length;
+      bestKey = dir; // 원본 키로 값을 찾는다(저장 표기가 달라도 안전)
+    }
+  }
+  if (bestKey === null) return null;
+  const label = dirs[bestKey];
+  return typeof label === 'string' && label.trim() ? label.trim() : null;
 }

@@ -4,13 +4,14 @@
 //   nickname <이름> | bio <소개> | role <직함> | company <회사>
 //   link <website|github|x|linkedin> <url>
 //   project add <이름> :: <설명> :: <url> | project list | project main <번호|이름> | project remove|delete <번호|이름> | project clear
+//   project link <이름> | project unlink — 현재 폴더를 프로젝트에 연결/해제 (프롬프트 귀속, DESIGN.md §20)
 //   signup | login — Google 계정 연동 (DESIGN.md §14)
 //   email public|private — 연동 이메일 프로필 공개 여부 (기본 비공개)
 //   random — 등록 유저 중 무작위 한 명의 공개 프로필 카드
 //   brief on|off — 세션 시작 브리핑 표시 여부 (DESIGN.md §19)
 //   status | whoami | enable | disable | help
 
-import { ensureConfig, saveConfig, endpointOf } from './lib/config.mjs';
+import { ensureConfig, saveConfig, endpointOf, normalizeDir, projectFor } from './lib/config.mjs';
 
 // ocw.md 는 인자를 "$ARGUMENTS" 로 감싸 넘기므로 보통 argv 는 하나의 문자열이다.
 // 따옴표 없이 여러 토큰으로 와도 안전하도록 공백으로 재조립한 뒤 첫 토큰만 서브커맨드로 분리한다.
@@ -327,10 +328,66 @@ function projectUsage() {
     '- `/ocw project add <이름> :: <설명> :: <url>` (설명·url 선택, 최대 5개)',
     '- `/ocw project list`',
     '- `/ocw project main <번호|이름>` — 대표 프로젝트 지정(맨 위·MAIN 표시, `none`으로 해제)',
+    '- `/ocw project link <이름>` — 현재 폴더의 프롬프트를 이 프로젝트로 집계 (`unlink`로 해제)',
     '- `/ocw project remove <번호|이름>` (별칭: delete)',
     '- `/ocw project clear`',
     '예) `/ocw project add Open Code War :: Claude Code 리더보드 :: https://opencodewar.dev`',
   ].join('\n');
+}
+
+const MAX_PROJECT_LABEL = 40; // 서버 normalizeProjectLabel 과 동일 상한
+
+/**
+ * project link|unlink — 현재 폴더 ↔ 프로젝트 라벨 연결(DESIGN.md §20.2).
+ * 매핑은 로컬 config(projectDirs)에만 저장되고, 이후 이 폴더(하위 포함)에서 친 프롬프트에
+ * 라벨이 붙어 전송된다. 경로 자체는 서버로 가지 않는다.
+ */
+function projectLink(action, remainder, ships) {
+  const cwd = normalizeDir(process.cwd());
+  const dirs = { ...(cfg.projectDirs || {}) };
+
+  if (action === 'unlink') {
+    const key = Object.keys(dirs).find((d) => normalizeDir(d) === cwd);
+    if (!key) return print(`이 폴더는 연결돼 있지 않습니다.\n${cwd}`);
+    const label = dirs[key];
+    delete dirs[key];
+    cfg.projectDirs = dirs;
+    saveConfig(cfg);
+    return print(`✅ 연결 해제: ${label}\n${cwd}`);
+  }
+
+  const label = remainder.trim();
+  if (!label) {
+    // 인자 없이 → 현재 폴더의 연결 상태 + 사용법
+    const cur = projectFor(cfg, cwd);
+    return print(
+      [
+        cur ? `이 폴더는 **${cur}** 에 연결돼 있습니다.` : '이 폴더는 연결돼 있지 않습니다.',
+        cwd,
+        '',
+        '사용법: `/ocw project link <이름>` — 이 폴더(하위 포함)의 프롬프트를 그 프로젝트로 집계',
+        '해제: `/ocw project unlink`',
+      ].join('\n'),
+    );
+  }
+  if (label.length > MAX_PROJECT_LABEL) {
+    return print(`❌ 이름이 너무 깁니다 (최대 ${MAX_PROJECT_LABEL}자).`);
+  }
+
+  dirs[cwd] = label;
+  cfg.projectDirs = dirs;
+  saveConfig(cfg);
+
+  const isShip = ships.some((p) => p.name.toLowerCase() === label.toLowerCase());
+  return print(
+    [
+      `✅ 연결: 이 폴더의 프롬프트를 **${label}** 로 집계합니다.`,
+      cwd,
+      isShip
+        ? '상세 페이지 차트에 프로젝트 이름으로 표시됩니다.'
+        : `ℹ️ shipping 목록에 없는 이름이라 공개 차트에는 "기타"로 합산됩니다.\n   공개하려면 \`/ocw project add ${label}\` 로 등록하세요. (본인은 로그인하면 이름으로 보입니다)`,
+    ].join('\n'),
+  );
 }
 
 /** project add|list|remove|clear — 홍보용 사이드프로젝트(최대 5개) 관리. */
@@ -347,6 +404,10 @@ async function project(input) {
       ? cfg.projects
       : [];
 
+  if (action === 'link' || action === 'unlink') {
+    return projectLink(action, remainder, current);
+  }
+
   if (action === 'list') {
     if (!current.length) {
       return print('등록된 프로젝트가 없습니다.\n' + projectUsage());
@@ -361,6 +422,15 @@ async function project(input) {
     lines.push(`\n${current.length}/${MAX_PROJECTS} 사용 중.`);
     if (!current.some((p) => p.main)) {
       lines.push('메인 지정: `/ocw project main <번호|이름>`');
+    }
+    // 폴더 연결(로컬 config) 현황 — 프롬프트가 어느 프로젝트로 집계되는지 (DESIGN.md §20)
+    const dirs = cfg.projectDirs || {};
+    const dirKeys = Object.keys(dirs);
+    if (dirKeys.length) {
+      lines.push('', '**연결된 폴더** (이 기기, 프롬프트 귀속)');
+      dirKeys.forEach((d) => lines.push(`- ${dirs[d]} ← ${d}`));
+    } else {
+      lines.push('폴더 연결: 프로젝트 폴더에서 `/ocw project link <이름>` — 프롬프트가 그 프로젝트로 집계됩니다.');
     }
     return print(lines.join('\n'));
   }
@@ -588,6 +658,7 @@ function help() {
       '- `/ocw link <종류> <url>` — 링크 (종류: website/blog/github/x/linkedin · website·blog는 주소 표시, SNS는 아이콘)',
       '- `/ocw project add <이름> :: <설명> :: <url>` — 사이드프로젝트 (최대 5개)',
       '- `/ocw project main <번호|이름>` — 대표 프로젝트 지정 (맨 위·MAIN)',
+      '- `/ocw project link <이름>` / `unlink` — 현재 폴더의 프롬프트를 프로젝트로 집계 (상세 차트 표시)',
       '- `/ocw project list | remove|delete <번호|이름> | clear` — 프로젝트 관리',
       '- `/ocw signup` — Google 계정 연동 (계정 복구·여러 기기 합산 · 별칭: login)',
       '- `/ocw email public|private` — 연동 이메일 프로필 공개/비공개 (기본 비공개)',

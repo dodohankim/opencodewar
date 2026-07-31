@@ -161,6 +161,26 @@ export function normalizeProjects(v: unknown): Project[] | null {
   return out;
 }
 
+/** /track 의 project 라벨(DESIGN.md §20.3). trim 후 1~40자 텍스트만 통과, 그 외는 null(미지정 취급). */
+export function normalizeProjectLabel(v: unknown): string | null {
+  if (v === undefined || v === null) return null;
+  if (!isValidShortText(v, MAX_PROJECT_NAME_LEN)) return null;
+  const s = v.trim();
+  return s || null;
+}
+
+/**
+ * 상세 집계의 프로젝트 표시 키(DESIGN.md §20.4).
+ * shipping 이름과 일치(대소문자 무시)하면 캐노니컬 shipping 표기, 비매칭 라벨은
+ * 본인(isOwner)일 때만 실명 — 아니면 ''(웹이 "기타"로 표기). 미지정(null)은 항상 ''.
+ */
+export function projectDisplayKey(label: string | null, shipByLower: Map<string, string>, isOwner: boolean): string {
+  if (!label) return '';
+  const ship = shipByLower.get(label.toLowerCase());
+  if (ship !== undefined) return ship;
+  return isOwner ? label : '';
+}
+
 /** users.projects(JSON 문자열) → Project[]. 미설정·파싱 실패·형식 불일치는 빈 배열. */
 export function parseProjects(raw: string | null): Project[] {
   if (!raw) return [];

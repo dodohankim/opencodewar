@@ -152,10 +152,10 @@ export default {
         return await handleApiAccount(request, url, env);
       }
       if (pathname === '/user/hours' && request.method === 'GET') {
-        return await handleUserHours(url, env);
+        return await handleUserHours(url, env, request);
       }
       if (pathname === '/user' && request.method === 'GET') {
-        return await handleUser(url, env);
+        return await handleUser(url, env, request);
       }
       if (pathname === '/random' && request.method === 'GET') {
         return await handleRandom(env);

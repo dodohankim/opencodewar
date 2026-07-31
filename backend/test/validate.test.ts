@@ -10,8 +10,10 @@ import {
   MAX_URL_LEN,
   normalizeAgent,
   normalizeLinks,
+  normalizeProjectLabel,
   normalizeProjects,
   parseType,
+  projectDisplayKey,
 } from '../src/validate';
 
 describe('isValidDay', () => {
@@ -209,5 +211,46 @@ describe('isValidNickname', () => {
     expect(isValidNickname('hi!')).toBe(false); // 특수문자
     expect(isValidNickname('  ')).toBe(false);
     expect(isValidNickname(null)).toBe(false);
+  });
+});
+
+describe('normalizeProjectLabel (§20.3)', () => {
+  it('정상 라벨은 트림해서 통과시킨다', () => {
+    expect(normalizeProjectLabel('opencodewar')).toBe('opencodewar');
+    expect(normalizeProjectLabel('  Open Code War  ')).toBe('Open Code War');
+    expect(normalizeProjectLabel('가'.repeat(40))).toBe('가'.repeat(40));
+  });
+
+  it('미지정·형식 불일치는 null(미지정 취급) — track 은 절대 거절하지 않는다', () => {
+    expect(normalizeProjectLabel(undefined)).toBe(null);
+    expect(normalizeProjectLabel(null)).toBe(null);
+    expect(normalizeProjectLabel('')).toBe(null);
+    expect(normalizeProjectLabel('   ')).toBe(null);
+    expect(normalizeProjectLabel('a'.repeat(41))).toBe(null); // 상한 40자
+    expect(normalizeProjectLabel('a\nb')).toBe(null); // 제어문자
+    expect(normalizeProjectLabel(123)).toBe(null);
+  });
+});
+
+describe('projectDisplayKey (§20.4)', () => {
+  const ships = new Map([
+    ['open code war', 'Open Code War'],
+    ['dobby', 'dobby'],
+  ]);
+
+  it('shipping 이름과 일치(대소문자 무시)하면 캐노니컬 표기로 낸다', () => {
+    expect(projectDisplayKey('open code war', ships, false)).toBe('Open Code War');
+    expect(projectDisplayKey('OPEN CODE WAR', ships, false)).toBe('Open Code War');
+    expect(projectDisplayKey('dobby', ships, true)).toBe('dobby');
+  });
+
+  it('비매칭 라벨은 공개엔 ""(기타), 본인에겐 실명', () => {
+    expect(projectDisplayKey('secret-repo', ships, false)).toBe('');
+    expect(projectDisplayKey('secret-repo', ships, true)).toBe('secret-repo');
+  });
+
+  it('미지정(null)은 본인에게도 ""(기타)', () => {
+    expect(projectDisplayKey(null, ships, false)).toBe('');
+    expect(projectDisplayKey(null, ships, true)).toBe('');
   });
 });
