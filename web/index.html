@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Open Code War — Leaderboard (live)</title>
-<meta name="description" content="A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi. One all-time board. Privacy-first: no prompt content collected, only character counts." />
+<title>Open Code War — the contribution graph for the agent era</title>
+<meta name="description" content="Track every day you build with coding agents — Claude Code, Codex, OpenCode, pi. Ranks, streaks, a developer card, a leaderboard. No prompt content collected, only counts." />
 <link rel="canonical" href="https://opencodewar.dev/" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <script>
@@ -56,8 +56,8 @@
 <!-- Open Graph (Facebook, KakaoTalk, Slack, LinkedIn 등) -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Open Code War" />
-<meta property="og:title" content="Open Code War — Coding Agent Leaderboard" />
-<meta property="og:description" content="A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi. No prompt content collected." />
+<meta property="og:title" content="Open Code War — the contribution graph for the agent era" />
+<meta property="og:description" content="Track every day you build with coding agents — Claude Code, Codex, OpenCode, pi. Ranks, streaks, a developer card, a leaderboard. No prompt content, ever." />
 <meta property="og:url" content="https://opencodewar.dev/" />
 <!-- og.png 갈아끼울 때 ?v= 를 올려 소셜 스크래퍼 캐시 버스팅 (twitter:image · backend/src/og.ts 폴백까지 3곳 동시에) -->
 <meta property="og:image" content="https://opencodewar.dev/og.png?v=2" />
@@ -69,8 +69,8 @@
 
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Open Code War — Coding Agent Leaderboard" />
-<meta name="twitter:description" content="A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode, pi. Privacy-first: no prompt content, only character counts." />
+<meta name="twitter:title" content="Open Code War — the contribution graph for the agent era" />
+<meta name="twitter:description" content="Track every day you build with coding agents — Claude Code, Codex, OpenCode, pi. Ranks, streaks, a developer card. No prompt content, ever." />
 <meta name="twitter:image" content="https://opencodewar.dev/og.png?v=2" />
 
 <!-- 구조화 데이터 (검색 리치 결과) -->
@@ -82,7 +82,7 @@
   "url": "https://opencodewar.dev/",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Any",
-  "description": "A live leaderboard for who types the most into their coding agent — Claude Code, Codex, OpenCode and pi. One all-time board. Privacy-first: no prompt content is collected, only character counts.",
+  "description": "Track every day you build with coding agents — Claude Code, Codex, OpenCode and pi. Ranks, streaks, a developer card, a leaderboard. Privacy-first: no prompt content is collected, only counts.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 }
 </script>
@@ -91,6 +91,9 @@
     --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
     --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
     --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
+    /* 히어로 잔디 히트맵 5단계 — --ok 계열 농도 */
+    --grass-0:rgba(79,130,88,0.10); --grass-1:rgba(79,130,88,0.28);
+    --grass-2:rgba(79,130,88,0.52); --grass-3:rgba(79,130,88,0.78); --grass-4:#4F8258;
     /* 에이전트별 차트 색 (claude-code 는 기본 막대색 --fg 사용) */
     --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
     /* 픽셀 병정 공통색 — 라이트/다크 동일 */
@@ -106,6 +109,8 @@
       --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
       --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
       --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+      --grass-0:rgba(109,168,117,0.12); --grass-1:rgba(109,168,117,0.30);
+      --grass-2:rgba(109,168,117,0.55); --grass-3:rgba(109,168,117,0.80); --grass-4:#6DA875;
     }
   }
   :root[data-theme="dark"] {
@@ -113,6 +118,8 @@
     --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
     --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
     --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+    --grass-0:rgba(109,168,117,0.12); --grass-1:rgba(109,168,117,0.30);
+    --grass-2:rgba(109,168,117,0.55); --grass-3:rgba(109,168,117,0.80); --grass-4:#6DA875;
   }
   :root[data-theme="light"] { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -155,21 +162,13 @@
   .army-codex    .px-u, .army-codex    .px-f { fill:var(--ag-codex); }
   .army-opencode .px-u, .army-opencode .px-f { fill:var(--ag-opencode); }
   .army-pi       .px-u, .army-pi       .px-f { fill:var(--ag-pi); }
-  .flip .sprite { transform:scaleX(-1); }
 
   /* 히어로 전장: 후방 타이퍼(입력) → 전열 사격(트레이서) → +1 */
-  .battlefield { position:relative; height:74px; margin:8px 0 12px;
-    border-bottom:2px dotted var(--line); overflow:hidden; }
-  .soldier { position:absolute; bottom:2px; width:56px; height:56px; }
-  .soldier.p1 { left:2px; } .soldier.p2 { left:52px; } .soldier.p3 { left:100px; }
-  .soldier.flip.p1 { left:auto; right:2px; }
-  .soldier.flip.p2 { left:auto; right:52px; }
-  .soldier.flip.p3 { left:auto; right:100px; }
-  .soldier .flash { position:absolute; width:6px; height:6px; background:var(--fg); opacity:0;
-    right:-6px; top:calc(43.75% - 1px); animation:flash 1.15s steps(1) infinite; }
-  .soldier.flip .flash { right:auto; left:-6px; }
-  .soldier.kneel .flash { top:calc(62.5% - 2px); }
-  @keyframes flash { 0%,7% { opacity:1; } 8%,100% { opacity:0; } }
+  /* 히어로 잔디밭 — 기록 히트맵이 땅이 되고, 그 위에 타건 병정이 선다(DESIGN.md §21).
+     잔디 = 최근 90일 히트맵(아직 표시용 연출), 병정 = typer 스프라이트, 깃발 = 피크. */
+  .field { margin:8px 0 12px; }
+  .stage { position:relative; height:58px; }
+  .soldier { position:absolute; bottom:-3px; width:56px; height:56px; right:4%; }
   .soldier .f { position:absolute; inset:0; }
   .soldier .f2 { opacity:0; }
   .soldier.typer .f1 { animation:gait1 .34s linear infinite; }
@@ -179,21 +178,18 @@
   .tdots b:nth-child(2) { animation-delay:.22s; }
   .tdots b:nth-child(3) { animation-delay:.44s; }
   @keyframes tdot { 0%,24% { opacity:1; } 25%,100% { opacity:.25; } }
-  .tracer { position:absolute; width:5px; height:3px; opacity:0; }
-  .tracer.t-r { animation:traceR 1.15s steps(18) infinite; }
-  .tracer.t-l { animation:traceL 1.15s steps(18) infinite; }
-  @keyframes traceR { 0% { left:13%; opacity:1; } 55% { left:84%; opacity:1; } 56%,100% { left:84%; opacity:0; } }
-  @keyframes traceL { 0% { left:84%; opacity:1; } 55% { left:13%; opacity:1; } 56%,100% { left:13%; opacity:0; } }
-  .hit { position:absolute; font-size:10px; color:var(--faint); opacity:0; animation:hit 3.4s steps(6) infinite; }
-  @keyframes hit { 0%,54% { opacity:0; transform:translateY(0); }
-    56% { opacity:1; transform:translateY(0); } 70% { opacity:1; transform:translateY(-7px); }
-    82%,100% { opacity:0; transform:translateY(-10px); } }
-  .debris { position:absolute; bottom:2px; width:3px; height:3px; background:var(--line); }
-  @media (max-width:560px) {
-    .soldier.typer { display:none; }
-    .soldier.p2 { left:2px; } .soldier.flip.p2 { right:2px; }
-    .soldier.p3 { left:50px; } .soldier.flip.p3 { right:50px; }
-  }
+  .fflag { position:absolute; bottom:-2px; left:44%; width:18px; height:22px; }
+  .grass { display:grid; grid-template-columns:repeat(30,1fr); gap:3px; }
+  .grass i { aspect-ratio:1; border-radius:2px; background:var(--grass-0); }
+  .grass i.g1 { background:var(--grass-1); } .grass i.g2 { background:var(--grass-2); }
+  .grass i.g3 { background:var(--grass-3); } .grass i.g4 { background:var(--grass-4); }
+  /* 히어로 상주 설치 한 줄 — 랜딩의 일은 구경이 아니라 설치(§21) */
+  .hero-install { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px;
+    border:1px solid var(--line); border-radius:5px; padding:8px 12px; background:var(--hover);
+    font-size:13px; overflow-x:auto; }
+  .hero-install .hi-ps1 { color:var(--ok); }
+  .hero-install .hi-cmd { white-space:nowrap; }
+  .hero-install .hi-agents { margin-left:auto; font-size:11px; color:var(--dim); white-space:nowrap; }
 
   /* 톱3 우승 퍼레이드: 세로 소총 포지션이 그대로 깃대가 된다 */
   .marchbox { padding:0; height:88px; }
@@ -571,9 +567,8 @@
   @media (max-width:660px){ .lower{grid-template-columns:1fr;} .titlebar .name{display:none;} .p-fields{grid-template-columns:1fr;} .ship{flex-wrap:wrap;}
     .ed-grid{grid-template-columns:1fr;} .ed-proj{grid-template-columns:minmax(0,1fr) auto;} .ed-proj .ed-desc{grid-column:1 / -1;} }
   @media (prefers-reduced-motion:reduce){
-    .cursor,.flash,.tracer,.hit,.march-track,.marcher .f1,.marcher .f2,.bearer .f1,.bearer .f2,
+    .cursor,.march-track,.marcher .f1,.marcher .f2,.bearer .f1,.bearer .f2,
     .soldier.typer .f1,.soldier.typer .f2,.portrait .f1,.portrait .f2,.tdots b { animation:none !important; }
-    .tracer,.hit { display:none; }
     .marcher .f2, .bearer .f2, .soldier.typer .f2, .portrait .f2 { opacity:0; }
   }
 </style>
@@ -610,9 +605,20 @@
       <section class="box banner">
         <span class="legend">ocw · live</span>
         <h1 class="big">OPEN CODE WAR</h1>
-        <div class="battlefield" id="battlefield" aria-hidden="true"></div>
-        <p class="slogan" data-i18n-html="slogan"><b>How many chars</b> did you feed your AI today?</p>
-        <p data-i18n="tagline">The leaderboard for who types the most into their coding agent. Win the war — conquer the world with your product.</p>
+        <div class="field" aria-hidden="true">
+          <div class="stage">
+            <span class="soldier typer army-claude" id="fieldSoldier"></span>
+            <span class="fflag peakflag" id="peakFlag"></span>
+          </div>
+          <div class="grass" id="grass"></div>
+        </div>
+        <p class="slogan" data-i18n-html="slogan">Your agent writes the code.<br>So where does <b>your work</b> show up?</p>
+        <p data-i18n="tagline">A record of every day you work with a coding agent — prompts, characters, time per project. Never the content. Your record becomes your rank, your streak, your developer card. And if you want — your war.</p>
+        <div class="hero-install">
+          <span class="hi-cmd"><span class="hi-ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="cmd-copy" id="heroCopy" type="button" title="copy command" aria-label="copy command">⧉</button>
+          <span class="hi-agents">Claude Code · Codex · OpenCode · pi</span>
+        </div>
         <div class="status">
           <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">Connecting…</span></span>
           <span><span data-i18n="joined">joined</span> <b id="countChip">–</b></span>
@@ -876,8 +882,8 @@
   const T = {
     en: {
       langBtn: '한국어',
-      slogan: '<b>How many chars</b> did you feed your AI today?',
-      tagline: 'The leaderboard for who types the most into their coding agent. Win the war — conquer the world with your product.',
+      slogan: 'Your agent writes the code.<br>So where does <b>your work</b> show up?',
+      tagline: 'A record of every day you work with a coding agent — prompts, characters, time per project. Never the content. Your record becomes your rank, your streak, your developer card. And if you want — your war.',
       live_on: 'Live', live_off: 'Server unreachable',
       joined: 'joined', rank1: '#1', updated: 'Updated',
       me_ph: 'search nickname',
@@ -943,8 +949,8 @@
     },
     ko: {
       langBtn: 'EN',
-      slogan: '오늘 너, AI한테 <b>몇 자</b> 쳤어?',
-      tagline: '코딩 에이전트에 가장 많이 입력한 코더를 가리는 리더보드. 승리를 차지하고, 너의 제품으로 세상을 점령하라.',
+      slogan: '코드는 에이전트가 쓴다.<br>그럼 <b>당신의 노력</b>은 어디에 남지?',
+      tagline: '커밋 잔디로는 안 보이는 매일을 기록합니다 — 프롬프트 횟수·글자 수·프로젝트별 시간. 내용은 절대 수집하지 않습니다. 기록은 계급·스트릭·개발자 명함이 되고, 원하면 전쟁에도 참전합니다.',
       live_on: '집계 중', live_off: '서버 연결 실패',
       joined: '참가', rank1: '1위', updated: '집계',
       me_ph: '닉네임 검색',
@@ -1359,25 +1365,31 @@
       <span class="f f1" style="animation-delay:${(i % 2) * -0.26}s">${spriteSVG('march1')}</span>
       <span class="f f2" style="animation-delay:${(i % 2) * -0.26}s">${spriteSVG('march2')}</span>`;
 
-  // 히어로 전장(정적 연출) + 푸터 보초 — 최초 1회.
-  (function initSoldiers() {
-    const typer = `<span class="f f1">${spriteSVG('typer1')}</span><span class="f f2">${spriteSVG('typer2')}</span><i class="tdots"><b></b><b></b><b></b></i>`;
-    $('battlefield').innerHTML = `
-      <span class="soldier typer p1 army-codex">${typer}</span>
-      <span class="soldier p2 army-claude">${spriteSVG('aim')}<i class="flash"></i></span>
-      <span class="soldier kneel p3 army-codex">${spriteSVG('kneel')}<i class="flash" style="animation-delay:.45s"></i></span>
-      <span class="soldier typer p1 flip army-pi">${typer}</span>
-      <span class="soldier p2 flip army-opencode">${spriteSVG('aim')}<i class="flash" style="animation-delay:.7s"></i></span>
-      <span class="soldier kneel p3 flip army-pi">${spriteSVG('kneel')}<i class="flash" style="animation-delay:.2s"></i></span>
-      <div class="tracer t-r" style="top:40px; background:var(--fg);"></div>
-      <div class="tracer t-r" style="top:48px; background:var(--ag-codex); animation-delay:.45s"></div>
-      <div class="tracer t-l" style="top:41px; background:var(--ag-opencode); animation-delay:.7s"></div>
-      <div class="tracer t-l" style="top:49px; background:var(--ag-pi); animation-delay:.2s"></div>
-      <span class="hit" style="left:46%; top:26px;">+1</span>
-      <span class="hit" style="left:56%; top:31px; animation-delay:1.7s">+1</span>
-      <i class="debris" style="left:24%"></i><i class="debris" style="left:38%; width:5px;"></i>
-      <i class="debris" style="left:52%"></i><i class="debris" style="left:71%; width:5px;"></i><i class="debris" style="left:85%"></i>`;
+  // 히어로 잔디밭(타건 병정 + 피크 깃발) + 푸터 보초 — 최초 1회.
+  // 잔디는 아직 표시용 결정적 패턴 — 로그인 유저의 실제 90일 히트맵으로 교체 예정(DESIGN.md §21).
+  (function initField() {
+    $('fieldSoldier').innerHTML = `<span class="f f1">${spriteSVG('typer1')}</span><span class="f f2">${spriteSVG('typer2')}</span><i class="tdots"><b></b><b></b><b></b></i>`;
+    $('peakFlag').innerHTML = spriteSVG('chartflag');
+    let seed = 42, cells = '';
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    for (let i = 0; i < 30 * 4; i++) {
+      const col = i % 30;
+      const v = rnd() * (0.35 + 0.45 * Math.sin(col / 4.2)) + (col > 22 ? 0.25 : 0);
+      const lv = v > 0.72 ? 4 : v > 0.55 ? 3 : v > 0.38 ? 2 : v > 0.2 ? 1 : 0;
+      cells += `<i${lv ? ` class="g${lv}"` : ''}></i>`;
+    }
+    $('grass').innerHTML = cells;
     $('sentrySlot').innerHTML = spriteSVG('march2');
+    const hc = $('heroCopy');
+    hc.title = t('copy_cmd');
+    hc.setAttribute('aria-label', t('copy_cmd'));
+    hc.addEventListener('click', async () => {
+      const ok = await copyText('/plugin marketplace add dodohankim/opencodewar');
+      hc.textContent = ok ? '✓' : '✗';
+      hc.classList.toggle('ok', ok);
+      clearTimeout(hc._t);
+      hc._t = setTimeout(() => { hc.textContent = '⧉'; hc.classList.remove('ok'); }, 1200);
+    });
   })();
 
   // 순위 → 군복색(에이전트 정보가 스냅샷에 없어 순위 기반 고정 배색).

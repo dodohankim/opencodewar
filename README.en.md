@@ -2,9 +2,10 @@
 
 # ⚔️ Open Code War
 
-**A leaderboard game where coding agent users compete on "who types the most."**
+**The contribution graph for the agent era — prompts are the new commits.**
 
-An agent hook counts your input activity anonymously → stores it on Cloudflare → shows daily / weekly / weekend rankings and a per-country map on the web.
+A record of every day you build with a coding agent: prompt count, characters, time per project (never the content).
+Your record becomes your rank, your streak, a shareable developer card — and, if you want, a leaderboard war.
 
 **English** · [한국어](README.md)
 
