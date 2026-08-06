@@ -134,8 +134,9 @@ function placeLabel(rank, code, lang) {
  * @param data  서버 /briefing 응답
  * @param prevRank 지난번 "표시" 시점의 순위 { global, country } | null
  * @param lang 'ko' | 'en'
+ * @param now  현재 시각(ms) — 교전 남은 시간 계산용(순수 함수 유지)
  */
-export function briefingCandidates(data, prevRank, lang) {
+export function briefingCandidates(data, prevRank, lang, now = Date.now()) {
   if (!data) return [];
   const ko = lang === 'ko';
   const out = [];
@@ -168,7 +169,47 @@ export function briefingCandidates(data, prevRank, lang) {
     out.push({ key: `streak:${streak.current}`, line });
   }
 
-  // 3순위 — 다음 계급 임박. 끝이 보이는 목표가 행동을 끌어낸다.
+  // 3순위 — 교전(§22.5). 교전 중엔 항상 뉴스가 있다 — 1위에겐 방어전, 추격자에겐 격차.
+  // key 에 순위를 넣어 순위가 바뀌면 다시 뜬다(하루 1회 가드는 유지).
+  // 종료 24시간 이내는 별도 key — 마지막 스퍼트 알림은 순위 불변이어도 한 번은 떠야 한다.
+  const battle = data.battle;
+  if (battle && battle.members >= 2) {
+    const label = battle.name || battle.code;
+    const msLeft = Math.max(0, (battle.endsAt ?? 0) - now);
+    const hoursLeft = Math.ceil(msLeft / 3_600_000);
+    const remain = ko
+      ? hoursLeft <= 24
+        ? `${hoursLeft}시간 남음`
+        : `D-${Math.ceil(hoursLeft / 24)}`
+      : hoursLeft <= 24
+        ? `${hoursLeft}h left`
+        : `D-${Math.ceil(hoursLeft / 24)}`;
+    const endingSoon = hoursLeft <= 24;
+    let news;
+    if (battle.rank === 1) {
+      news = ko
+        ? `1위 방어 중 · 2위와 ${battle.gapBehind ?? 0} 차이`
+        : `defending #1 · ${battle.gapBehind ?? 0} ahead of #2`;
+    } else {
+      news = ko
+        ? `${battle.rank}위 · 위 ${battle.aheadNickname ?? '?'} 와 ${battle.gapAhead ?? 0} 차이`
+        : `#${battle.rank} · ${battle.gapAhead ?? 0} behind ${battle.aheadNickname ?? '?'}`;
+    }
+    out.push({
+      key: endingSoon ? `battle-end:${battle.code}` : `battle:${battle.code}:${battle.rank}`,
+      line: `⚔️ ${label} ${remain} — ${news}`,
+    });
+  } else if (battle && battle.members === 1) {
+    // 혼자인 방 — 초대 유도(성장 루프). 방마다 한 번만.
+    out.push({
+      key: `battle-wait:${battle.code}`,
+      line: ko
+        ? `⚔️ ${battle.name || battle.code} 대기 중 — 친구 초대: /ocw battle join ${battle.code}`
+        : `⚔️ ${battle.name || battle.code} waiting — invite: /ocw battle join ${battle.code}`,
+    });
+  }
+
+  // 4순위 — 다음 계급 임박. 끝이 보이는 목표가 행동을 끌어낸다.
   // key 는 계급 인덱스 — 상병인 동안 계속 임박 상태라도 딱 한 번만 알린다.
   const rt = data.rankTitle ?? {};
   if (rt.remaining != null && rt.span > 0 && rt.remaining <= rt.span * NEAR_RANK_RATIO) {
@@ -214,7 +255,7 @@ export function briefingCandidates(data, prevRank, lang) {
  * 우선순위대로 훑되 하루 1회·같은 얘기 금지 가드에 걸리는 후보는 건너뛴다.
  */
 export function pickBriefing(state, data, prevRank, lang, now) {
-  for (const c of briefingCandidates(data, prevRank, lang)) {
+  for (const c of briefingCandidates(data, prevRank, lang, now)) {
     if (canShow(state, c.key, now)) return c;
   }
   // 보여줄 변화가 없으면 침묵한다. 매 세션 배너는 3일이면 소음이 된다.

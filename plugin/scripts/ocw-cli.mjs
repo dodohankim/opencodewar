@@ -9,6 +9,7 @@
 //   project submarine <번호|이름> — 잠수함 모드 토글 (공개 페이지엔 "secret #n", DESIGN.md §20.7)
 //   signup | login — Google 계정 연동 (DESIGN.md §14)
 //   email public|private — 연동 이메일 프로필 공개 여부 (기본 비공개)
+//   battle new <이름> <기간> | battle join <코드> | battle status [코드] | battle leave <코드> — 교전(§22)
 //   random — 등록 유저 중 무작위 한 명의 공개 프로필 카드
 //   brief on|off — 세션 시작 브리핑 표시 여부 (DESIGN.md §19)
 //   status | whoami | enable | disable | help
@@ -588,6 +589,171 @@ async function project(input) {
   return print(projectUsage());
 }
 
+// ── 교전(§22) — 최대 10명 개인전 ──────────────────────────────
+const BATTLE_MIN_HOURS = 24;
+const BATTLE_MAX_HOURS = 168; // 서버 battle.ts 와 동일 상한
+
+/** "3d"·"48h"·"72" → 시간 정수. 해석 불가면 null. */
+function parseBattleDuration(tok) {
+  const m = /^(\d+)\s*(h|d|시간|일)?$/i.exec((tok || '').trim());
+  if (!m) return null;
+  const n = Number(m[1]);
+  const unit = (m[2] || 'h').toLowerCase();
+  return unit === 'd' || unit === '일' ? n * 24 : n;
+}
+
+function fmtBattleRemain(endsAt, now) {
+  const hoursLeft = Math.max(0, Math.ceil((endsAt - now) / 3_600_000));
+  return hoursLeft <= 24 ? `${hoursLeft}시간 남음` : `D-${Math.ceil(hoursLeft / 24)}`;
+}
+
+function battleUsage() {
+  return [
+    '사용법:',
+    '- `/ocw battle new <이름> <기간>` — 교전 생성 (기간 24h~7d, 예: `3d`, `48h`)',
+    '- `/ocw battle join <코드>` — 참가 (최대 10명)',
+    '- `/ocw battle status [코드]` — 순위판',
+    '- `/ocw battle leave <코드>` — 나가기',
+    '예) `/ocw battle new 주말결투 3d`',
+  ].join('\n');
+}
+
+/** 교전 순위판 한 벌 출력(메타 + 순위 + 초대 안내). */
+function printBattleBoard(d) {
+  const label = d.name ? `${d.name} (${d.code})` : d.code;
+  const head = d.ended
+    ? `**⚔️ ${label} — 종료**`
+    : `**⚔️ ${label} — ${fmtBattleRemain(d.endsAt, d.now)}** · ${d.members}/${d.maxMembers}명 · ${d.metric}`;
+  const lines = [head];
+  const medal = ['🥇', '🥈', '🥉'];
+  d.standings.forEach((s) => {
+    const mark = d.me && d.me.rank === s.rank ? ' ← 나' : '';
+    const val = d.metric === 'chars' ? `${s.chars} 글자` : `${s.prompts} prompts`;
+    lines.push(`${medal[s.rank - 1] || `${s.rank}.`} ${s.nickname}${s.owner ? ' 🏳(방장)' : ''} — ${val}${mark}`);
+  });
+  if (!d.ended) {
+    lines.push('', `초대: \`/ocw battle join ${d.code}\` · ${endpoint}/b/${d.code}`);
+  }
+  return print(lines.join('\n'));
+}
+
+async function battle(input) {
+  const sp = input.indexOf(' ');
+  const action = (sp === -1 ? input : input.slice(0, sp)).toLowerCase() || 'status';
+  const remainder = (sp === -1 ? '' : input.slice(sp + 1)).trim();
+
+  const post = async (path, body) => {
+    const res = await fetch(`${endpoint}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId: cfg.userId, ...body }),
+      signal: AbortSignal.timeout(4000),
+    });
+    return { res, data: await res.json().catch(() => ({})) };
+  };
+
+  if (action === 'new' || action === 'create') {
+    const tokens = remainder.split(/\s+/).filter(Boolean);
+    const hours = parseBattleDuration(tokens[tokens.length - 1]);
+    const name = tokens.slice(0, -1).join(' ');
+    if (!tokens.length || hours === null) return print(battleUsage());
+    if (hours < BATTLE_MIN_HOURS || hours > BATTLE_MAX_HOURS) {
+      return print(`❌ 기간은 최소 24시간(24h) ~ 최대 7일(7d)입니다. 예: \`/ocw battle new ${name || '이름'} 3d\``);
+    }
+    try {
+      const { res, data } = await post('/battle/new', { hours, name: name || undefined });
+      if (!res.ok || !data.ok) {
+        if (data.error === 'invalid_name') return print(`❌ 이름은 최대 ${data.max}자입니다.`);
+        return print(`❌ 생성 실패: ${data.error || `HTTP ${res.status}`}`);
+      }
+      return print(
+        [
+          `⚔️ **교전 개시! ${data.name ? `${data.name} ` : ''}(${data.code})** — ${Math.round(hours / 24) >= 1 && hours % 24 === 0 ? `${hours / 24}일` : `${hours}시간`}`,
+          '지금부터 치는 프롬프트가 전부 집계됩니다.',
+          '',
+          `친구 초대 (최대 10명):`,
+          `- \`/ocw battle join ${data.code}\``,
+          `- ${endpoint}/b/${data.code}`,
+        ].join('\n'),
+      );
+    } catch {
+      return print(`❌ 서버에 연결하지 못했습니다: ${endpoint}`);
+    }
+  }
+
+  if (action === 'join') {
+    const code = remainder.toLowerCase();
+    if (!code) return print('사용법: `/ocw battle join <코드>`');
+    try {
+      const { res, data } = await post('/battle/join', { code });
+      if (!res.ok || !data.ok) {
+        if (data.error === 'battle_not_found') return print(`❌ 코드 ${code} 교전을 찾을 수 없습니다.`);
+        if (data.error === 'battle_ended') return print('❌ 이미 종료된 교전입니다.');
+        if (data.error === 'battle_full') return print(`❌ 정원(${data.max}명)이 찼습니다.`);
+        return print(`❌ 참가 실패: ${data.error || `HTTP ${res.status}`}`);
+      }
+      const label = data.name ? `${data.name} (${data.code})` : data.code;
+      return print(
+        [
+          data.already ? `이미 참전 중입니다 — ⚔️ ${label}` : `⚔️ **참전 완료 — ${label}**`,
+          `종료까지 ${fmtBattleRemain(data.endsAt, Date.now())}. 교전 시작 이후 친 프롬프트는 소급 집계됩니다.`,
+          `순위판: \`/ocw battle status ${data.code}\` · ${endpoint}/b/${data.code}`,
+        ].join('\n'),
+      );
+    } catch {
+      return print(`❌ 서버에 연결하지 못했습니다: ${endpoint}`);
+    }
+  }
+
+  if (action === 'leave') {
+    const code = remainder.toLowerCase();
+    if (!code) return print('사용법: `/ocw battle leave <코드>`');
+    try {
+      const { res, data } = await post('/battle/leave', { code });
+      if (!res.ok || !data.ok) return print(`❌ 실패: ${data.error || `HTTP ${res.status}`}`);
+      return print(`✅ 교전 ${code} 에서 나왔습니다.`);
+    } catch {
+      return print(`❌ 서버에 연결하지 못했습니다: ${endpoint}`);
+    }
+  }
+
+  if (action === 'status' || action === 'list') {
+    try {
+      let codes = [];
+      if (remainder) {
+        codes = [remainder.toLowerCase()];
+      } else {
+        const res = await fetch(`${endpoint}/battle/mine?userId=${encodeURIComponent(cfg.userId)}`, {
+          signal: AbortSignal.timeout(4000),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return print(`❌ 조회 실패: ${data.error || `HTTP ${res.status}`}`);
+        codes = (data.battles || []).map((b) => b.code);
+        if (!codes.length) {
+          return print('참가 중인 교전이 없습니다.\n' + battleUsage());
+        }
+      }
+      for (const code of codes) {
+        const res = await fetch(
+          `${endpoint}/battle?code=${encodeURIComponent(code)}&userId=${encodeURIComponent(cfg.userId)}`,
+          { signal: AbortSignal.timeout(4000) },
+        );
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          print(`❌ ${code}: ${d.error || `HTTP ${res.status}`}`);
+          continue;
+        }
+        printBattleBoard(d);
+      }
+      return;
+    } catch {
+      return print(`❌ 서버에 연결하지 못했습니다: ${endpoint}`);
+    }
+  }
+
+  return print(battleUsage());
+}
+
 /**
  * delete             → 프로필만 비움(bio·직함·회사·링크·프로젝트). 닉네임·사용량·순위는 유지.
  * delete all         → 완전 삭제 경고(확인 요구).
@@ -742,6 +908,8 @@ function help() {
       '- `/ocw project auto on|off` — 링크 안 된 폴더도 폴더 이름으로 자동 집계 (옵트인)',
       '- `/ocw project submarine <번호|이름>` — 🤿 잠수함 모드 (남에겐 "secret #n", 본인만 실명)',
       '- `/ocw project list | remove|delete <번호|이름> | clear` — 프로젝트 관리',
+      '- `/ocw battle new <이름> <기간>` — ⚔️ 교전 생성 (최대 10명 개인전, 24h~7d)',
+      '- `/ocw battle join <코드>` / `status` / `leave` — 교전 참가·순위판·나가기',
       '- `/ocw signup` — Google 계정 연동 (계정 복구·여러 기기 합산 · 별칭: login)',
       '- `/ocw email public|private` — 연동 이메일 프로필 공개/비공개 (기본 비공개)',
       '- `/ocw status` — 내 정보 및 오늘 순위',
@@ -783,6 +951,8 @@ async function main() {
     case 'project':
     case 'projects':
       return project(rest);
+    case 'battle':
+      return battle(rest);
     case 'delete':
       return deleteData(rest);
     case 'brief': {

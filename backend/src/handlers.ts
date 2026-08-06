@@ -30,6 +30,7 @@ import {
 import { getSession } from './session';
 import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, dayFilter, getSnapshot, periodOf } from './snapshot';
 import { buildBriefing } from './briefing';
+import { battleBriefOf } from './battle';
 import { displayNickname } from './nickname';
 import { isValidPublicId, newPublicId } from './publicid';
 import { cityKey, cleanCity, countryFlag } from './zones';
@@ -428,8 +429,11 @@ export async function handleBriefing(url: URL, env: Env, ctx?: ExecutionContext)
     chars: Number(r.chars) || 0,
   }));
 
-  return json(
-    buildBriefing({
+  // 교전(§22.5) — 참가 중이면 종료 임박 교전 하나의 요약을 함께 내려준다(세션당 1회라 비용 무시 가능).
+  const battle = await battleBriefOf(env, userId, now).catch(() => null);
+
+  return json({
+    ...buildBriefing({
       snapshot,
       publicId: user.public_id ?? null,
       country: user.country ?? null,
@@ -437,7 +441,8 @@ export async function handleBriefing(url: URL, env: Env, ctx?: ExecutionContext)
       dayStats,
       now,
     }),
-  );
+    battle,
+  });
 }
 
 /**

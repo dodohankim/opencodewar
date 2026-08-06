@@ -1234,4 +1234,23 @@ npm 패키지(open-code-war)는 track.mjs·config.mjs 변경 포함 — 수동 �
 ### 22.6 비범위 / 남은 결정
 
 - 비범위(v1): 팀전, 리매치 버튼, 실시간 푸시, 상금.
-- 남은 결정: 세계관 이름("교전"/skirmish 제안), 초대 코드 형식, 동시 참가 상한 여부, 결과 카드 레이아웃.
+- 남은 결정: 결과 카드(픽셀 병정 시상대) 레이아웃, 종료 후 결과 고정 스냅샷 여부, 순위 조회 KV 캐시(유저 늘면).
+
+### 22.7 구현 (2026-08-06, 1차 완료)
+
+- **확정된 세부** — 이름은 "교전"(en: battle), 초대 코드는 6자(혼동 문자 0/o/1/l/i 제외 소문자+숫자,
+  `/^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/`), 동시 참가 상한 없음(브리핑은 종료 임박 교전 1개만).
+- **백엔드** — `0013_battles.sql`(battles·battle_members, status 컬럼 없음 — ends_at 파생),
+  `src/battle.ts`: POST /battle/new·join·leave, GET /battle?code=[&userId=]·/battle/mine.
+  순위는 events 실시간 집계(멤버 ≤10 × 창 ≤7일, idx_events_user_time). 늦참 소급 집계(§22.2).
+  ensureUser 가 public_id 까지 발급 — 교전을 먼저 만든(track 0회) 유저도 프로필 라우팅이 된다.
+  응답에서 user_id 는 publicStanding() 으로 항상 제거, me 매칭은 내부 user_id 로.
+- **브리핑** — /briefing 응답에 `battle` 필드(BattleBrief). 클라이언트 우선순위(§19.5 확장):
+  닉네임 > 스트릭 위기 > **교전** > 계급 임박 > 순위 변동 > 경쟁자 격차.
+  1위는 "방어 중·2위와 N 차이", 추격자는 "위와 N 차이", 혼자면 "대기 중 — 초대" (성장 루프).
+  종료 ≤24h 는 별도 key(battle-end) — 순위 불변이어도 마지막 스퍼트 알림은 한 번 뜬다.
+- **CLI** — `/ocw battle new <이름> <기간>`(3d·48h·72 형식) | join | status [코드] | leave.
+  기간 검증은 클라·서버 이중(24h~168h). npm 어댑터(OpenCode·pi)는 track/brief 만 쓰므로
+  battle 명령은 Claude Code·Codex 전용, 브리핑 교전 줄은 4개 에이전트 공통(lib/briefing.mjs).
+- **웹** — `/b/<code>` (Worker 가 SPA 셸 서빙, index.ts 라우트) → battleView: 순위판(1분 갱신)
+  + 참전 안내 박스(join 명령 + 미설치자용 설치 명령, 소급 집계 안내). 종료 시 안내 숨김.

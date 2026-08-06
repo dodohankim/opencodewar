@@ -26,6 +26,13 @@ import {
 } from './auth';
 import { handleApiAccount, handleApiNickname, handleApiProfile, handleApiSession } from './api';
 import {
+  handleBattleGet,
+  handleBattleJoin,
+  handleBattleLeave,
+  handleBattleMine,
+  handleBattleNew,
+} from './battle';
+import {
   handleOgImage,
   handleProfilePage,
   nicknameFromPath,
@@ -112,6 +119,26 @@ export default {
       // 세션 브리핑(§19) — 플러그인이 세션 시작 시 1회만 호출한다.
       if (pathname === '/briefing' && request.method === 'GET') {
         return await handleBriefing(url, env, ctx);
+      }
+      // 교전(§22) — 최대 10명 개인전.
+      if (pathname === '/battle/new' && request.method === 'POST') {
+        return await handleBattleNew(request, env);
+      }
+      if (pathname === '/battle/join' && request.method === 'POST') {
+        return await handleBattleJoin(request, env);
+      }
+      if (pathname === '/battle/leave' && request.method === 'POST') {
+        return await handleBattleLeave(request, env);
+      }
+      if (pathname === '/battle/mine' && request.method === 'GET') {
+        return await handleBattleMine(url, env);
+      }
+      if (pathname === '/battle' && request.method === 'GET') {
+        return await handleBattleGet(url, env);
+      }
+      // /b/<code> — 교전 페이지(에셋에 없는 경로 → SPA 셸 서빙, 뷰 전환은 웹 JS).
+      if (/^\/b\/[23456789abcdefghjkmnpqrstuvwxyz]{6}$/.test(pathname) && isPageRead(request.method)) {
+        return await handleProfilePage(request, url, env, null);
       }
       // Google 계정 연동 (DESIGN.md §14)
       if (pathname === '/auth/start' && request.method === 'POST') {

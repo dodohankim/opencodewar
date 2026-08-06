@@ -307,6 +307,7 @@
   .zonepick select { font:inherit; font-size:12px; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 8px; cursor:pointer; max-width:180px; }
 
   .board-scroll { overflow-x:auto; }
+  .btable { min-width:420px; }
   table { width:100%; border-collapse:collapse; min-width:760px; }
   thead th { font-size:10.5px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); text-align:left; padding:6px 15px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
   th.num, td.num { text-align:right; font-variant-numeric:tabular-nums; }
@@ -860,6 +861,36 @@
         </section>
       </div><!-- /#userView -->
 
+      <!-- 교전(§22) — /b/<code>. 순위판 + 미설치자 참전 안내(성장 루프의 랜딩). -->
+      <div id="battleView" hidden>
+        <button class="theme-toggle backbtn" id="bBackBtn" type="button" data-i18n="back">← Leaderboard</button>
+
+        <section class="box">
+          <span class="legend">⚔️ battle</span>
+          <h2 class="p-nick" id="bTitle">–</h2>
+          <div class="status">
+            <span id="bRemain"></span>
+            <span><span data-i18n="b_members">fighters</span> <b id="bMembers">–</b></span>
+            <span>metric <b id="bMetricChip">prompts</b></span>
+            <span id="bCode"></span>
+          </div>
+          <div class="board-scroll" style="margin-top:14px;">
+            <table class="btable">
+              <thead>
+                <tr><th>#</th><th>coder</th><th class="num">prompts</th><th class="num">chars</th></tr>
+              </thead>
+              <tbody id="bTbody"><tr><td colspan="4"><div class="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="box" id="bJoinBox">
+          <span class="legend" data-i18n="b_join_legend">join this battle</span>
+          <p data-i18n-html="b_join_note">Install the OCW plugin, then join with the command below. Prompts since the battle started count retroactively.</p>
+          <div id="bJoinCmds"></div>
+        </section>
+      </div><!-- /#battleView -->
+
     </div>
   </div>
 
@@ -895,6 +926,13 @@
       rules3: "<b>Total & daily boards.</b> Every prompt ever counts on total; daily resets at 00:00 UTC.",
       install_legend: 'join · install',
       hi_agents: 'for Claude Code — Codex · OpenCode · pi ↓',
+      b_members: 'fighters', b_ended: 'ended', b_notfound: 'Battle not found — check the invite code.',
+      b_remain: (h) => (h <= 24 ? `⏳ ${h}h left` : `⏳ D-${Math.ceil(h / 24)}`),
+      b_join_legend: 'join this battle',
+      b_join_note:
+        'Install the OCW plugin, then join with the command below (max 10). Prompts since the battle started count <b>retroactively</b> — a late start costs nothing.',
+      b_title_fallback: 'Battle',
+      b_no_plugin: '# no plugin yet? install first:',
       install_note_claude: 'Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.',
       install_note_codex: 'Same plugin as Claude Code — Codex shares the plugin/marketplace system. Then start Codex and pick <b>Trust all and continue</b> on the “Hooks need review” screen; until you do, Codex silently skips the hook. Needs Node.js on your PATH.',
       install_note_opencode: 'Add <code>open-code-war</code> to the <code>plugin</code> array in your <code>opencode.json</code>; OpenCode installs it on startup. Then type prompts to start counting. Needs Node.js on your PATH.',
@@ -963,6 +1001,13 @@
       rules3: '<b>전체 · 데일리 보드.</b> 전체는 모든 입력 누적, 데일리는 UTC 00:00 리셋.',
       install_legend: '참가 · 설치',
       hi_agents: 'Claude Code 기준 — Codex · OpenCode · pi ↓',
+      b_members: '참전', b_ended: '종료', b_notfound: '교전을 찾을 수 없습니다 — 초대 코드를 확인하세요.',
+      b_remain: (h) => (h <= 24 ? `⏳ ${h}시간 남음` : `⏳ D-${Math.ceil(h / 24)}`),
+      b_join_legend: '이 교전에 참전하기',
+      b_join_note:
+        'OCW 플러그인을 설치하고 아래 명령으로 참전하세요 (최대 10명). 교전 시작 이후 친 프롬프트는 <b>소급 집계</b>되어 늦게 합류해도 손해가 없습니다.',
+      b_title_fallback: '교전',
+      b_no_plugin: '# 플러그인이 없다면 먼저:',
       install_note_claude: '설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.',
       install_note_codex: 'Claude Code와 <b>같은 플러그인</b>입니다 — 코덱스도 동일한 플러그인·마켓플레이스 체계를 씁니다. 설치 후 Codex를 실행해 “Hooks need review” 화면에서 <b>Trust all and continue</b>를 선택하세요. 선택 전에는 훅이 조용히 무시됩니다. PATH에 Node.js가 있어야 합니다.',
       install_note_opencode: '<code>opencode.json</code> 의 <code>plugin</code> 배열에 <code>open-code-war</code> 를 추가하면 시작 시 자동 설치됩니다. 이후 프롬프트를 입력하면 집계가 시작됩니다. PATH에 Node.js가 있어야 합니다.',
@@ -1653,6 +1698,8 @@
   function route() {
     const legacy = new URLSearchParams(location.search).get('user');
     if (legacy) { history.replaceState({ user: legacy }, '', urlFor(legacy)); showUser(legacy); return; }
+    const bcode = battleFromPath();
+    if (bcode) { showBattle(bcode); return; }
     const nick = nickFromPath();
     if (nick) showUser(nick);
     else showBoard();
@@ -1660,8 +1707,10 @@
   const BASE_TITLE = 'Open Code War — Leaderboard (live)';
   function showBoard() {
     curUser = null;
+    curBattle = null;
     resetEdit();
     $('userView').hidden = true;
+    $('battleView').hidden = true;
     $('boardView').hidden = false;
     $('cmdEcho').textContent = `GET /leaderboard?${boardQuery()}`;
     document.title = BASE_TITLE;
@@ -1670,7 +1719,9 @@
   }
   function showUser(nick) {
     curUser = nick;
+    curBattle = null;
     $('boardView').hidden = true;
+    $('battleView').hidden = true;
     $('userView').hidden = false;
     // slug 는 표시명이 아니므로 응답(자동 닉네임) 도착 후 renderUser 가 제목을 채운다.
     document.title = isPid(nick) ? BASE_TITLE : `${nick} · Open Code War`;
@@ -1686,6 +1737,90 @@
     history.pushState({}, '', urlFor(null));
     showBoard();
   }
+
+  // ── 교전(§22) — /b/<code> 순위판 + 참전 안내 ──
+  const BATTLE_PREFIX = '/b/';
+  let curBattle = null;
+  function battleFromPath() {
+    if (!location.pathname.startsWith(BATTLE_PREFIX)) return null;
+    const raw = location.pathname.slice(BATTLE_PREFIX.length);
+    return /^[23456789abcdefghjkmnpqrstuvwxyz]{6}$/.test(raw) ? raw : null;
+  }
+  function showBattle(code) {
+    curBattle = code;
+    curUser = null;
+    $('boardView').hidden = true;
+    $('userView').hidden = true;
+    $('battleView').hidden = false;
+    $('cmdEcho').textContent = `GET /battle?code=${code}`;
+    document.title = `${t('b_title_fallback')} ${code} · Open Code War`;
+    window.scrollTo(0, 0);
+    loadBattle(code);
+  }
+  async function loadBattle(code) {
+    try {
+      const res = await fetch(`${API}/battle?code=${encodeURIComponent(code)}`, { cache: 'no-store' });
+      const d = await res.json().catch(() => ({}));
+      if (curBattle !== code) return; // 로딩 중 다른 화면으로 떠났다
+      if (!res.ok) {
+        $('bTitle').textContent = `⚔️ ${code}`;
+        $('bTbody').innerHTML = `<tr><td colspan="4"><div class="msg">${t('b_notfound')}</div></td></tr>`;
+        $('bJoinBox').hidden = true;
+        return;
+      }
+      renderBattle(d);
+    } catch {
+      if (curBattle === code) {
+        $('bTbody').innerHTML = `<tr><td colspan="4"><div class="msg">${t('error')}</div></td></tr>`;
+      }
+    }
+  }
+  function renderBattle(d) {
+    const title = d.name || `${t('b_title_fallback')} ${d.code}`;
+    $('bTitle').textContent = `⚔️ ${title}`;
+    document.title = `${title} · Open Code War`;
+    const hoursLeft = Math.max(0, Math.ceil(((d.endsAt || 0) - (d.now || Date.now())) / 3600000));
+    $('bRemain').innerHTML = d.ended ? `<b>${t('b_ended')}</b>` : t('b_remain')(hoursLeft);
+    $('bMembers').textContent = `${d.members}/${d.maxMembers}`;
+    $('bMetricChip').textContent = d.metric;
+    $('bCode').textContent = `code ${d.code}`;
+
+    const meLc = myNick.trim().toLowerCase();
+    $('bTbody').innerHTML = d.standings
+      .map((r) => {
+        const rankCls = r.rank === 1 ? 'rank one' : r.rank <= 3 ? 'rank b' : 'rank';
+        const ref = r.registered ? r.nickname : r.public_id;
+        const nm = escapeHtml(r.nickname);
+        const nmCell = ref
+          ? `<span class="nm link" data-nick="${escapeHtml(ref)}" role="button" tabindex="0">${nm}</span>`
+          : `<span class="nm">${nm}</span>`;
+        const isMe = meLc !== '' && r.nickname.toLowerCase() === meLc;
+        return `<tr class="${isMe ? 'me' : ''}">
+          <td><span class="${rankCls}">${r.rank}</span></td>
+          <td>${nmCell}${r.owner ? ' 🏳' : ''}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
+          <td class="num"><span class="pnum">${fmt(r.prompts)}</span></td>
+          <td class="num"><span class="snum">${fmt(r.chars)}</span></td>
+        </tr>`;
+      })
+      .join('');
+
+    // 참전 명령 — 종료된 교전은 안내를 감춘다.
+    $('bJoinBox').hidden = !!d.ended;
+    if (!d.ended) {
+      const wrap = $('bJoinCmds');
+      wrap.textContent = '';
+      [
+        `/ocw battle join ${d.code}`,
+        t('b_no_plugin'),
+        '/plugin marketplace add dodohankim/opencodewar',
+        '/plugin install open-code-war@opencodewar',
+      ].forEach((c) => wrap.appendChild(makeCmdRow(c)));
+    }
+  }
+  // 진행 중 교전은 1분마다 순위 갱신(보고 있는 동안만).
+  setInterval(() => {
+    if (curBattle && !document.hidden) loadBattle(curBattle);
+  }, 60000);
 
   // ── 유저 상세 로딩/렌더 ──
   function syncUsortButtons() {
@@ -2392,6 +2527,7 @@
     }
   });
   $('backBtn').addEventListener('click', goBoard);
+  $('bBackBtn').addEventListener('click', goBoard);
 
   // ── 프로필 공유: 모바일(터치)은 시스템 공유 시트, 데스크톱은 링크 복사 ──
   // 공유 URL 은 정식 주소(/u/<nick>) + ?d=YYYYMMDD —
