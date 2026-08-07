@@ -1,6 +1,6 @@
 {
   "name": "open-code-war",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "코딩 에이전트 입력량을 겨루는 리더보드 — OpenCode 플러그인 + pi 확장. 프롬프트 내용은 수집하지 않음.",
   "keywords": [
     "opencode",

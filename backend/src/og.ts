@@ -72,7 +72,7 @@ export function withVisitorCountry(res: Response, country: string | null): Respo
  * 일부 구형 스크래퍼는 헤더에 charset 이 없으면 meta charset 을 무시하고 ISO-8859-1 로 읽어
  * 한글 OG 텍스트(태그라인·닉네임)가 깨진다. 헤더 선언이 우선순위 최상위라 여기서 못 박는다.
  */
-function asUtf8Html(res: Response): Response {
+export function asUtf8Html(res: Response): Response {
   const headers = new Headers(res.headers);
   headers.set('Content-Type', 'text/html; charset=utf-8');
   return new Response(res.body, { status: res.status, headers });
@@ -83,7 +83,7 @@ function asUtf8Html(res: Response): Response {
  * 안 그러면 한 나라 방문자가 받은 페이지가 다른 나라 방문자에게 그대로 나갈 수 있다.
  * 브라우저 캐시는 그대로 두되 매번 재검증(must-revalidate)한다.
  */
-function asPrivate(res: Response): Response {
+export function asPrivate(res: Response): Response {
   const headers = new Headers(res.headers);
   headers.set('Cache-Control', 'private, max-age=0, must-revalidate');
   return new Response(res.body, { status: res.status, headers });

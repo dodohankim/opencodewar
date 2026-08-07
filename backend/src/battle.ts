@@ -12,6 +12,7 @@ import { json, readJson } from './http';
 import { isValidUserId } from './validate';
 import { autoNickname } from './nickname';
 import { newPublicId } from './publicid';
+import { asPrivate, asUtf8Html, visitorCountry } from './og';
 
 export const BATTLE_MIN_HOURS = 24;
 export const BATTLE_MAX_HOURS = 24 * 7;
@@ -312,6 +313,76 @@ export async function battleBriefOf(env: Env, userId: string, now: number): Prom
     gapAhead: ahead ? Math.max(0, ahead[metric] - me[metric]) : null,
     gapBehind: behind ? Math.max(0, me[metric] - behind[metric]) : null,
   };
+}
+
+/**
+ * GET /b/<code> — 교전 페이지(SPA 셸 + OG 메타 재작성).
+ * 초대 링크가 카톡·슬랙에서 "무슨 교전인지" 보이게 하는 게 목적 — 이 미리보기가 참전 전환의 첫 화면이다.
+ * 이미지는 공통 og.png 유지(교전 전용 이미지는 §22.6 결과 카드에서).
+ */
+export async function handleBattlePage(request: Request, url: URL, env: Env, code: string): Promise<Response> {
+  const country = visitorCountry(request);
+  const assetReq = new Request(new URL('/', url), request);
+  const [assetRes, battle] = await Promise.all([env.ASSETS.fetch(assetReq), getBattleByCode(env, code)]);
+
+  // 존재하지 않는 교전 — 셸만 서빙(웹 JS 가 not-found 안내), 메타 재작성 없음.
+  if (!battle) {
+    const res = new Response(assetRes.body, { status: 200, headers: assetRes.headers });
+    return country ? asPrivate(asUtf8Html(res)) : asUtf8Html(res);
+  }
+
+  const now = Date.now();
+  const ended = now >= battle.ends_at;
+  const label = battle.name ?? battle.code;
+  const pageUrl = `https://opencodewar.dev/b/${battle.code}`;
+
+  let title: string;
+  let desc: string;
+  if (ended) {
+    // 종료 — 우승자를 미리보기에 싣는다(결과 공유가 곧 자랑 루프).
+    const standings = await battleStandings(env, battle);
+    const winner = standings[0];
+    title = `⚔️ ${label} — Open Code War battle result`;
+    desc = winner
+      ? `Victory: ${winner.nickname} (${winner[battle.metric === 'chars' ? 'chars' : 'prompts']} ${battle.metric}) · ${standings.length} fighters`
+      : `Battle ended · Open Code War`;
+  } else {
+    const hoursLeft = Math.max(1, Math.ceil((battle.ends_at - now) / 3_600_000));
+    const remain = hoursLeft <= 24 ? `${hoursLeft}h left` : `D-${Math.ceil(hoursLeft / 24)}`;
+    const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM battle_members WHERE battle_id = ?')
+      .bind(battle.id)
+      .first<{ n: number }>();
+    title = `⚔️ ${label} — Open Code War battle`;
+    desc = `${Number(count?.n) || 0}/${BATTLE_MAX_MEMBERS} fighters · ${remain} · join with code ${battle.code}. Prompts count retroactively — no cost to joining late.`;
+  }
+
+  const setContent = (value: string) => ({
+    element(el: Element) {
+      el.setAttribute('content', value);
+    },
+  });
+  const pageRes = assetRes.status === 200 ? assetRes : new Response(assetRes.body, { status: 200, headers: assetRes.headers });
+  const rewritten = new HTMLRewriter()
+    .on('meta[name="ocw-country"]', setContent(country ?? ''))
+    .on('title', {
+      element(el) {
+        el.setInnerContent(title);
+      },
+    })
+    .on('link[rel="canonical"]', {
+      element(el) {
+        el.setAttribute('href', pageUrl);
+      },
+    })
+    .on('meta[name="description"]', setContent(desc))
+    .on('meta[property="og:title"]', setContent(title))
+    .on('meta[property="og:description"]', setContent(desc))
+    .on('meta[property="og:url"]', setContent(pageUrl))
+    .on('meta[name="twitter:title"]', setContent(title))
+    .on('meta[name="twitter:description"]', setContent(desc))
+    .transform(pageRes);
+  const out = asUtf8Html(rewritten);
+  return country ? asPrivate(out) : out;
 }
 
 /** GET /battle/mine?userId=X — 참가 중 교전 목록(메타만, 순위 없음). */

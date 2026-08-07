@@ -1254,3 +1254,9 @@ npm 패키지(open-code-war)는 track.mjs·config.mjs 변경 포함 — 수동 �
   battle 명령은 Claude Code·Codex 전용, 브리핑 교전 줄은 4개 에이전트 공통(lib/briefing.mjs).
 - **웹** — `/b/<code>` (Worker 가 SPA 셸 서빙, index.ts 라우트) → battleView: 순위판(1분 갱신)
   + 참전 안내 박스(join 명령 + 미설치자용 설치 명령, 소급 집계 안내). 종료 시 안내 숨김.
+- **결과 화면 1차 (2026-08-07)** — ① `/b/<code>` OG 메타 재작성(handleBattlePage):
+  진행 중엔 "N/10 fighters · D-x · join with code", 종료 후엔 "Victory: <우승자>" — 카톡·슬랙
+  미리보기가 초대/자랑 루프의 첫 화면. 이미지는 공통 og.png 유지. ② 종료된 교전의 battleView 에
+  **픽셀 병정 시상대**(2-1-3 배치, 1위 기수 flag + 2·3위 march2, RANK_ARMY 군복색).
+  공유용 **이미지** 카드는 여전히 비범위 — 렌더 서비스 템플릿 추가가 필요(§22.6).
+- **npm 0.2.0** — OpenCode·pi 브리핑에 교전 줄 반영분. 발행은 npm 로그인 필요(수동).

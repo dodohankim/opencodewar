@@ -308,6 +308,18 @@
 
   .board-scroll { overflow-x:auto; }
   .btable { min-width:420px; }
+  /* 교전 종료 시상대 — 퍼레이드와 같은 스프라이트, 순위 기반 군복색(RANK_ARMY) */
+  .podium { display:flex; align-items:flex-end; justify-content:center; gap:16px; margin:20px 0 8px; }
+  .pod { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .pod .pd-sold { width:44px; height:44px; }
+  .pod .pd-name { font-size:12px; font-weight:700; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pod .pd-val { font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums; }
+  .pod .pd-block { width:72px; border:1px solid var(--line); border-bottom:0; border-radius:4px 4px 0 0;
+    display:flex; align-items:center; justify-content:center; font-weight:800; background:var(--hover); }
+  .pod.p1 .pd-block { height:54px; background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .pod.p2 .pd-block { height:36px; }
+  .pod.p3 .pd-block { height:24px; }
+  .podium-floor { border-bottom:2px dotted var(--line); margin:0 8px 16px; }
   table { width:100%; border-collapse:collapse; min-width:760px; }
   thead th { font-size:10.5px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; color:var(--faint); text-align:left; padding:6px 15px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
   th.num, td.num { text-align:right; font-variant-numeric:tabular-nums; }
@@ -874,6 +886,7 @@
             <span>metric <b id="bMetricChip">prompts</b></span>
             <span id="bCode"></span>
           </div>
+          <div id="bPodium" hidden aria-hidden="true"></div>
           <div class="board-scroll" style="margin-top:14px;">
             <table class="btable">
               <thead>
@@ -1803,6 +1816,31 @@
         </tr>`;
       })
       .join('');
+
+    // 종료 — 픽셀 병정 시상대(1위 기수 + 2·3위 병정). §22.6 결과 카드의 웹 버전.
+    const podium = $('bPodium');
+    if (d.ended && d.standings.length) {
+      const top = d.standings.slice(0, 3);
+      const order = [top[1], top[0], top[2]].filter(Boolean); // 2-1-3 배치
+      podium.innerHTML =
+        `<div class="podium">` +
+        order
+          .map((r) => {
+            const val = d.metric === 'chars' ? `${fmt(r.chars)} chars` : `${fmt(r.prompts)} prompts`;
+            return `<div class="pod p${r.rank}">
+              <span class="pd-sold ${RANK_ARMY[r.rank] || ''}">${spriteSVG(r.rank === 1 ? 'flag' : 'march2')}</span>
+              <span class="pd-name">${escapeHtml(r.nickname)}</span>
+              <span class="pd-val">${val}</span>
+              <div class="pd-block">${r.rank}</div>
+            </div>`;
+          })
+          .join('') +
+        `</div><div class="podium-floor"></div>`;
+      podium.hidden = false;
+    } else {
+      podium.hidden = true;
+      podium.innerHTML = '';
+    }
 
     // 참전 명령 — 종료된 교전은 안내를 감춘다.
     $('bJoinBox').hidden = !!d.ended;

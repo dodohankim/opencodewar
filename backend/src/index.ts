@@ -31,6 +31,7 @@ import {
   handleBattleLeave,
   handleBattleMine,
   handleBattleNew,
+  handleBattlePage,
 } from './battle';
 import {
   handleOgImage,
@@ -136,9 +137,10 @@ export default {
       if (pathname === '/battle' && request.method === 'GET') {
         return await handleBattleGet(url, env);
       }
-      // /b/<code> — 교전 페이지(에셋에 없는 경로 → SPA 셸 서빙, 뷰 전환은 웹 JS).
-      if (/^\/b\/[23456789abcdefghjkmnpqrstuvwxyz]{6}$/.test(pathname) && isPageRead(request.method)) {
-        return await handleProfilePage(request, url, env, null);
+      // /b/<code> — 교전 페이지(SPA 셸 + OG 메타 재작성 — 초대 링크 미리보기가 참전 전환의 첫 화면).
+      const bm = /^\/b\/([23456789abcdefghjkmnpqrstuvwxyz]{6})$/.exec(pathname);
+      if (bm && isPageRead(request.method)) {
+        return await handleBattlePage(request, url, env, bm[1]);
       }
       // Google 계정 연동 (DESIGN.md §14)
       if (pathname === '/auth/start' && request.method === 'POST') {
