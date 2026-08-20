@@ -1260,3 +1260,129 @@ npm 패키지(open-code-war)는 track.mjs·config.mjs 변경 포함 — 수동 �
   **픽셀 병정 시상대**(2-1-3 배치, 1위 기수 flag + 2·3위 march2, RANK_ARMY 군복색).
   공유용 **이미지** 카드는 여전히 비범위 — 렌더 서비스 템플릿 추가가 필요(§22.6).
 - **npm 0.2.0** — OpenCode·pi 브리핑에 교전 줄 반영분. 발행은 npm 로그인 필요(수동).
+
+---
+
+## 23. 토큰·비용 통계 — "오늘 얼마치, 어느 프로젝트에 얼마치" (ccusage 연동, 2026-08-13 설계)
+
+### 23.1 왜 / 목표
+
+프롬프트 수·글자 수(§4.3)는 "얼마나 자주 치나"는 보여주지만 "얼마나 태웠나"는 못 보여준다.
+로컬 에이전트 로그에서 **토큰 사용량과 API 환산 비용**을 집계해 두 지표를 추가한다:
+
+- **오늘 얼마치** — 프로필·리더보드에 일별 환산 비용(예: "오늘 $23 태움").
+- **프로젝트별 얼마치** — shipping 프로젝트 카드에 누적 환산 비용 배지(예: "💸 $1,234").
+  §20(프로젝트 귀속)·§21(기록 지면)·명함첩 방향의 연장 — "이 프로젝트에 AI를 이만큼 부었다"는
+  프롬프트 수보다 강한 증거다.
+
+기존 축과는 **완전 분리**: 스트릭(§17)·계급(§16)·교전(§22)은 그대로 prompts/chars 기반.
+토큰·비용은 표시·자랑용 축으로 시작하고, 리더보드 정렬 축 승격은 별도 결정(§23.8).
+
+### 23.2 데이터 소스 — 직접 파싱하지 않고 ccusage 를 호출한다
+
+훅으로는 토큰을 못 잡는다(UserPromptSubmit stdin 에 usage 없음). 로컬 JSONL
+(`~/.claude/projects/**/*.jsonl` 등)을 읽어야 하는데, 직접 파싱 대신
+**[ccusage](https://github.com/ryoppippi/ccusage)** (MIT, Rust 재작성, 2026-08 기준 v20)를
+자식 프로세스로 호출해 `--json` 결과만 쓴다.
+
+| 직접 파싱하면 떠안는 것 | ccusage 가 이미 해결한 것 |
+|---|---|
+| 중복 제거 — message.id+requestId 해시, 사이드체인이 부모 메시지를 새 requestId 로 재기록하는 함정 | 어댑터에 구현 + 테스트 완비 |
+| 단가표 유지보수 — 모델별 input/output/캐시 5m·1h(×2)/200K 초과 티어 | LiteLLM 단가 임베드(`--offline`) + 자동 갱신 |
+| 로그 스키마 추적 — Claude Code 버전마다 필드 변동 | 활발한 유지보수(스타 다수, 어댑터 18개) |
+| 에이전트별 로그 포맷 — codex/opencode/pi 제각각 | 4개 전부 어댑터 존재 (`ccusage codex daily` 등) |
+
+- 호출 형태: `npx -y ccusage@<고정버전> daily --json --offline --timezone UTC [--since YYYYMMDD]`
+  + 에이전트 서브커맨드(codex·opencode·pi). **버전은 상수로 고정**(스키마 드리프트 방어),
+  파싱은 방어적으로(모르는 필드 무시, 필수 필드 없으면 그 행 스킵).
+- 첫 실행 시 npx 가 플랫폼 바이너리(수 MB)를 받는다 → 옵트인·detached 라 사용자 체감 0(§23.4).
+
+### 23.3 원칙 — §4.3·§20 의 연장
+
+1. **옵트인** — 기본 off. `/ocw tokens on` 으로만 켠다. 플러그인 기본 설치는 계속 zero-dep.
+2. **숫자만 전송** — 토큰 수·환산 비용(정수)만. 프롬프트 내용은 물론, 모델명 상세 분해도
+   v1 은 안 보낸다(에이전트 4종 구분이면 충분).
+3. **경로 유출 0** — ⚠️ ccusage 의 project 필드는 **경로 슬러그**(`-Users-dohan-Desktop-…`)다.
+   그대로 보내면 §20.2 위반. 프로젝트별 수치는 로컬에서 `projectDirs` 경로 → 슬러그를 계산해
+   매칭한 뒤 **유저가 정한 라벨만** 실어 보낸다(§23.6). 비링크 프로젝트는 전체 합계에만 녹는다.
+4. **Fail-open** — ccusage 미설치/실행 실패/타임아웃이어도 아무것도 막지 않는다. 조용히 스킵.
+5. **신뢰 모델 불변** — 자기신고 숫자라는 점은 prompts/chars 와 동일(§4.4). 새로 나빠지는 것 없음.
+
+### 23.4 수집 플로우 (제안)
+
+```
+SessionEnd 훅 ──(detached 자식, 즉시 종료)──▶ sync-tokens.mjs
+  1. cfg.tokens !== true 면 종료
+  2. ~/.open-code-war/last-token-sync 확인 — 6h 이내면 종료(스로틀)
+  3. npx -y ccusage@<pin> daily --json --offline --timezone UTC --since <D-3>
+     (+ codex/opencode/pi 서브커맨드 순차 — 어제·오늘분이 갱신 대상, D-3 은 지각 로그 보정)
+  4. 결과를 일자·에이전트(·링크된 프로젝트)로 접어 POST /track/tokens (upsert, §23.5)
+  5. last-token-sync 갱신
+```
+
+- SessionEnd 를 쓰는 이유: 프롬프트 경로(§4.3 track.mjs)에 절대 지연을 얹지 않기 위해.
+  세션이 안 끝나는 장시간 사용자는 스로틀 파일 기준으로 SessionStart 에서도 보조 트리거. ⬜ 확정 필요.
+- `/ocw tokens on|off|status` — on 시 1회 소급 동기화(과거 90일 제안, ⬜ 기간 확정)를 안내 후 실행.
+  소급이 이 기능의 킬러 — **켜는 순간 과거 사용액이 다 잡힌다**(훅 방식은 불가능했던 것).
+
+### 23.5 데이터 모델 — 이벤트가 아니라 스냅샷 upsert
+
+ccusage 출력은 "이 기계의 일별 누적 합"이다. 증분 이벤트(§5 events)와 달리 **재전송이 항상
+같은 값을 덮어쓰는 멱등 upsert** 로 설계한다. 멀티 디바이스 이중 집계를 막기 위해
+기기별 랜덤 UUID `deviceId` 를 config.json 에 발급(경로·호스트명 등 식별 정보 아님).
+
+```sql
+-- 0014 (제안)
+CREATE TABLE daily_token_stats (
+  user_id    TEXT NOT NULL,
+  device_id  TEXT NOT NULL,             -- 기기별 랜덤 UUID (멀티 디바이스 = 행 분리 후 SUM)
+  day        TEXT NOT NULL,             -- 'YYYY-MM-DD' (UTC 고정, §23.7 타임존 참고)
+  agent      TEXT NOT NULL,             -- 'claude-code' | 'codex' | 'opencode' | 'pi'
+  project    TEXT NOT NULL DEFAULT '',  -- '' = 에이전트 전체 합. 라벨 행은 그중 부분집합(겹침 허용)
+  input_tokens   INTEGER NOT NULL DEFAULT 0,
+  output_tokens  INTEGER NOT NULL DEFAULT 0,
+  cache_create   INTEGER NOT NULL DEFAULT 0,
+  cache_read     INTEGER NOT NULL DEFAULT 0,
+  cost_micro     INTEGER NOT NULL DEFAULT 0,  -- USD ×1e6 정수 (부동소수 저장 회피)
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, device_id, day, agent, project)
+);
+```
+
+- 집계 규칙: 전체 합은 `project=''` 행만 SUM(라벨 행과 절대 섞지 않는다 — 이중 집계 방지).
+  프로젝트 배지는 라벨 행만 SUM.
+- 쓰기 비용(§13): 유저·기기당 하루 ≤ 4 에이전트 × (1 + 링크 프로젝트 수) 행의 upsert 를
+  6h 스로틀로 — 프롬프트당 쓰기인 `/track` 보다 훨씬 싸다. 소급 90일도 1회성 ≤ 수백 행.
+- `POST /track/tokens` (제안): `{ userId, deviceId, days: [{ day, agent, project?, tokens…, costMicro }] }`
+  — 서버 검증은 §20.3 준용(라벨 1~40자 등) + day 는 최근 N일로 제한(과거 조작 창 축소, ⬜ N 확정).
+
+### 23.6 프로젝트별 비용 — §20 projectDirs 를 슬러그로 잇는다
+
+- claude-code 로그는 프로젝트 디렉토리 슬러그(경로의 `/` → `-`) 폴더로 나뉜다. 동기화 스크립트가
+  로컬 `projectDirs` 의 각 절대경로를 같은 규칙으로 슬러그화 → ccusage 프로젝트별 결과와 매칭
+  → 매칭된 것만 `project: <라벨>` 행으로 전송. **매핑 계산은 전부 로컬**, 서버는 라벨만 안다.
+- 공개 규칙은 §20.4 그대로: shipping 이름과 일치하는 라벨만 실명, 잠수함(§20.7)은 "secret #n",
+  나머지는 공개 안 함(비용은 "기타" 합산도 하지 않는다 — 금액은 더 민감하므로 실명 매칭만).
+- ⬜ 커버리지: 프로젝트별은 **claude-code 로그부터**. codex/opencode/pi 는 로그의 cwd/프로젝트
+  구분 방식을 어댑터별로 확인 후 단계 지원(§20.6 과 같은 상황). 일별 전체 합은 4종 모두 v1.
+
+### 23.7 표기 — "API 환산" 워딩과 UTC 한계
+
+- 구독(Max/Pro) 유저에게 이 금액은 실지출이 아니다. 반드시 **"API 환산 $X"** 로 표기 —
+  "구독으로 이만큼 뽑았다"는 자랑 프레임으로 살린다(§21 기록 지면 톤과 일치).
+- 노출처(제안): 프로필 스탯 타일(오늘/30일 환산 $), shipping 카드 💸 배지(누적),
+  브리핑(§19) 한 줄("어제 $N 태움") — 우선순위 최하위. OG 카드는 비범위.
+- **타임존은 UTC 고정.** §타임존 모델(리더보드 UTC / 상세 로컬 TZ 재집계)과 달리 토큰 통계는
+  일별 스냅샷이라 로컬 TZ 재집계가 **불가능**하다. 상세 페이지에서도 UTC 일자 그대로 표기하고
+  각주로 명시. (원시 이벤트가 아니므로 tz.ts 경로에 태우면 안 된다.)
+- ⬜ 금액 공개 범위: 전체 공개가 기본이냐, `/ocw tokens public on|off` 로 프로필 노출을
+  따로 접을 수 있게 하느냐 — 미확정. 금액은 chars 보다 민감하다는 점만 합의.
+
+### 23.8 비범위 / 남은 결정
+
+- ⬜ 리더보드 정렬 축("오늘 태운 $ Top") 승격 여부 — 재미는 있으나 §21 리포지셔닝(전쟁→기록)과
+  충돌할 수 있음. v1 은 표시 전용.
+- ⬜ 모델별 분해(Opus/Sonnet 비율) 전송 — v1 제외(전송 스키마 단순 유지).
+- ⬜ SessionEnd 없는 어댑터(OpenCode·pi npm 패키지)의 동기화 트리거.
+- ⬜ ccusage 고정 버전 갱신 주기(수동 bump 원칙 제안 — npm 패키지 재발행과 같은 리듬).
+- 비범위: 실시간 비용 표시(blocks --live 류), 5h 빌링 블록 개념, 조직/팀 합산.
