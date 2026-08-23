@@ -74,18 +74,41 @@
 <meta name="twitter:image" content="https://opencodewar.dev/og.png?v=2" />
 
 <!-- 구조화 데이터 (검색 리치 결과) -->
+<!-- Organization 은 about.html·contact.html 과 동일 내용 — 바꿀 땐 세 곳 같이. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Open Code War",
-  "url": "https://opencodewar.dev/",
-  "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "Any",
-  "description": "Track every day you build with coding agents — Claude Code, Codex, OpenCode and pi. Ranks, streaks, a developer card, a leaderboard. Privacy-first: no prompt content is collected, only counts.",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://opencodewar.dev/#org",
+      "name": "Open Code War",
+      "alternateName": "OCW",
+      "url": "https://opencodewar.dev/",
+      "logo": "https://opencodewar.dev/og.png?v=2",
+      "email": "contact@opencodewar.dev",
+      "sameAs": ["https://github.com/dodohankim/opencodewar", "https://www.npmjs.com/package/open-code-war"],
+      "contactPoint": [
+        { "@type": "ContactPoint", "contactType": "customer support", "email": "contact@opencodewar.dev", "url": "https://opencodewar.dev/contact", "availableLanguage": ["en", "ko"] },
+        { "@type": "ContactPoint", "contactType": "privacy", "email": "privacy@opencodewar.dev", "url": "https://opencodewar.dev/privacy", "availableLanguage": ["en", "ko"] }
+      ],
+      "address": { "@type": "PostalAddress", "addressLocality": "Seoul", "addressCountry": "KR" }
+    },
+    {
+      "@type": "WebApplication",
+      "name": "Open Code War",
+      "url": "https://opencodewar.dev/",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "description": "Track every day you build with coding agents — Claude Code, Codex, OpenCode and pi. Ranks, streaks, a developer card, a leaderboard. Privacy-first: no prompt content is collected, only counts.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "publisher": { "@id": "https://opencodewar.dev/#org" },
+      "softwareHelp": { "@type": "CreativeWork", "url": "https://opencodewar.dev/docs/api" }
+    }
+  ]
 }
 </script>
+<link rel="alternate" type="text/markdown" href="https://opencodewar.dev/" />
 <style>
   :root {
     --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
@@ -141,6 +164,8 @@
   @keyframes blink { 50% { opacity:0; } }
 
   .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; margin-top:22px; }
+  /* h2.legend: 크롤러용 제목 구조(§24) — 시각은 span 때와 동일하게 font/margin 리셋. */
+  h2.legend { font:inherit; font-weight:inherit; margin:0; }
   .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
   .box > .tzn { position:absolute; top:-0.7em; right:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--faint); }
   .banner .big { font-size:clamp(22px,4.4vw,34px); font-weight:700; letter-spacing:0.04em; margin:0; }
@@ -353,6 +378,14 @@
   .msg.err { color:var(--err); }
 
   .lower { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  /* 소개 박스는 2단 그리드 아래 전폭. 본문은 rules 목록과 같은 톤(13px · dim). */
+  .box.about { grid-column:1 / -1; }
+  .box.about p { margin:0 0 8px; font-size:13px; color:var(--dim); text-wrap:pretty; }
+  .box.about p:last-child { margin-bottom:0; }
+  .box.about b { color:var(--fg); font-weight:600; }
+  .box.about a { color:var(--ok); text-decoration:none; border-bottom:1px solid var(--line); }
+  .box.about a:hover { border-bottom-color:var(--ok); }
+  .box.about code { font-size:12px; }
   ul.list { margin:0; padding:0; list-style:none; display:grid; gap:9px; }
   ul.list li { display:flex; gap:10px; font-size:13px; color:var(--dim); }
   ul.list .k { color:var(--faint); flex:none; }
@@ -619,8 +652,8 @@
 
       <div id="boardView">
       <section class="box banner">
-        <span class="legend">ocw · live</span>
         <h1 class="big">OPEN CODE WAR</h1>
+        <h2 class="legend">ocw · live</h2>
         <div class="field" aria-hidden="true">
           <div class="stage">
             <span class="soldier typer army-claude" id="fieldSoldier"></span>
@@ -681,7 +714,7 @@
       </div>
 
       <section class="box">
-        <span class="legend" id="boardLegend">leaderboard · all · prompts</span>
+        <h2 class="legend" id="boardLegend">leaderboard · all · prompts</h2>
         <div class="board-scroll">
           <table>
             <thead>
@@ -699,7 +732,7 @@
 
       <div class="lower">
         <section class="box">
-          <span class="legend">rules</span>
+          <h2 class="legend">rules</h2>
           <ul class="list">
             <li><span class="k">01</span><span data-i18n-html="rules1"><b>Input = a prompt submit.</b> +1 each Enter; characters counted too.</span></li>
             <li><span class="k">02</span><span data-i18n-html="rules2"><b>No content collected.</b> Only the character count (a number) is sent.</span></li>
@@ -707,7 +740,7 @@
           </ul>
         </section>
         <section class="box" id="installBox">
-          <span class="legend" data-i18n="install_legend">join · install</span>
+          <h2 class="legend" data-i18n="install_legend">join · install</h2>
           <div class="install">
             <div class="agents" role="tablist" aria-label="agent">
               <button class="agent" type="button" data-agent="claude" aria-pressed="true">Claude Code</button>
@@ -721,6 +754,13 @@
             </div>
             <p id="installNote" data-i18n-html="install_note_claude">Then type prompts in Claude Code to start counting. Set a display name with <code>/open-code-war:ocw nickname &lt;name&gt;</code>.</p>
           </div>
+        </section>
+        <!-- JS 없이도 읽히는 소개(§24) — 크롤러·에이전트가 본문·제목 구조·문서 링크를 원문 HTML 에서 본다. -->
+        <section class="box about" id="aboutBox">
+          <h2 class="legend" data-i18n="about_legend">what is this</h2>
+          <p data-i18n-html="about_p1"><b>Open Code War</b> is the contribution graph for the agent era. A small plugin counts every prompt you submit to Claude Code, Codex, OpenCode or pi — the number of submits and their character count, never the text — and turns it into a rank, a streak, a developer card and a leaderboard.</p>
+          <p data-i18n-html="about_p2">Privacy-first and open source: no prompt content, no code, no file paths, no stored IP. Verify it in the <a href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">repository</a>, delete everything with <code>/ocw delete</code>.</p>
+          <p class="about-links"><a href="/about" data-i18n="about_link">about</a> · <a href="/contact" data-i18n="contact_link">contact</a> · <a href="/privacy" data-i18n="privacy_link">privacy</a> · <a href="/docs/api">API</a> · <a href="/llms.txt">llms.txt</a></p>
         </section>
       </div>
       </div><!-- /#boardView -->
@@ -909,6 +949,10 @@
 
   <footer class="pagefoot">
     <span class="sentry army-claude" id="sentrySlot" aria-hidden="true"></span>
+    <a href="/about" data-i18n="about_link">About</a>
+    <span class="dot" aria-hidden="true">·</span>
+    <a href="/contact" data-i18n="contact_link">Contact</a>
+    <span class="dot" aria-hidden="true">·</span>
     <a href="/privacy" data-i18n="privacy_link">Privacy</a>
     <span class="dot" aria-hidden="true">·</span>
     <a href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">GitHub</a>
@@ -973,6 +1017,9 @@
       card_copied: '✓ image copied', card_copy_fail: '✗ copy failed', card_saved: '✓ saved',
       card_hint: 'shareable card · updates daily',
       privacy_link: 'Privacy', foot_priv: 'no prompt content collected · open source',
+      about_link: 'About', contact_link: 'Contact', about_legend: 'what is this',
+      about_p1: '<b>Open Code War</b> is the contribution graph for the agent era. A small plugin counts every prompt you submit to Claude Code, Codex, OpenCode or pi — the number of submits and their character count, never the text — and turns it into a rank, a streak, a developer card and a leaderboard.',
+      about_p2: 'Privacy-first and open source: no prompt content, no code, no file paths, no stored IP. Verify it in the <a href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">repository</a>, delete everything with <code>/ocw delete</code>.',
       every_5m: 'every 5m',
       p_active: 'in action today', p_idle: 'standing by', p_last: 'last active',
       rank_label: 'rank', rank_max: 'highest rank',
@@ -1048,6 +1095,9 @@
       card_copied: '✓ 이미지 복사됨', card_copy_fail: '✗ 복사 실패', card_saved: '✓ 저장됨',
       card_hint: '공유용 카드 · 매일 갱신',
       privacy_link: '개인정보처리방침', foot_priv: '프롬프트 내용 미수집 · 오픈소스',
+      about_link: '소개', contact_link: '문의', about_legend: '이게 뭔가요',
+      about_p1: '<b>Open Code War</b> 는 에이전트 시대의 잔디입니다. 작은 플러그인이 Claude Code·Codex·OpenCode·pi 에 보내는 프롬프트를 셉니다 — 제출 횟수와 글자 수만, 내용은 절대 아님 — 그리고 그걸 계급·스트릭·개발자 카드·리더보드로 만듭니다.',
+      about_p2: '프라이버시 우선·오픈소스: 프롬프트 내용, 코드, 파일 경로, IP 저장 전부 없음. <a href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">저장소</a>에서 직접 확인하고, <code>/ocw delete</code> 로 전부 지울 수 있습니다.',
       every_5m: '5분마다',
       p_active: '오늘 참전 중', p_idle: '대기 중', p_last: '마지막 참전',
       rank_label: '계급', rank_max: '최고 계급',

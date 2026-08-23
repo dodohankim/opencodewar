@@ -43,12 +43,16 @@ import {
   withVisitorCountry,
 } from './og';
 import { isValidNickname } from './validate';
+import { handleAgentDocs, markdownForPage, notFound, wantsMarkdownPage, withVaryAccept } from './agents';
 
 /** 페이지·이미지 라우트는 GET/HEAD 둘 다 받는다 — HEAD 로 찔러보는 크롤러·링크체커가 404 를 받지 않도록. */
 const isPageRead = (method: string): boolean => method === 'GET' || method === 'HEAD';
 
 /** 운영 도메인. 평문 http 로 들어온 요청을 https 로 올릴 때만 쓴다(로컬 dev·프리뷰는 제외). */
 const SITE_HOST = 'opencodewar.dev';
+
+/** Worker 를 먼저 타는 정적 문서 페이지(wrangler.jsonc assets.run_worker_first 와 같은 목록). */
+const TRUST_PAGES = new Set(['/privacy', '/privacy.html', '/about', '/about.html', '/contact', '/contact.html']);
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -67,6 +71,15 @@ export default {
     }
 
     try {
+      // 에이전트 표면(§24): Accept: text/markdown 협상 — HTML 페이지의 마크다운 판을 같은 URL 로.
+      if (wantsMarkdownPage(pathname, request)) {
+        const md = markdownForPage(pathname);
+        if (md) return md;
+      }
+      // /llms.txt · /llms-full.txt · /docs/api · /openapi.json
+      const agentDoc = handleAgentDocs(pathname, request);
+      if (agentDoc) return agentDoc;
+
       // 루트는 run_worker_first 로 Worker가 먼저 받는다.
       // 구 공유 링크(/?user=)는 정식 주소(/u/<nick>)로 301 — 이미 뿌려진 링크를 살린다.
       if (pathname === '/') {
@@ -75,13 +88,14 @@ export default {
           // 같은 오리진으로 보낸다(로컬 dev·프리뷰 URL 에서도 동작).
           return Response.redirect(new URL(profilePath(legacy.trim()), url).toString(), 301);
         }
-        return await handleProfilePage(request, url, env, null);
+        return withVaryAccept(await handleProfilePage(request, url, env, null));
       }
       // /privacy — 정적 페이지지만 방문자 국가를 심어야 해서 Worker 를 먼저 태운다
       // (wrangler.jsonc 의 assets.run_worker_first). 직접 들어와도 기본 언어가 맞도록.
-      if ((pathname === '/privacy' || pathname === '/privacy.html') && isPageRead(request.method)) {
+      // /about · /contact 도 같은 경로(정적 HTML + 국가 주입 + Vary: Accept — 마크다운 판이 있으므로).
+      if (TRUST_PAGES.has(pathname) && isPageRead(request.method)) {
         const res = await env.ASSETS.fetch(request);
-        return withVisitorCountry(res, visitorCountry(request));
+        return withVaryAccept(withVisitorCountry(res, visitorCountry(request)));
       }
       // /og/<public_id>.png — 유저별 공유 이미지(R2, 미스 시 공통 og.png 폴백).
       const ogId = ogImageIdFromPath(pathname);
@@ -189,7 +203,8 @@ export default {
       if (pathname === '/random' && request.method === 'GET') {
         return await handleRandom(env);
       }
-      return json({ error: 'not_found' }, 404);
+      // 없는 경로: 진짜 404 + 마크다운 사이트맵(JSON 을 원하는 클라이언트엔 JSON).
+      return notFound(request, pathname);
     } catch (err) {
       console.error(
         JSON.stringify({ level: 'error', msg: 'unhandled', method: request.method, path: pathname, err: String(err) }),

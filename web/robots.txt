@@ -11,4 +11,12 @@ Disallow: /track
 Disallow: /delete
 Disallow: /health
 
+# 에이전트·개발자 문서(색인 허용). Disallow 목록의 접두어와 겹치지 않는다.
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /docs/api
+Allow: /openapi.json
+Allow: /about
+Allow: /contact
+
 Sitemap: https://opencodewar.dev/sitemap.xml

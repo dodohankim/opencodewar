@@ -1386,3 +1386,24 @@ CREATE TABLE daily_token_stats (
 - ⬜ SessionEnd 없는 어댑터(OpenCode·pi npm 패키지)의 동기화 트리거.
 - ⬜ ccusage 고정 버전 갱신 주기(수동 bump 원칙 제안 — npm 패키지 재발행과 같은 리듬).
 - 비범위: 실시간 비용 표시(blocks --live 류), 5h 빌링 블록 개념, 조직/팀 합산.
+
+---
+
+## 24. 에이전트·크롤러 표면 — 404 · 마크다운 협상 · llms.txt (2026-08-23 구현)
+
+AI 에이전트가 사이트를 "읽고 복구"할 수 있게 하는 얇은 층. 전부 정적 문자열(`backend/src/agents.ts`)이라 D1·KV 를 건드리지 않는다. 계기: Is Agentic 점검 73/100(404 부분·마크다운 협상 실패·개발자 문서 미발견·Organization 스키마 없음·About/Contact 없음).
+
+### 24.1 결정
+- **404 는 진짜 404.** 없는 경로는 `text/markdown` 본문(사이트맵 링크 + `/u/`·`/b/` 안내). `Accept: application/json` 을 명시한 클라이언트(플러그인·API 소비자)만 기존 `{error:'not_found'}` JSON 유지 — 플러그인 계약 불변.
+- **마크다운 협상(acceptmarkdown.com)**: `/`·`/about`·`/contact`·`/privacy` 에 `Accept: text/markdown` 이 `text/html` 보다 q 가 같거나 높으면 마크다운. 와일드카드(`*/*`)만으론 전환 안 함(브라우저 기본 Accept 보호). HTML·MD 양쪽 모두 `Vary: Accept, Accept-Encoding` — CDN 변종 오염 방지.
+- **문서 경로**: `/llms.txt`(llmstxt.org: H1 → 인용 요약 → "When to use" → Docs 링크) · `/llms-full.txt` · `/docs/api`(마크다운) · `/openapi.json`(3.1, 공개 읽기 엔드포인트만). robots.txt 에 Allow, sitemap.xml 에 등재.
+- **신뢰 페이지**: `web/about.html`·`web/contact.html` — privacy.html 템플릿(2단 레일·EN/KO·국가 주입). `wrangler.jsonc assets.run_worker_first` 에 추가(Worker 가 먼저 받아야 협상·국가 주입이 된다). 연락처는 Cloudflare Email Routing 에 실제로 있는 `contact@`·`privacy@` 만 쓴다 — 없는 주소 게시 금지.
+- **Organization JSON-LD**: index·about·contact 세 곳 동일(`@id: https://opencodewar.dev/#org`, contactPoint 2개, address 는 Seoul/KR 까지만). 바꿀 땐 세 곳 같이.
+- **홈 no-JS 본문**: 보드 뷰의 legend `span` → `h2.legend`(CSS 로 font/margin 리셋, 시각 동일) + 하단 "what is this" 박스(소개 2문단 + about/contact/privacy/API/llms 링크). 크롤러가 원문 HTML 에서 H1→H2 구조와 500자↑ 본문을 본다.
+
+### 24.2 검증
+`curl -s -o /dev/null -w "%{http_code}" https://opencodewar.dev/no-such` → 404 · `curl -H "Accept: text/markdown" -I https://opencodewar.dev/` → `content-type: text/markdown`, `vary: Accept`. 테스트: `backend/test/agents.test.ts`(협상·404·llms 형식·OpenAPI 경로 일치·라우터 통합).
+
+### 24.3 남은 것(제품 결정 필요)
+- 우편주소(도로명) — 운영자가 공개할지 결정. 현재 PostalAddress 는 도시·국가까지.
+- 전화번호 — 없음(정책상). ContactPoint 는 이메일만.

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Contact — Open Code War</title>
+<meta name="description" content="How to reach Open Code War: contact@opencodewar.dev for general questions, privacy@opencodewar.dev for data requests, GitHub issues for bugs. Operated from Seoul, South Korea." />
+<link rel="canonical" href="https://opencodewar.dev/contact" />
+<link rel="alternate" type="text/markdown" href="https://opencodewar.dev/contact" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="robots" content="index, follow" />
+<!-- 구조화 데이터: 운영 주체(Organization). index.html 의 Organization 과 동일 내용 — 바꿀 땐 같이. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://opencodewar.dev/#org",
+  "name": "Open Code War",
+  "alternateName": "OCW",
+  "url": "https://opencodewar.dev/",
+  "logo": "https://opencodewar.dev/og.png?v=2",
+  "email": "contact@opencodewar.dev",
+  "sameAs": ["https://github.com/dodohankim/opencodewar", "https://www.npmjs.com/package/open-code-war"],
+  "contactPoint": [
+    { "@type": "ContactPoint", "contactType": "customer support", "email": "contact@opencodewar.dev", "url": "https://opencodewar.dev/contact", "availableLanguage": ["en", "ko"] },
+    { "@type": "ContactPoint", "contactType": "privacy", "email": "privacy@opencodewar.dev", "url": "https://opencodewar.dev/privacy", "availableLanguage": ["en", "ko"] }
+  ],
+  "address": { "@type": "PostalAddress", "addressLocality": "Seoul", "addressCountry": "KR" }
+}
+</script>
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F4" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0E0D" />
+<!-- 방문자 국가(ISO alpha-2). Worker 가 서빙하며 Cloudflare 의 CF-IPCountry 값으로 채운다. -->
+<meta name="ocw-country" content="" />
+<script>
+  // 기본 언어 결정(index.html 과 동일 규칙): ?lang= → 직접 선택 → 접속 국가(KR) → 브라우저 언어 → en.
+  window.OCW_LANG = (function () {
+    var norm = function (v) {
+      v = String(v || '').trim().toLowerCase();
+      if (v === 'ko' || v === 'kr' || v.indexOf('ko-') === 0) return 'ko';
+      if (v === 'en' || v.indexOf('en-') === 0) return 'en';
+      return null;
+    };
+    try {
+      var q = norm(new URLSearchParams(location.search).get('lang'));
+      if (q) {
+        localStorage.setItem('ocw_lang', q);
+        localStorage.setItem('ocw_lang_manual', '1');
+        return q;
+      }
+      if (localStorage.getItem('ocw_lang_manual') === '1') {
+        var saved = norm(localStorage.getItem('ocw_lang'));
+        if (saved) return saved;
+      }
+      var meta = document.querySelector('meta[name="ocw-country"]');
+      var cc = ((meta && meta.content) || '').toUpperCase();
+      if (cc) return cc === 'KR' ? 'ko' : 'en';
+      var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+      for (var i = 0; i < langs.length; i++) if (norm(langs[i]) === 'ko') return 'ko';
+      return 'en';
+    } catch (e) {
+      return 'en';
+    }
+  })();
+</script>
+<style>
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    /* 카드 폭·안쪽 여백은 index.html 과 동일하게 맞춘다(페이지 이동 시 프레임이 안 흔들리게).
+       남는 가로폭은 본문을 늘리는 대신 섹션 인덱스 레일이 차지한다 → 본문은 72ch 유지. */
+    --pad: clamp(14px,2.5vw,24px);
+    --rail: 220px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; color-scheme: dark;
+    }
+  }
+  :root[data-theme="light"] {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05); --ok:#4F8258; color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06); --ok:#6DA875; color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px;
+    line-height:1.6; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased; }
+  /* overflow 는 clip. hidden 은 스크롤 컨테이너를 만들어 .toc 의 sticky 를 죽인다. */
+  .term { max-width:920px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:clip; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .titlebar button { border:1px solid var(--line); background:var(--bg); color:var(--dim); font:inherit; font-size:12px; padding:4px 10px; border-radius:5px; cursor:pointer; }
+  .titlebar button:hover { color:var(--fg); }
+  .screen { padding:var(--pad); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; font-size:13px; }
+  .echo .sig { color:var(--fg); }
+  .backlink { color:var(--dim); text-decoration:none; border:1px solid var(--line); border-radius:5px; padding:4px 10px; font-size:12px; display:inline-block; margin-bottom:18px; }
+  .backlink:hover { color:var(--fg); border-color:var(--fg); }
+
+  /* 본문 | 섹션 인덱스 2단. 920px 카드에서 본문이 정확히 72ch 로 떨어진다. */
+  .doc { display:grid; grid-template-columns:minmax(0,1fr) var(--rail); gap:32px; align-items:start; }
+  .doc-main { min-width:0; }
+  .toc { position:sticky; top:20px; border-left:1px solid var(--line); padding-left:20px; }
+  .toc-h { font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--faint); margin-bottom:10px; }
+  /* grid: 번호를 거터로 빼서 두 줄짜리 항목의 둘째 줄이 라벨에 맞춰 들어가게 한다. */
+  .toc a { display:grid; grid-template-columns:auto 1fr; gap:8px; padding:4px 0; font-size:12px; line-height:1.45; color:var(--dim); text-decoration:none; }
+  .toc a .n { color:var(--faint); }
+  .toc a:hover { color:var(--fg); }
+  .toc a[aria-current="true"] { color:var(--fg); }
+  .toc a[aria-current="true"] .n { color:var(--ok); }
+  html { scroll-behavior:smooth; }
+  @media (prefers-reduced-motion:reduce){ html { scroll-behavior:auto; } }
+
+  h1 { font-size:clamp(21px,4vw,28px); font-weight:700; letter-spacing:0.02em; margin:0 0 4px; text-wrap:balance; }
+  .updated { color:var(--faint); font-size:12px; margin:0 0 20px; }
+  .lead { color:var(--dim); font-size:13.5px; border:1px solid var(--line); border-radius:6px; padding:14px 15px; margin:0 0 8px; }
+  .lead b { color:var(--fg); font-weight:600; }
+
+  h2 { font-size:14px; font-weight:700; color:var(--fg); margin:26px 0 8px; display:flex; gap:9px; align-items:baseline; scroll-margin-top:20px; }
+  h2 .n { color:var(--ok); font-size:12px; font-weight:700; }
+  p { margin:0 0 10px; color:var(--dim); text-wrap:pretty; }
+  p.tight { margin-bottom:4px; }
+  strong { color:var(--fg); font-weight:600; }
+  ul { margin:0 0 10px; padding-left:0; list-style:none; display:grid; gap:7px; }
+  li { color:var(--dim); position:relative; padding-left:18px; text-wrap:pretty; }
+  li::before { content:"–"; position:absolute; left:2px; color:var(--faint); }
+  li b { color:var(--fg); font-weight:600; }
+  /* nowrap: claude-code 가 하이픈에서 잘려 테두리가 반쪽으로 갈라지는 걸 막는다.
+     본문 코드 조각은 최대 23자라 320px 화면에서도 한 줄에 들어간다. */
+  code { color:var(--fg); background:var(--hover); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:12.5px; white-space:nowrap; }
+  a.link { color:var(--ok); text-decoration:none; border-bottom:1px solid var(--line); }
+  a.link:hover { border-bottom-color:var(--ok); }
+  .repo { display:inline-block; margin-top:4px; font-size:13px; }
+  /* 한글은 어절 단위로 줄바꿈(keep-all). 없으면 "직접"이 "직/접" 으로 잘린다. */
+  #ko { word-break:keep-all; }
+  #en, #ko { overflow-wrap:break-word; }
+
+  .foot { margin-top:26px; padding-top:14px; border-top:1px solid var(--line); font-size:11.5px; color:var(--faint); }
+  a:focus-visible, button:focus-visible { outline:2px solid var(--ok); outline-offset:2px; }
+  [hidden] { display:none !important; }
+  /* 레일을 놓을 자리가 없어지는 폭부터 1단(문서가 짧아 인덱스는 숨긴다).
+     이때는 카드 폭을 본문 72ch 에서 역산해, 넓은 프레임에 짧은 본문이 남는 상태를 막는다. */
+  @media (max-width:880px){
+    .term { max-width:calc(72ch + 2 * var(--pad) + 2px); }
+    .doc { grid-template-columns:1fr; }
+    .toc { display:none; }
+  }
+  @media (max-width:600px){ .titlebar .name { display:none; } }
+</style>
+<script defer src="https://analytics.stonkradar.io/k.js" data-site="kdf_9e315b52f3f2"></script>
+</head>
+<body>
+  <div class="term">
+    <div class="titlebar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="name">ocw — contact</span>
+      <button id="langBtn" type="button">한국어</button>
+      <button id="themeBtn" type="button">◐ theme</button>
+    </div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ cat contact.txt</div>
+      <a class="backlink" href="/">← Leaderboard</a>
+
+      <div class="doc">
+      <div class="doc-main">
+
+            <!-- ============ ENGLISH ============ -->
+      <div id="en">
+        <h1>Contact</h1>
+        <p class="updated">Email and GitHub are the only official channels</p>
+
+        <p class="lead"><b>How to reach Open Code War.</b> We are a small open-source project, so there is no phone line and no office open to the public. Pick the channel below that matches your question — technical things go fastest on GitHub, personal-data things go to the privacy mailbox.</p>
+
+        <h2><span class="n">01</span> General, partnership, press</h2>
+        <p><a class="link" href="mailto:contact@opencodewar.dev">contact@opencodewar.dev</a> — questions about the project, collaboration, media requests, or anything that does not fit below. We aim to reply within 5 business days.</p>
+
+        <h2><span class="n">02</span> Bugs &amp; feature requests</h2>
+        <p>Open an issue at <a class="link" href="https://github.com/dodohankim/opencodewar/issues?ref=opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar/issues ↗</a>. Please include the agent you use (Claude Code, Codex, OpenCode, pi), the plugin version and what you expected. Pull requests are welcome.</p>
+
+        <h2><span class="n">03</span> Privacy requests</h2>
+        <p><a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> — access, correction, deletion or complaints about personal data. The <a class="link" href="/privacy">privacy policy</a> explains the identity check we perform (linked Google email, or the secret id in <code>~/.open-code-war/config.json</code> for anonymous users). Statutory requests are handled within 10 days. You can also delete everything yourself, instantly: <code>/ocw delete</code> in your agent.</p>
+
+        <h2><span class="n">04</span> Security reports</h2>
+        <p>Email <a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> with <b>security</b> in the subject. Please do not file exploitable bugs as public issues; we will acknowledge within 5 business days and credit you if you wish.</p>
+
+        <h2><span class="n">05</span> Maintainer &amp; location</h2>
+        <ul>
+          <li><b>Maintainer</b> — <a class="link" href="https://github.com/dodohankim?ref=opencodewar" target="_blank" rel="noopener">dodohankim</a> on GitHub</li>
+          <li><b>Operated from</b> — Seoul, South Korea (KST, UTC+9)</li>
+          <li><b>Languages</b> — English, 한국어</li>
+          <li><b>Also</b> — <a class="link" href="/about">about</a> · <a class="link" href="/llms.txt">agent guide</a> · <a class="link" href="/docs/api">API reference</a></li>
+        </ul>
+      </div>
+
+      <!-- ============ 한국어 ============ -->
+      <div id="ko" hidden>
+        <h1>문의</h1>
+        <p class="updated">공식 창구는 이메일과 GitHub 두 가지입니다</p>
+
+        <p class="lead"><b>Open Code War 에 연락하는 방법.</b> 작은 오픈소스 프로젝트라 전화 창구나 방문 가능한 사무실은 없습니다. 아래에서 질문 성격에 맞는 창구를 고르세요 — 기술적인 건 GitHub 가 가장 빠르고, 개인정보 관련은 전용 메일함으로.</p>
+
+        <h2><span class="n">01</span> 일반 · 제휴 · 언론</h2>
+        <p><a class="link" href="mailto:contact@opencodewar.dev">contact@opencodewar.dev</a> — 프로젝트 문의, 협업 제안, 취재 요청, 그 밖에 아래에 해당하지 않는 모든 것. 영업일 기준 5일 안에 답하는 것을 목표로 합니다.</p>
+
+        <h2><span class="n">02</span> 버그 · 기능 요청</h2>
+        <p><a class="link" href="https://github.com/dodohankim/opencodewar/issues?ref=opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar/issues ↗</a> 에 이슈를 열어 주세요. 사용하는 에이전트(Claude Code, Codex, OpenCode, pi), 플러그인 버전, 기대한 동작을 적어 주시면 빠릅니다. PR 도 환영합니다.</p>
+
+        <h2><span class="n">03</span> 개인정보 요청</h2>
+        <p><a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> — 열람·정정·삭제·불만 제기. 본인 확인 절차(연동한 Google 이메일, 익명 이용자는 <code>~/.open-code-war/config.json</code> 의 비밀 ID)는 <a class="link" href="/privacy">개인정보처리방침</a>에 있습니다. 법정 요청은 10일 안에 처리합니다. 직접 즉시 삭제할 수도 있습니다: 에이전트에서 <code>/ocw delete</code>.</p>
+
+        <h2><span class="n">04</span> 보안 취약점 제보</h2>
+        <p><a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> 로 제목에 <b>security</b> 를 넣어 보내 주세요. 악용 가능한 버그는 공개 이슈로 올리지 말아 주세요. 영업일 5일 안에 접수 확인을 드리고, 원하시면 크레딧에 올립니다.</p>
+
+        <h2><span class="n">05</span> 운영자 · 위치</h2>
+        <ul>
+          <li><b>운영자</b> — GitHub <a class="link" href="https://github.com/dodohankim?ref=opencodewar" target="_blank" rel="noopener">dodohankim</a></li>
+          <li><b>운영 지역</b> — 대한민국 서울 (KST, UTC+9)</li>
+          <li><b>언어</b> — 한국어, English</li>
+          <li><b>함께 보기</b> — <a class="link" href="/about">소개</a> · <a class="link" href="/llms.txt">에이전트 가이드</a> · <a class="link" href="/docs/api">API 레퍼런스</a></li>
+        </ul>
+      </div>
+
+      </div><!-- /.doc-main -->
+        <!-- 섹션 인덱스는 본문 h2 에서 생성한다(마크업 중복 없음). -->
+        <aside class="toc" id="toc" aria-label="Sections">
+          <div class="toc-h" id="tocH">Sections</div>
+          <nav id="toc-en"></nav>
+          <nav id="toc-ko" hidden></nav>
+        </aside>
+      </div><!-- /.doc -->
+
+      <div class="foot" id="foot">Open Code War · opencodewar.dev · open source, privacy-first</div>
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  // 언어는 <head> 의 판정 스크립트가 정한다(?lang= → 직접 선택 → 접속 국가 → 브라우저 언어).
+  let LANG = window.OCW_LANG === 'ko' ? 'ko' : 'en';
+
+  // 섹션 인덱스를 본문 h2 에서 만든다. 조항을 고쳐도 목차가 따로 놀지 않는다.
+  function buildToc(which) {
+    const root = $(which);
+    const nav = $('toc-' + which);
+    nav.textContent = '';
+    root.querySelectorAll('h2').forEach((h) => {
+      const numEl = h.querySelector('.n');
+      const num = numEl ? numEl.textContent.trim() : '';
+      h.id = which + '-' + num;
+      const a = document.createElement('a');
+      a.href = '#' + h.id;
+      const s = document.createElement('span');
+      s.className = 'n';
+      s.textContent = num;
+      a.appendChild(s);
+      a.appendChild(document.createTextNode(h.textContent.replace(num, '').trim()));
+      nav.appendChild(a);
+    });
+  }
+
+  // 현재 읽고 있는 섹션 표시. 화면 상단 120px 을 지난 마지막 h2 가 현재 섹션.
+  let ticking = false;
+  function updateSpy() {
+    ticking = false;
+    const nav = $('toc-' + LANG);
+    let cur = '';
+    $(LANG).querySelectorAll('h2').forEach((h) => {
+      if (h.getBoundingClientRect().top <= 120) cur = h.id;
+    });
+    nav.querySelectorAll('a').forEach((a) => {
+      if (a.getAttribute('href') === '#' + cur) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    });
+  }
+  addEventListener('scroll', () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateSpy); }
+  }, { passive: true });
+
+  function applyLang() {
+    const ko = LANG === 'ko';
+    $('en').hidden = ko;
+    $('ko').hidden = !ko;
+    $('toc-en').hidden = ko;
+    $('toc-ko').hidden = !ko;
+    $('tocH').textContent = ko ? '목차' : 'Sections';
+    $('toc').setAttribute('aria-label', ko ? '목차' : 'Sections');
+    $('langBtn').textContent = ko ? 'EN' : '한국어';
+    document.documentElement.lang = ko ? 'ko' : 'en';
+    $('foot').textContent = ko
+      ? 'Open Code War · opencodewar.dev · 오픈소스 · 프라이버시 우선'
+      : 'Open Code War · opencodewar.dev · open source, privacy-first';
+    updateSpy();
+  }
+
+  // 직접 고른 언어만 저장하고(자동 판정값 저장 금지) 주소의 ?lang= 도 함께 맞춘다.
+  function setLang(lang) {
+    LANG = lang;
+    try {
+      localStorage.setItem('ocw_lang', lang);
+      localStorage.setItem('ocw_lang_manual', '1');
+    } catch (e) {}
+    const u = new URL(location.href);
+    u.searchParams.set('lang', lang);
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    applyLang();
+  }
+  $('langBtn').addEventListener('click', () => setLang(LANG === 'en' ? 'ko' : 'en'));
+
+  $('themeBtn').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light'
+      : cur === 'light' ? 'dark'
+      : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', next);
+  });
+
+  buildToc('en');
+  buildToc('ko');
+  applyLang();
+</script>
+</body>
+</html>
