@@ -597,10 +597,13 @@
   .chart .col .barv.stack { background:transparent; display:flex; flex-direction:column-reverse; overflow:hidden; }
   /* 프로필 카드 공통 .seg 와 이름이 겹치면 border·radius·padding 이 새어 들어오므로 bseg 로 구분 */
   .chart .col .barv.stack .bseg { width:100%; min-height:1px; }
-  .ag-legend { display:block; margin-top:10px; font-size:11px; color:var(--dim); }
+  /* 범례는 항목 단위(.ag-i)로 감싸 flex 로 흘린다 — 항목 사이 간격은 gap 이 잡고,
+     dot↔이름 간격만 .ag-dot 의 margin 이 잡는다(줄바꿈돼도 붙지 않게). */
+  .ag-legend { display:flex; flex-wrap:wrap; align-items:center; gap:5px 14px; margin-top:10px; font-size:11px; color:var(--dim); }
   .ag-legend:empty { display:none; }  /* 단일 에이전트면 비어 있으니 여백도 없앤다 */
   .ag-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin:0 4px 0 10px; vertical-align:-1px; }
-  .ag-legend .ag-dot:first-child { margin-left:0; }
+  .ag-legend .ag-i { display:inline-flex; align-items:center; white-space:nowrap; }
+  .ag-legend .ag-dot { margin:0 5px 0 0; }
   .chart-x { display:flex; justify-content:space-between; margin-top:7px; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
   .chart-peak { font-size:11px; color:var(--faint); }
   .umsg { padding:20px 4px; text-align:center; color:var(--dim); font-size:13px; }
@@ -2332,9 +2335,9 @@
     const subs = subNames();
     const parts = uPjList.map((n) => {
       const dim = uPjSel && uPjSel !== n ? ' style="opacity:.35"' : '';
-      return `<span${dim}><span class="ag-dot" style="background:${pjColor(n)}"></span>${escapeHtml(n)}${subs.has(n) ? ' 🤿' : ''}</span>`;
+      return `<span class="ag-i"${dim}><span class="ag-dot" style="background:${pjColor(n)}"></span>${escapeHtml(n)}${subs.has(n) ? ' 🤿' : ''}</span>`;
     });
-    parts.push(`<span${uPjSel ? ' style="opacity:.35"' : ''}><span class="ag-dot" style="${PJ_OTHER_STYLE}"></span>${t('pj_other')}</span>`);
+    parts.push(`<span class="ag-i"${uPjSel ? ' style="opacity:.35"' : ''}><span class="ag-dot" style="${PJ_OTHER_STYLE}"></span>${t('pj_other')}</span>`);
     return parts.join('');
   }
 
@@ -2393,7 +2396,7 @@
     $('uAgentLegend').innerHTML = pjMode
       ? pjLegendHtml()
       : multi
-        ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
+        ? agents.map((a) => `<span class="ag-i"><span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}</span>`).join('')
         : '';
 
     const vals = days.map(vOf);
