@@ -9,6 +9,10 @@
 
 import type { Env } from './types';
 
+/** 우리 도메인. 자기 자신을 fetch 하면 Worker 가 자기 subrequest 를 도는 꼴이라 막힌다 — ASSETS 로 직접 읽는다. */
+const SITE_HOST = 'opencodewar.dev';
+const SITE_ICON_PATH = '/favicon.svg';
+
 const KEY_PREFIX = 'icon:v1:';
 const TTL_OK = 30 * 24 * 60 * 60; // 30일
 const TTL_FAIL = 24 * 60 * 60; // 실패는 하루만 기억 — 상대가 고치면 다음 날 다시 시도
@@ -91,6 +95,13 @@ async function isRegisteredHost(env: Env, host: string): Promise<boolean> {
  * 웹이 첫 글자 모노그램으로 폴백한다(줄이 무너지지 않게).
  */
 export async function handleIcon(request: Request, env: Env, host: string, ctx?: ExecutionContext): Promise<Response> {
+  // 우리 사이트 아이콘은 정적 에셋에 이미 있다. 네트워크로 나가면 self-subrequest 라 실패한다.
+  if (host === SITE_HOST) {
+    const res = await env.ASSETS.fetch(new Request(new URL(SITE_ICON_PATH, request.url).toString()));
+    if (!res.ok) return notFoundIcon();
+    return iconResponse(await res.arrayBuffer(), res.headers.get('content-type') || 'image/svg+xml');
+  }
+
   const key = KEY_PREFIX + host;
   const cached = await env.KV.getWithMetadata<{ ct?: string; fail?: number }>(key, 'arrayBuffer');
   if (cached.value && cached.metadata?.ct) {
