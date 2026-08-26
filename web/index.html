@@ -565,7 +565,7 @@
   .field .val { font-size:13px; color:var(--fg); font-variant-numeric:tabular-nums; padding:7px 0; }
 
   /* 프로필 통계: 지표별 스탯 타일 4칸(큰 숫자 + 라벨 + 서브) */
-  .utop { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:6px; }
+  .utop { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:6px; }
   .ustats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
   .tile { border:1px solid var(--line); border-radius:8px; padding:11px 12px; background:var(--hover); }
   .tile.sel { border-color:var(--fg); }
@@ -574,11 +574,10 @@
   .tlab { font-size:12px; color:var(--dim); margin-top:5px; }
   .tsub { font-size:11px; color:var(--faint); margin-top:1px; font-variant-numeric:tabular-nums; }
   @media (max-width:560px) { .ustats { grid-template-columns:repeat(2,1fr); } .tnum { font-size:23px; } }
-  /* 차트 뷰 토글(30d/day) · 지표 토글(prompts/chars) — 반전 배경으로 선택 표시 */
-  .uviews { display:inline-flex; gap:6px; }
-  .uview, .usort, .ustack { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; white-space:nowrap; }
-  .uview:hover, .usort:hover, .ustack:hover { color:var(--fg); }
-  .uview[aria-pressed="true"], .usort[aria-pressed="true"], .ustack[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  /* 지표 토글(prompts/chars) · 스택 토글 — 반전 배경으로 선택 표시 */
+  .usort, .ustack { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .usort:hover, .ustack:hover { color:var(--fg); }
+  .usort[aria-pressed="true"], .ustack[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
   .chart-wrap { margin-top:16px; position:relative; }
   .chart-tip { position:absolute; z-index:5; pointer-events:none; transform:translate(-50%,-100%);
     background:var(--rev-bg); color:var(--rev-fg); border-radius:5px; padding:6px 9px; font-size:11.5px;
@@ -593,8 +592,6 @@
   .chart .col.zero .barv { background:var(--line); }
   .chart .col.wknd .barv { background:var(--dim); }
   .chart .col.today .barv { background:var(--ok); }
-  .chart .col.peak .barv { background:var(--ok); }  /* 하루 뷰: 가장 많이 입력한 시각 강조 */
-  .chart .col.dsplit { border-left:1px dashed var(--line); }  /* 2일 뷰: 어제/오늘 날짜 경계 */
   .chart .col:hover .barv { opacity:0.6; }
   /* 에이전트 2종 이상일 때: 막대를 에이전트별 세그먼트로 스택(아래→위) */
   .chart .col .barv.stack { background:transparent; display:flex; flex-direction:column-reverse; overflow:hidden; }
@@ -886,10 +883,6 @@
           <span class="legend" id="uChartLegend">last 30 days · prompts</span>
           <span class="tzn" id="uTz"></span>
           <div class="utop">
-            <div class="uviews">
-              <button class="uview" data-view="30d" aria-pressed="true" data-i18n="view_30d">30d</button>
-              <button class="uview" data-view="day" aria-pressed="false" data-i18n="view_day">day</button>
-            </div>
             <div class="sorts">
               <button class="usort" data-metric="prompts" aria-pressed="true">prompts</button>
               <button class="usort" data-metric="chars" aria-pressed="false">chars</button>
@@ -1003,11 +996,10 @@
       email_label: 'email', email_ph: 'private', member_since: 'member since',
       bio_empty: 'No bio yet.', chart_30d: 'last 30 days',
       u_active: 'active days', u_peak: 'peak', u_total_sub: '30-day total',
-      view_30d: '30d', view_day: 'day', u_hours: 'active hours', u_2d_sub: '2-day total', chart_2d: 'last 2 days',
       tz_note: (z) => `🕒 times in ${z}`,
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
-      no_activity: 'No activity in the last 30 days.', no_activity_2d: 'No activity in the last 2 days.', visit: 'Visit ↗', main_badge: 'MAIN',
-      stack_project: 'projects', stack_agent: 'agents', pj_other: 'other', pj_priv: 'private',
+      no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗', main_badge: 'MAIN',
+      stack_project: 'projects', stack_agent: 'agents', pj_other: 'other',
       pj_sub: '🤿 submarine', secret_desc: 'this coder is quietly building something',
       sub_hint: (n) => `shown publicly as “secret #${n}”`,
       sel_note: 'showing this project only', sel_clear: '✕ clear',
@@ -1081,11 +1073,10 @@
       email_label: '이메일', email_ph: '비공개', member_since: '가입일',
       bio_empty: '아직 자기소개가 없습니다.', chart_30d: '최근 30일',
       u_active: '활동일', u_peak: '최고', u_total_sub: '30일 합계',
-      view_30d: '30일', view_day: '하루', u_hours: '활동시간', u_2d_sub: '2일 합계', chart_2d: '최근 2일',
       tz_note: (z) => `🕒 ${z} 기준`,
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
-      no_activity: '최근 30일 활동이 없습니다.', no_activity_2d: '최근 2일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
-      stack_project: '프로젝트', stack_agent: '에이전트', pj_other: '기타', pj_priv: '비공개',
+      no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
+      stack_project: '프로젝트', stack_agent: '에이전트', pj_other: '기타',
       pj_sub: '🤿 잠수함', secret_desc: '이 코더는 무언가를 조용히 만들고 있다',
       sub_hint: (n) => `공개 페이지에는 “secret #${n}”로 표시됩니다`,
       sel_note: '이 프로젝트만 표시 중', sel_clear: '✕ 해제',
@@ -1154,8 +1145,6 @@
   let curUser = null;   // 현재 열람 중인 닉네임(없으면 리더보드)
   let uMetric = 'prompts';
   let uData = null;     // 마지막으로 받은 /user 응답
-  let uView = '30d';    // 차트 뷰: '30d'(일별) | 'day'(최근 2일 시간별)
-  const uHoursCache = new Map(); // day -> /user/hours 응답 (재요청 방지)
 
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
@@ -1606,10 +1595,10 @@
       'codex plugin marketplace add dodohankim/opencodewar',
       'codex plugin add open-code-war@opencodewar',
     ],
-    opencode: ['# opencode.json 의 plugin 배열에 추가', '{ "plugin": ["open-code-war"] }'],
+    opencode: ['{ "plugin": ["open-code-war"] }'], // 어디에 넣는지는 아래 installNote 가 설명한다
     pi: ['pi install npm:open-code-war'],
   };
-  // 명령 한 줄 = 텍스트 + 복사 버튼. 주석(#로 시작)은 복사 버튼 없이 안내만 표시한다.
+  // 명령 한 줄 = 텍스트 + 복사 버튼.
   function makeCmdRow(text) {
     const d = document.createElement('div');
     d.className = 'cmd';
@@ -1617,22 +1606,20 @@
     span.className = 'cmd-t';
     span.textContent = text;
     d.appendChild(span);
-    if (!text.trim().startsWith('#')) {
-      const btn = document.createElement('button');
-      btn.className = 'cmd-copy';
-      btn.type = 'button';
-      btn.textContent = '⧉';
-      btn.title = t('copy_cmd');
-      btn.setAttribute('aria-label', t('copy_cmd'));
-      btn.addEventListener('click', async () => {
-        const ok = await copyText(text);
-        btn.textContent = ok ? '✓' : '✗';
-        btn.classList.toggle('ok', ok);
-        clearTimeout(btn._t);
-        btn._t = setTimeout(() => { btn.textContent = '⧉'; btn.classList.remove('ok'); }, 1200);
-      });
-      d.appendChild(btn);
-    }
+    const btn = document.createElement('button');
+    btn.className = 'cmd-copy';
+    btn.type = 'button';
+    btn.textContent = '⧉';
+    btn.title = t('copy_cmd');
+    btn.setAttribute('aria-label', t('copy_cmd'));
+    btn.addEventListener('click', async () => {
+      const ok = await copyText(text);
+      btn.textContent = ok ? '✓' : '✗';
+      btn.classList.toggle('ok', ok);
+      clearTimeout(btn._t);
+      btn._t = setTimeout(() => { btn.textContent = '⧉'; btn.classList.remove('ok'); }, 1200);
+    });
+    d.appendChild(btn);
     return d;
   }
   function renderInstallCmds(agent) {
@@ -1914,10 +1901,6 @@
   function syncUsortButtons() {
     document.querySelectorAll('.usort').forEach((b) => b.setAttribute('aria-pressed', b.dataset.metric === uMetric));
   }
-  function syncViewButtons() {
-    document.querySelectorAll('.uview').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === uView));
-  }
-  const hhLabel = (h) => `${String(h).padStart(2, '0')}:00`;
   // items(각 원소에 .agents) 안에 등장하는 에이전트를 고정 순서로. 2종 이상이면 스택 렌더.
   function agentsIn(items) {
     const seen = new Set();
@@ -1959,12 +1942,9 @@
   async function loadUser(nick) {
     uMetric = 'prompts';
     uData = null;
-    uView = '30d';
     uPjSel = null; // 프로젝트 단독 선택(§20.7)은 유저 단위 상태 — 이동 시 해제
     $('uSelStat').hidden = true;
-    uHoursCache.clear();
     syncUsortButtons();
-    syncViewButtons();
     resetEdit(); // 다른 유저로 이동 시 열려 있던 편집 폼을 접는다
     const byId = isPid(nick);
     const q = byId ? `id=${encodeURIComponent(nick)}` : `nickname=${encodeURIComponent(nick)}`;
@@ -2346,15 +2326,13 @@
     const rest = v - acc;
     return segs + (rest > 0 ? `<div class="bseg" style="height:${(rest / v) * 100}%;${PJ_OTHER_STYLE}"></div>` : '');
   }
-  // project 모드 범례. 본인만 보이는 비 shipping 라벨은 (비공개)로, 잠수함/secret 은 🤿 로 구분.
+  // project 모드 범례. 항목은 전부 shipping 등록분(§20.4) — 잠수함/secret 은 🤿 로 구분한다.
   // 카드로 프로젝트를 골랐으면(uPjSel) 선택 외 항목을 흐리게 눌러 준다.
   function pjLegendHtml() {
-    const ships = shipNames();
     const subs = subNames();
     const parts = uPjList.map((n) => {
-      const priv = !ships.includes(n);
       const dim = uPjSel && uPjSel !== n ? ' style="opacity:.35"' : '';
-      return `<span${dim}><span class="ag-dot" style="background:${pjColor(n)}"></span>${escapeHtml(n)}${subs.has(n) ? ' 🤿' : ''}${priv ? `<span style="opacity:.6"> (${t('pj_priv')})</span>` : ''}</span>`;
+      return `<span${dim}><span class="ag-dot" style="background:${pjColor(n)}"></span>${escapeHtml(n)}${subs.has(n) ? ' 🤿' : ''}</span>`;
     });
     parts.push(`<span${uPjSel ? ' style="opacity:.35"' : ''}><span class="ag-dot" style="${PJ_OTHER_STYLE}"></span>${t('pj_other')}</span>`);
     return parts.join('');
@@ -2390,17 +2368,10 @@
       .join('');
   }
 
-  // 뷰(30d/day)에 맞춰 차트를 그린다. 공통 상단(토글)만 여기서 처리하고 실제 렌더는 각 뷰 함수에 위임한다.
+  // 최근 30일 · 일별 막대 차트(유일한 뷰). 상단 지표 토글을 동기화한 뒤 그린다.
   function renderUserChart() {
     if (!uData) return;
     syncUsortButtons();
-    syncViewButtons();
-    if (uView === 'day') renderHourChart();
-    else render30dChart();
-  }
-
-  // ── 뷰 1: 최근 30일 · 일별 막대 ──
-  function render30dChart() {
     const days = uData.days || [];
     const metric = uMetric;
     $('uChartLegend').textContent = `${t('chart_30d')} · ${metric}`;
@@ -2478,128 +2449,6 @@
     $('uXfrom').textContent = mmdd(days[0] ? days[0].day : '');
     $('uXto').textContent = mmdd(todayStr);
     $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${mmdd(days[peakIdx].day)} · ${fmt(max)}` : '';
-  }
-
-  // ── 뷰 2: 최근 2일 · 시간별(어제 00시 → 오늘 23시, 48칸) 막대 ── (데이터는 /user/hours 를 날짜별 온디맨드 로드·캐시)
-  async function renderHourChart() {
-    // 최근 2일 = 30일 창(uData.days)의 마지막 두 날짜.
-    const days2 = (uData.days || []).slice(-2).map((d) => d.day);
-    if (!days2.length) return;
-
-    if (!days2.every((d) => uHoursCache.has(d))) {
-      // 로딩 상태로 전환하고, 요청 컨텍스트(유저·뷰)를 잡아 레이스를 가드한다.
-      $('uChartLegend').textContent = `${t('chart_2d')} · ${uMetric}`;
-      $('uStats').innerHTML = '';
-      $('uAgentLegend').innerHTML = '';
-      $('uChartWrap').hidden = true;
-      $('uMsg').hidden = false;
-      $('uMsg').classList.remove('err');
-      $('uMsg').textContent = t('loading');
-      const reqUser = curUser;
-      try {
-        await Promise.all(days2.map(ensureHours));
-      } catch {
-        if (curUser === reqUser && uView === 'day') {
-          $('uMsg').hidden = false;
-          $('uMsg').classList.add('err');
-          $('uMsg').textContent = t('user_error');
-        }
-        return;
-      }
-      // 응답 대기 사이 다른 유저/뷰로 이동했으면 폐기(오래된 응답 무시).
-      if (curUser !== reqUser || uView !== 'day') return;
-    }
-    paintHours(days2);
-  }
-
-  async function ensureHours(day) {
-    if (uHoursCache.has(day)) return uHoursCache.get(day);
-    const ref = curUser;
-    const base = isPid(ref) ? `id=${encodeURIComponent(ref)}` : `nickname=${encodeURIComponent(ref)}`;
-    const res = await fetch(`${API}/user/hours?${base}&day=${encodeURIComponent(day)}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    if (curUser === ref) uHoursCache.set(day, data); // 응답 대기 중 유저가 바뀌었으면 새 유저 캐시를 오염시키지 않는다
-    return data;
-  }
-
-  function paintHours(days2) {
-    const metric = uMetric;
-    // 날짜별 24칸을 이어붙여 연속 뷰로. 각 칸은 { day, h(시각), prompts, chars, agents }.
-    const cols = [];
-    for (const day of days2) {
-      const hours = ((uHoursCache.get(day) || {}).hours || []);
-      hours.forEach((hh, h) => cols.push({ day, h, ...hh }));
-    }
-    const colLbl = (c) => `${mmdd(c.day)} ${hhLabel(c.h)}`;
-    $('uChartLegend').textContent = `${t('chart_2d')} · ${metric}`;
-
-    // 30일 뷰와 동일한 스택 기준 규칙(§20.5) + 단독 모드(§20.7)
-    uPjList = projectsIn(cols);
-    const mode = syncStackToggle(uPjList.length > 0);
-    const pjMode = mode === 'project';
-    const solo = pjMode && uPjSel ? uPjSel : null;
-    renderSelStat(pjMode);
-    const pOf = (c) => (solo ? (((c.projects || {})[solo] || {}).prompts || 0) : c.prompts || 0);
-    const cOf = (c) => (solo ? (((c.projects || {})[solo] || {}).chars || 0) : c.chars || 0);
-    const vOf = (c) => (metric === 'chars' ? cOf(c) : pOf(c));
-    const agents = agentsIn(cols);
-    const multi = !pjMode && agents.length >= 2;
-    $('uAgentLegend').innerHTML = pjMode
-      ? pjLegendHtml()
-      : multi
-        ? agents.map((a) => `<span class="ag-dot" style="background:${agColor(a)}"></span>${escapeHtml(a)}`).join('')
-        : '';
-
-    const vals = cols.map(vOf);
-    const total = vals.reduce((a, b) => a + b, 0);
-    const sumP = cols.reduce((s, c) => s + pOf(c), 0);
-    const sumC = cols.reduce((s, c) => s + cOf(c), 0);
-    const activeHours = vals.filter((v) => v > 0).length;
-    const peakVal = Math.max(0, ...vals);
-    const peakIdx = peakVal > 0 ? vals.indexOf(peakVal) : -1;
-    const max = Math.max(peakVal, 1);
-    const pct = cols.length ? Math.round((activeHours / cols.length) * 100) : 0;
-
-    // 지표 타일 4칸: prompts·chars(현재 metric 강조) · active hours · peak(날짜+시각)
-    $('uStats').innerHTML =
-      statTileHtml('prompts', sumP, metric, t('u_2d_sub')) +
-      statTileHtml('chars', sumC, metric, t('u_2d_sub')) +
-      `<div class="tile"><div class="tnum">${activeHours}<span class="den">/${cols.length}</span></div><div class="tlab">${t('u_hours')}</div><div class="tsub">${pct}%</div></div>` +
-      `<div class="tile"><div class="tnum">${peakVal > 0 ? fmtCompact(peakVal) : '–'}</div><div class="tlab">${t('u_peak')}</div><div class="tsub">${peakIdx >= 0 ? colLbl(cols[peakIdx]) : '–'}</div></div>`;
-
-    if (total === 0) {
-      $('uChartWrap').hidden = true;
-      $('uMsg').hidden = false;
-      $('uMsg').classList.remove('err');
-      $('uMsg').textContent = t('no_activity_2d');
-      return;
-    }
-    $('uMsg').hidden = true;
-    $('uChartWrap').hidden = false;
-
-    $('uChart').innerHTML = cols
-      .map((c, i) => {
-        const v = vOf(c);
-        const h = Math.max(2, Math.round((v / max) * 100));
-        // 둘째 날 00시에 날짜 경계 점선(dsplit)
-        const cls = [v === 0 ? 'zero' : i === peakIdx ? 'peak' : '', c.h === 0 && i > 0 ? 'dsplit' : ''].filter(Boolean).join(' ');
-        const segs = solo
-          ? (v > 0 ? `<div class="bseg" style="height:100%;background:${pjColor(solo)}"></div>` : '')
-          : pjMode
-            ? pjSegs(v, c.projects, metric)
-            : barSegs(multi, v, c.agents, agents, metric);
-        const ag = !solo && multi ? ` data-ag="${escapeHtml(JSON.stringify(c.agents || {}))}"` : '';
-        const pj = !solo && pjMode && v > 0 ? ` data-pj="${escapeHtml(JSON.stringify(c.projects || {}))}"` : '';
-        // 30일 뷰와 동일하게 — 피크 시각 막대 위에 픽셀 깃발
-        const pflag = i === peakIdx ? `<span class="peakflag" style="bottom:${h}%">${spriteSVG('chartflag')}</span>` : '';
-        return `<div class="col ${cls}" data-lbl="${colLbl(c)}" data-p="${pOf(c)}" data-c="${cOf(c)}"${ag}${pj}>${pflag}<div class="barv${segs ? ' stack' : ''}" style="height:${h}%">${segs}</div></div>`;
-      })
-      .join('');
-
-    $('uXfrom').textContent = cols.length ? colLbl(cols[0]) : '';
-    $('uXto').textContent = cols.length ? colLbl(cols[cols.length - 1]) : '';
-    $('uPeak').textContent = peakIdx >= 0 ? `${t('u_peak')} ${colLbl(cols[peakIdx])} · ${fmt(peakVal)}` : '';
   }
 
   // 코더 이름 클릭 → 상세 (리더보드 행 + 챔피언 칩 + 퍼레이드 기수 모두 위임 처리)
@@ -2765,15 +2614,6 @@
   document.querySelectorAll('.usort').forEach((b) =>
     b.addEventListener('click', () => {
       uMetric = b.dataset.metric;
-      renderUserChart();
-    }),
-  );
-
-  // 뷰 토글(30d / day).
-  document.querySelectorAll('.uview').forEach((b) =>
-    b.addEventListener('click', () => {
-      if (b.dataset.view === uView) return;
-      uView = b.dataset.view;
       renderUserChart();
     }),
   );

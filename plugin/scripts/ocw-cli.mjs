@@ -390,7 +390,7 @@ function projectLink(action, remainder, ships) {
       cwd,
       isShip
         ? '상세 페이지 차트에 프로젝트 이름으로 표시됩니다.'
-        : `ℹ️ shipping 목록에 없는 이름이라 공개 차트에는 "기타"로 합산됩니다.\n   공개하려면 \`/ocw project add ${label}\` 로 등록하세요. (본인은 로그인하면 이름으로 보입니다)`,
+        : `ℹ️ shipping 목록에 없는 이름이라 차트에는 "기타"로 합산됩니다(본인이 봐도 동일).\n   이름으로 보이게 하려면 \`/ocw project add ${label}\` 로 등록하세요.`,
     ].join('\n'),
   );
 }
@@ -409,7 +409,7 @@ function projectAuto(remainder) {
         [
           '● 디렉토리 자동 집계 ON — 링크 안 된 폴더는 **폴더 이름**으로 집계됩니다.',
           '  · 전체 경로는 전송되지 않습니다 (git 저장소면 루트 폴더 이름, 아니면 현재 폴더 이름)',
-          '  · 공개 페이지에는 전부 "기타"로 합산 — 본인 로그인 시에만 이름으로 보입니다',
+          '  · shipping 에 등록한 이름이 아니면 전부 "기타"로 합산됩니다 (본인이 봐도 동일)',
           '끄기: `/ocw project auto off`',
         ].join('\n'),
       );
@@ -424,7 +424,7 @@ function projectAuto(remainder) {
       '사용법: `/ocw project auto on` | `/ocw project auto off`',
       '',
       '켜면 링크 안 된 폴더의 프롬프트도 폴더 이름(git 루트 기준)으로 집계됩니다.',
-      '경로 전체는 서버로 가지 않으며, 공개 차트에는 "기타"로 합산됩니다(본인만 이름 확인).',
+      '경로 전체는 서버로 가지 않으며, shipping 미등록 라벨은 차트에 "기타"로만 합산됩니다.',
     ]
       .filter((l) => l !== null)
       .join('\n'),

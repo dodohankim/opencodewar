@@ -720,8 +720,8 @@ export async function handleUser(url: URL, env: Env, request: Request): Promise<
   // 상세 페이지는 "그 유저의 로컬 시간"으로 본다(리더보드의 공용 UTC 와 별개). TZ 미상이면 UTC 폴백.
   const tz = isValidTimezone(user.timezone) ? user.timezone : 'UTC';
 
-  // 프로젝트 표시 키(§20.4): shipping 이름은 공개, 비매칭 라벨은 세션 본인일 때만 실명(그 외 "기타"로 붕괴).
-  // 잠수함(sub, §20.7)은 공개 시 "secret #n" 으로 치환된다.
+  // 프로젝트 표시 키(§20.4): shipping 에 등록된 이름만 집계에 뜨고, 나머지 라벨은 본인 열람이어도 "기타"로 붕괴한다.
+  // 잠수함(sub, §20.7)은 공개 시 "secret #n" 으로 치환된다. isOwner 는 그 익명화와 응답의 projects 목록에만 쓰인다.
   // getSession 은 쿠키가 없으면 KV 를 읽지 않으므로 비로그인 열람(대부분)에 추가 비용이 없다.
   const sess = await getSession(request, env);
   const isOwner = sess !== null && sess.userId === user.user_id;
@@ -749,7 +749,7 @@ export async function handleUser(url: URL, env: Env, request: Request): Promise<
     a.prompts += 1;
     a.chars += c;
     // "기타"('')는 응답에 싣지 않는다 — 웹이 (일 합계 − 이름 있는 합)으로 계산한다.
-    const pk = projectDisplayKey(r.project ?? null, shipByLower, isOwner);
+    const pk = projectDisplayKey(r.project ?? null, shipByLower);
     if (pk) {
       const p = d.projects[pk] ?? (d.projects[pk] = { prompts: 0, chars: 0 });
       p.prompts += 1;
@@ -882,7 +882,7 @@ export async function handleUserHours(url: URL, env: Env, request: Request): Pro
   // 넓은 창에서 이 유저 로컬 하루의 정확한 UTC 범위만 남기고, 로컬 시로 버킷팅(:30 오프셋 TZ 도 정확).
   const range = zonedDayRange(day, tz);
 
-  // 프로젝트 표시 키(§20.4) — /user 와 동일 규칙(공개=shipping 실명·잠수함은 "secret #n", 본인=전체, 그 외 "기타" 붕괴).
+  // 프로젝트 표시 키(§20.4) — /user 와 동일 규칙(shipping 등록분만 실명·잠수함은 공개 시 "secret #n", 그 외 "기타" 붕괴).
   const sess = await getSession(request, env);
   const isOwner = sess !== null && sess.userId === user.user_id;
   const shipByLower = shipDisplayMap(parseProjects(user.projects), isOwner);
@@ -909,7 +909,7 @@ export async function handleUserHours(url: URL, env: Env, request: Request): Pro
     const a = b.agents[r.agent] ?? (b.agents[r.agent] = { prompts: 0, chars: 0 });
     a.prompts += 1;
     a.chars += c;
-    const pk = projectDisplayKey(r.project ?? null, shipByLower, isOwner);
+    const pk = projectDisplayKey(r.project ?? null, shipByLower);
     if (pk) {
       const p = b.projects[pk] ?? (b.projects[pk] = { prompts: 0, chars: 0 });
       p.prompts += 1;

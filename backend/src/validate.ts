@@ -201,14 +201,12 @@ export function normalizeProjectLabel(v: unknown): string | null {
 /**
  * 상세 집계의 프로젝트 표시 키(DESIGN.md §20.4).
  * shipping 이름과 일치(대소문자 무시)하면 맵의 표시 키(캐노니컬 표기, 잠수함은 공개 시 "secret #n" —
- * shipDisplayMap 참조), 비매칭 라벨은 본인(isOwner)일 때만 실명 — 아니면 ''(웹이 "기타"로 표기).
- * 미지정(null)은 항상 ''.
+ * shipDisplayMap 참조). 그 외(비매칭 라벨·미지정)는 본인 열람이든 아니든 항상 ''(웹이 "기타"로 표기) —
+ * 등록하지 않은 디렉토리 이름은 자기 화면에서도 드러나지 않는다.
  */
-export function projectDisplayKey(label: string | null, shipByLower: Map<string, string>, isOwner: boolean): string {
+export function projectDisplayKey(label: string | null, shipByLower: Map<string, string>): string {
   if (!label) return '';
-  const ship = shipByLower.get(label.toLowerCase());
-  if (ship !== undefined) return ship;
-  return isOwner ? label : '';
+  return shipByLower.get(label.toLowerCase()) ?? '';
 }
 
 /** users.projects(JSON 문자열) → Project[]. 미설정·파싱 실패·형식 불일치는 빈 배열. */

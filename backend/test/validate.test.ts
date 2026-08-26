@@ -239,8 +239,8 @@ describe('publicProjects / shipDisplayMap (§20.7 잠수함)', () => {
 
   it('projectDisplayKey 와 결합: 잠수함 라벨 이벤트가 공개엔 secret #n 으로 집계된다', () => {
     const pub = shipDisplayMap(ships, false);
-    expect(projectDisplayKey('Ghost-Writer', pub, false)).toBe('secret #1');
-    expect(projectDisplayKey('dobby', pub, false)).toBe('dobby');
+    expect(projectDisplayKey('Ghost-Writer', pub)).toBe('secret #1');
+    expect(projectDisplayKey('dobby', pub)).toBe('dobby');
   });
 });
 
@@ -289,18 +289,16 @@ describe('projectDisplayKey (§20.4)', () => {
   ]);
 
   it('shipping 이름과 일치(대소문자 무시)하면 캐노니컬 표기로 낸다', () => {
-    expect(projectDisplayKey('open code war', ships, false)).toBe('Open Code War');
-    expect(projectDisplayKey('OPEN CODE WAR', ships, false)).toBe('Open Code War');
-    expect(projectDisplayKey('dobby', ships, true)).toBe('dobby');
+    expect(projectDisplayKey('open code war', ships)).toBe('Open Code War');
+    expect(projectDisplayKey('OPEN CODE WAR', ships)).toBe('Open Code War');
+    expect(projectDisplayKey('dobby', ships)).toBe('dobby');
   });
 
-  it('비매칭 라벨은 공개엔 ""(기타), 본인에겐 실명', () => {
-    expect(projectDisplayKey('secret-repo', ships, false)).toBe('');
-    expect(projectDisplayKey('secret-repo', ships, true)).toBe('secret-repo');
+  it('shipping 에 없는 라벨은 본인 열람이어도 ""(기타)', () => {
+    expect(projectDisplayKey('secret-repo', ships)).toBe('');
   });
 
-  it('미지정(null)은 본인에게도 ""(기타)', () => {
-    expect(projectDisplayKey(null, ships, false)).toBe('');
-    expect(projectDisplayKey(null, ships, true)).toBe('');
+  it('미지정(null)도 ""(기타)', () => {
+    expect(projectDisplayKey(null, ships)).toBe('');
   });
 });
