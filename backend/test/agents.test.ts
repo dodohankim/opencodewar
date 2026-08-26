@@ -148,7 +148,7 @@ describe('에이전트 문서 경로', () => {
     const spec = (await res.json()) as typeof OPENAPI & { paths: Record<string, unknown> };
     expect(spec.openapi).toBe('3.1.0');
     expect(Object.keys(spec.paths).sort()).toEqual(
-      ['/battle', '/health', '/leaderboard', '/random', '/user', '/user/hours', '/zones'].sort(),
+      ['/activity', '/battle', '/health', '/leaderboard', '/random', '/user', '/user/hours', '/zones'].sort(),
     );
   });
 

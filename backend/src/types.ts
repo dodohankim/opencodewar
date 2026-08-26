@@ -42,10 +42,12 @@ export interface LeaderboardRow {
   chars: number;
 }
 
-/** 리더보드 행에 붙는 대표 프로젝트(홍보용). desc 는 리더보드에 안 쓰므로 담지 않는다. */
+/** 리더보드 행에 붙는 대표 프로젝트(홍보용). 톱3 카드가 한 줄 설명까지 보여준다(§7.4). */
 export interface RankProject {
   name: string;
   url?: string;
+  /** 한 줄 설명. 톱3 카드에서만 쓰고, 4위부터는 이름만 그린다. */
+  desc?: string;
 }
 
 /** 공개 랭킹 항목 (user_id는 비밀키라 제외) */
@@ -61,6 +63,11 @@ export interface RankEntry {
   project: RankProject | null;
   prompts: number;
   chars: number;
+  /**
+   * 직전 창 대비 순위 변동(양수 = 상승 칸수, 0 = 유지). 직전 창에 없던 유저는 null(신규).
+   * 'all'(전 기간)은 "어제까지 누적" 대비, 'daily' 는 어제 하루 대비. 나머지 보드는 undefined.
+   */
+  delta?: number | null;
 }
 
 export type Period = { day: string } | { from: string; to: string; days: string[] } | { all: true };

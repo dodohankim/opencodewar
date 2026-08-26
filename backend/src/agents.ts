@@ -176,6 +176,14 @@ Public profile + last-30-day daily usage. \`?nickname=<registered nickname>\` or
 ### GET /user/hours
 Hour-of-day histogram for one user. Same identifier query as \`/user\`, optional \`day=YYYY-MM-DD\`.
 
+### GET /activity
+Recent prompt activity, grouped per user × agent × minute (cached 60 s). Counts only — prompt text is never collected.
+Returns \`{ events: [{ at, nickname, registered, public_id, agent, country, prompts }], builtAt }\`.
+
+### GET /icon/&lt;host&gt;.png
+Favicon of a domain registered as someone's shipping project. Fetched once and cached; 404 when the domain is not
+registered or has no usable icon.
+
 ### GET /zones
 Countries and cities that have registered users (for scope filters).
 
@@ -380,6 +388,13 @@ export const OPENAPI: Record<string, unknown> = {
           { name: 'day', in: 'query', schema: { type: 'string', format: 'date' } },
         ],
         responses: { '200': { description: 'Histogram', content: { 'application/json': { schema: { type: 'object' } } } } },
+      },
+    },
+    '/activity': {
+      get: {
+        operationId: 'getActivity',
+        summary: 'Recent prompt activity (per user × agent × minute, 60s cache)',
+        responses: { '200': { description: 'Activity', content: { 'application/json': { schema: { type: 'object' } } } } },
       },
     },
     '/zones': {

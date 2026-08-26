@@ -119,6 +119,8 @@
     --grass-2:rgba(79,130,88,0.52); --grass-3:rgba(79,130,88,0.78); --grass-4:#4F8258;
     /* 에이전트별 차트 색 (claude-code 는 기본 막대색 --fg 사용) */
     --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    /* 리더보드 행 배경 게이지(§7.4) */
+    --gauge:rgba(27,27,26,0.07); --gauge-1:rgba(183,134,46,0.20);
     /* 픽셀 병정 공통색 — 라이트/다크 동일 */
     --skin:#E8C39E; --eye:#232320;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
@@ -132,6 +134,7 @@
       --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
       --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
       --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+      --gauge:rgba(231,231,227,0.09); --gauge-1:rgba(217,164,65,0.22);
       --grass-0:rgba(109,168,117,0.12); --grass-1:rgba(109,168,117,0.30);
       --grass-2:rgba(109,168,117,0.55); --grass-3:rgba(109,168,117,0.80); --grass-4:#6DA875;
     }
@@ -141,6 +144,7 @@
     --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
     --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
     --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+    --gauge:rgba(231,231,227,0.09); --gauge-1:rgba(217,164,65,0.22);
     --grass-0:rgba(109,168,117,0.12); --grass-1:rgba(109,168,117,0.30);
     --grass-2:rgba(109,168,117,0.55); --grass-3:rgba(109,168,117,0.80); --grass-4:#6DA875;
   }
@@ -369,6 +373,107 @@
   .proj-l .arr { color:var(--faint); margin-left:3px; }
   a.proj-l:hover .arr { color:var(--ok); }
   .proj-none { color:var(--faint); }
+
+  /* ───────── 리더보드(§7.4) — 톱3 카드 + 한 줄 행 ─────────
+     표를 버린 이유: 7칸이 전부 같은 굵기라 1위 줄과 10위 줄이 스캔했을 때 구분이 안 됐다.
+     막대는 제일 좁은 칸에 갇혀 있었고, 주인공 숫자(prompts)가 보조(chars)와 같은 크기였다. */
+  .lb-row { position:relative; overflow:hidden; cursor:pointer; }
+  .lb-row .lb-g { position:absolute; inset:0 auto 0 0; z-index:0;
+    background:linear-gradient(90deg, var(--gauge) 0%, var(--gauge) 62%, transparent 100%); }
+  .lb-row > * { position:relative; z-index:1; }
+  .lb-pod { display:flex; align-items:center; gap:13px; border:1px solid var(--line); border-radius:8px;
+    padding:11px 13px; margin-bottom:8px; }
+  .lb-pod:hover, .lb-cmp:hover { background:var(--hover); }
+  .lb-pod.one { border-color:var(--amber); }
+  .lb-pod.one .lb-g { background:linear-gradient(90deg, var(--gauge-1) 0%, var(--gauge-1) 62%, transparent 100%); }
+  .lb-pod .lb-rk { font-size:13px; font-weight:700; color:var(--dim); flex:none; display:flex; align-items:center; gap:5px; }
+  .lb-pod .lb-rk .mini { width:22px; height:22px; }
+  .lb-pod.one .lb-rk { color:var(--amber); }
+  .lb-pod .lb-body { min-width:0; flex:1; }
+  .lb-pod .lb-l1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .lb-pod .lb-nick { font-size:16px; font-weight:700; }
+  .lb-pod .lb-l2 { margin-top:3px; }
+  .lb-pod .lb-nums { text-align:right; flex:none; }
+  .lb-pod .lb-p { font-size:22px; }
+  .lb-cmp { display:flex; align-items:center; gap:10px; padding:7px 10px; }
+  .lb-cmp + .lb-cmp { border-top:1px solid var(--line); }
+  .lb-cmp .lb-rk { width:26px; color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums; flex:none; }
+  .lb-cmp .lb-nick { font-size:13px; font-weight:600; }
+  .lb-cmp .lb-mid { display:flex; align-items:center; gap:8px; min-width:0; flex:1; flex-wrap:wrap; }
+  .lb-cmp .lb-nums { margin-left:auto; text-align:right; flex:none; display:flex; align-items:baseline; gap:8px; }
+  .lb-cmp .lb-p { font-size:14px; }
+  .lb-rest { margin-top:12px; }
+  .lb-p { font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .lb-c { font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .lb-row.me .lb-nick { text-decoration:underline; text-underline-offset:3px; }
+  .youtag { font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--rev-fg); background:var(--fg);
+    border-radius:3px; padding:0 5px; flex:none; }
+  /* 계급 배지(§16) — 이미 계산되는 값이라 보드에도 얹는다. 줄 하나로 사람이 읽히게. */
+  .rkbadge { font-size:10px; color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:0 5px; white-space:nowrap; flex:none; }
+  .rkbadge.hi { color:var(--amber); border-color:var(--amber); }
+  /* 순위 변동(전일 대비, 스냅샷의 delta) */
+  .delta { font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; flex:none; }
+  .delta.up { color:var(--ok); } .delta.down { color:var(--err); } .delta.same { color:var(--faint); }
+  .delta.new { color:var(--amber); }
+  /* main shipping — 파비콘(§26)은 원본이 제각각이라 같은 크기 타일 + 1px 테두리에 담는다 */
+  .fav { width:17px; height:17px; border-radius:4px; border:1px solid var(--line); background:var(--bg); object-fit:contain; flex:none; }
+  .fav.lg { width:32px; height:32px; border-radius:7px; }
+  .mono { display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px; border-radius:4px;
+    font-size:10px; font-weight:700; color:#fff; flex:none; }
+  .mono.lg { width:32px; height:32px; border-radius:7px; font-size:16px; }
+  .slot { width:17px; height:17px; border-radius:4px; border:1px dashed var(--line); flex:none; }
+  .slot.lg { width:32px; height:32px; border-radius:7px; }
+  /* 이름은 .lbship — 유저 상세의 shipping 카드(.ship)와 이름이 겹치면 그쪽 박스 스타일을 뒤집어쓴다. */
+  .lbship { display:inline-flex; align-items:center; gap:6px; min-width:0; max-width:100%; }
+  .lbship .snm { font-size:12px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:2px; }
+  .lbship .snm:hover { color:var(--fg); text-decoration-color:var(--fg); }
+  .lbship.empty { color:var(--faint); font-size:11.5px; }
+  .lbship.strong .snm { font-size:13.5px; font-weight:700; color:var(--fg); }
+  .lbship.strong .shost { font-size:11px; color:var(--faint); white-space:nowrap; flex:none; }
+  .lbship.strong .arr { color:var(--faint); font-size:11px; flex:none; }
+  .mainbadge { font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--rev-fg); background:var(--ok); border-radius:4px; padding:0 5px; flex:none; }
+  .lb-desc { font-size:12px; color:var(--dim); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* 내 위치 — 목록이 길어져도 "나는 몇 등인가"가 항상 보이게 */
+  .mebar { position:sticky; bottom:0; margin-top:10px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    border:1px solid var(--fg); border-radius:7px; padding:9px 12px; background:var(--bg); font-size:12.5px; }
+  .mebar .lb-p { font-size:15px; }
+  .mebar .me-gap { margin-left:auto; color:var(--dim); font-size:12px; }
+  .mebar .me-gap b { color:var(--fg); }
+
+  /* ───────── 참전 기록(§25) ───────── */
+  .box > .rlegend { position:absolute; top:-0.7em; right:12px; background:var(--bg); padding:0 8px; font-size:11px;
+    color:var(--faint); display:flex; align-items:center; gap:6px; }
+  .dotlive.idle { background:var(--faint); animation:none; }
+  .dotlive.beat { animation:beat 1.8s ease-in-out infinite; }
+  @keyframes beat { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+  .feedhead { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--dim); margin-bottom:10px; }
+  .feed-last { color:var(--faint); }
+  .feed-next { margin-left:auto; font-variant-numeric:tabular-nums; color:var(--faint); font-size:11.5px; }
+  .newpill { font-size:10.5px; font-weight:700; color:var(--rev-fg); background:var(--ok); border-radius:4px; padding:1px 6px; }
+  .newpill.zero { background:transparent; color:var(--faint); font-weight:400; border:1px solid var(--line); }
+  .ticker { font-size:12.5px; }
+  .trow { display:grid; grid-template-columns:74px 128px 46px 1fr 30px; gap:10px; align-items:center;
+    padding:5px 6px; border-radius:4px; white-space:nowrap; }
+  .trow .t { color:var(--faint); font-variant-numeric:tabular-nums; }
+  .trow .n { color:var(--fg); font-weight:600; overflow:hidden; text-overflow:ellipsis; }
+  .trow .d { color:var(--ok); font-weight:700; font-variant-numeric:tabular-nums; }
+  .trow .ag { color:var(--dim); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; }
+  .trow .fl { color:var(--faint); font-size:11.5px; text-align:right; }
+  .trow.fresh { animation:feedin .5s ease-out; }
+  @keyframes feedin { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+  /* 폴링 묶음 경계 — 60초에 한 번 오니 "이번 갱신에 온 것"을 묶어 보여준다 */
+  .batchsep { display:flex; align-items:center; gap:8px; margin:8px 2px; font-size:10.5px; color:var(--faint); }
+  .batchsep::before, .batchsep::after { content:''; height:1px; background:var(--line); flex:1; }
+
+  @media (max-width:640px) {
+    .lb-desc, .lbship.strong .shost, .lbship.strong .arr { display:none; }
+    .lb-pod { gap:10px; padding:10px; }
+    .lb-pod .lb-p { font-size:19px; }
+    .trow { grid-template-columns:64px 1fr 44px; }
+    .trow .ag, .trow .fl { display:none; }
+  }
   .pnum { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
   .snum { color:var(--dim); font-variant-numeric:tabular-nums; }
   .bar { letter-spacing:-1px; white-space:nowrap; }
@@ -713,21 +818,23 @@
         <input type="text" id="meInput" data-i18n-ph="me_ph" placeholder="search nickname" />
       </div>
 
+      <!-- 보드(§7.4): 톱3는 카드, 4위부터는 한 줄. 막대는 칸이 아니라 행 배경 게이지로. -->
       <section class="box">
         <h2 class="legend" id="boardLegend">leaderboard · all · prompts</h2>
-        <div class="board-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th><th>coder</th><th>shipping</th>
-                <th class="num" id="thPrimary">prompts</th>
-                <th class="num" id="thSecond">chars</th>
-                <th>activity</th><th>cc</th>
-              </tr>
-            </thead>
-            <tbody id="tbody"><tr><td colspan="7"><div class="msg" id="msg" data-i18n="loading">Loading…</div></td></tr></tbody>
-          </table>
+        <div id="board"><div class="msg" id="msg" data-i18n="loading">Loading…</div></div>
+        <div class="mebar" id="meBar" hidden></div>
+      </section>
+
+      <!-- 참전 기록(§25) — 보드는 5분 스냅샷, 이 지면만 60초 폴링으로 움직인다. -->
+      <section class="box" id="feedBox" hidden>
+        <h2 class="legend" data-i18n="feed_legend">live activity</h2>
+        <span class="rlegend"><span class="dotlive" id="feedDot"></span><span id="feedRate"></span></span>
+        <div class="feedhead">
+          <span class="newpill zero" id="feedPill"></span>
+          <span class="feed-last" id="feedLast"></span>
+          <span class="feed-next" id="feedNext"></span>
         </div>
+        <div class="ticker" id="feed"></div>
       </section>
 
       <div class="lower">
@@ -960,7 +1067,6 @@
   const params = new URLSearchParams(location.search);
   // 배포 시 웹과 API는 같은 도메인(opencodewar.dev)에서 서빙 → same-origin. 로컬은 ?api= 로 지정.
   const API = (params.get('api') || location.origin).replace(/\/+$/, '');
-  const BARW = 12;
   // 밖으로 나가는 링크에 붙이는 출처명(?ref=). 상대 애널리틱스에 우리 이름으로 찍힌다. DESIGN.md §18
   const OUTBOUND_REF = 'opencodewar';
 
@@ -1003,6 +1109,11 @@
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗', main_badge: 'MAIN',
       stack_project: 'projects', stack_agent: 'agents', pj_other: 'other',
+      ship_empty: 'your project here', you_tag: 'YOU', me_until: 'to', me_top: 'top of this board',
+      feed_legend: 'live activity', feed_rate: 'live · every 60s', feed_idle: 'idle',
+      feed_wait: 'waiting', feed_none: 'nothing new', feed_new: (n) => `${n} new`,
+      feed_last: (t) => `last ${t}`, feed_last_ago: (t, m) => `last ${t} · ${m}m ago`,
+      feed_next: (s) => `next in ${s}s`, feed_batch: (t, n) => `${t} · ${n}`,
       pj_sub: '🤿 submarine', secret_desc: 'this coder is quietly building something',
       sub_hint: (n) => `shown publicly as “secret #${n}”`,
       sel_note: 'showing this project only', sel_clear: '✕ clear',
@@ -1080,6 +1191,11 @@
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
       stack_project: '프로젝트', stack_agent: '에이전트', pj_other: '기타',
+      ship_empty: '여기에 내 프로젝트', you_tag: 'YOU', me_until: '까지', me_top: '이 판의 1위',
+      feed_legend: '참전 기록', feed_rate: 'live · 60초마다', feed_idle: '조용함',
+      feed_wait: '대기 중', feed_none: '새 기록 없음', feed_new: (n) => `새 기록 ${n}건`,
+      feed_last: (t) => `마지막 기록 ${t}`, feed_last_ago: (t, m) => `마지막 기록 ${t} · ${m}분 전`,
+      feed_next: (s) => `다음 갱신 ${s}s`, feed_batch: (t, n) => `${t} 갱신 · ${n}건`,
       pj_sub: '🤿 잠수함', secret_desc: '이 코더는 무언가를 조용히 만들고 있다',
       sub_hint: (n) => `공개 페이지에는 “secret #${n}”로 표시됩니다`,
       sel_note: '이 프로젝트만 표시 중', sel_clear: '✕ 해제',
@@ -1189,10 +1305,6 @@
     applyLang();
   }
 
-  function bar(pct) {
-    const on = Math.max(0, Math.min(BARW, Math.round((pct / 100) * BARW)));
-    return `<span class="on">${'█'.repeat(on)}</span><span class="off">${'░'.repeat(BARW - on)}</span>`;
-  }
   function kstClock(ms) {
     const k = new Date(ms + new Date(ms).getTimezoneOffset() * 60000 + 9 * 3600000);
     const p = (n) => String(n).padStart(2, '0');
@@ -1211,11 +1323,10 @@
     const scopeTag = curScope === 'global' ? '' : ` · ${curScope === 'city' ? (curCity || '?') : curCountry}`;
     $('cmdEcho').textContent = `GET /leaderboard?${q}`;
     $('boardLegend').textContent = `leaderboard · ${curBoard} · ${curMetric}${scopeTag}`;
-    $('thPrimary').textContent = curMetric;
-    $('thSecond').textContent = curMetric === 'prompts' ? 'chars' : 'prompts';
     // city 스코프인데 고를 도시가 없으면(해당 국가에 등록 도시 없음) 빈 상태 안내.
     if (curScope === 'city' && !curCity) {
-      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('zone_nocity')}</div></td></tr>`;
+      $('board').innerHTML = `<div class="msg">${t('zone_nocity')}</div>`;
+      $('meBar').hidden = true;
       return;
     }
     loadParade(); // 퍼레이드는 보드 탭·스코프와 무관(전역 total+daily) — 본 요청과 병렬 로딩
@@ -1229,20 +1340,80 @@
     } catch (e) {
       $('liveDot').classList.add('off');
       $('liveText').textContent = t('live_off');
-      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div></td></tr>`;
+      $('board').innerHTML = `<div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div>`;
+      $('meBar').hidden = true;
     }
   }
 
-  // 코더 옆 대표 프로젝트 셀. url 이 있으면 이름 자체가 링크(아웃바운드 ?ref — DESIGN.md §18),
-  // 없으면 이름만. 미등록이면 '–' 을 남겨 "여기에 내 프로젝트를 걸 수 있다"가 보이게 한다.
-  function projCell(p) {
-    if (!p || !p.name) return `<span class="proj-none">–</span>`;
+  // ── main shipping 표시(§26) ──────────────────────────────────────────
+  // 파비콘은 우리 도메인에서 준다(/icon/<host>.png). 구글/DDG 파비콘 API 를 쓰면
+  // 방문자 브라우저가 제3자를 직접 때려서, 누가 이 보드를 보는지가 그쪽에 남는다.
+  // 못 가져오면(404) 첫 글자 모노그램으로 폴백한다 — 줄이 무너지지 않게.
+  const PJ_TILE = ['#D97757', '#3E8E6E', '#4E7DC4', '#B8862E', '#9A66C9', '#C2527A', '#4A9A96'];
+  function hostOf(u) {
+    try { return new URL(u).hostname.toLowerCase(); } catch { return ''; }
+  }
+  function monoTile(name, lg) {
+    const ch = escapeHtml((name || '?').trim().charAt(0).toUpperCase());
+    let h = 0;
+    for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 9973;
+    return `<span class="mono${lg ? ' lg' : ''}" style="background:${PJ_TILE[h % PJ_TILE.length]}">${ch}</span>`;
+  }
+  /** 아이콘 타일: 도메인이 있으면 /icon 시도(실패 시 모노그램), 없으면 바로 모노그램. */
+  function iconTile(p, lg) {
+    if (!p || !p.name) return `<span class="slot${lg ? ' lg' : ''}"></span>`;
+    const host = p.url ? hostOf(safeUrl(p.url)) : '';
+    if (!host) return monoTile(p.name, lg);
+    return `<img class="fav${lg ? ' lg' : ''}" src="${API}/icon/${encodeURIComponent(host)}.png" alt=""
+      data-mono="${escapeHtml(p.name)}"${lg ? ' data-lg="1"' : ''}>`;
+  }
+  /** 아이콘 로드 실패 → 모노그램으로 교체(인라인 핸들러 없이 렌더 후 한 번에 건다). */
+  function wireIconFallback(root) {
+    root.querySelectorAll('img.fav[data-mono]').forEach((img) => {
+      img.addEventListener('error', () => {
+        const span = document.createElement('span');
+        span.innerHTML = monoTile(img.dataset.mono, img.dataset.lg === '1');
+        img.replaceWith(span.firstElementChild);
+      }, { once: true });
+    });
+  }
+  /** 포디움용 프로젝트 줄: 이름을 닉네임 다음 무게로 + MAIN + 도메인. 미등록이면 빈 자리를 보여준다. */
+  function shipStrong(p) {
+    if (!p || !p.name) return `<span class="lbship empty"><span class="slot"></span>${t('ship_empty')}</span>`;
     const nm = escapeHtml(p.name);
     const url = p.url ? safeUrl(p.url) : '';
-    if (!url) return `<span class="proj-l" title="${nm}">${nm}</span>`;
-    return `<a class="proj-l" href="${escapeHtml(outboundUrl(url))}" target="_blank" rel="nofollow noopener"
-      title="${nm} · ${escapeHtml(linkLabel(url))}">${nm}<span class="arr">↗</span></a>`;
+    const inner = `<span class="snm">${nm}</span><span class="mainbadge">${t('main_badge')}</span>` +
+      (url ? `<span class="shost">${escapeHtml(linkLabel(url))}</span><span class="arr">↗</span>` : '');
+    return url
+      ? `<a class="lbship strong" href="${escapeHtml(outboundUrl(url))}" target="_blank" rel="nofollow noopener" style="text-decoration:none">${inner}</a>`
+      : `<span class="lbship strong">${inner}</span>`;
   }
+  /** 컴팩트 줄용: 아이콘 + 이름만. 미등록이면 아무것도 안 그린다(줄마다 반복되면 소음). */
+  function shipSmall(p) {
+    if (!p || !p.name) return '';
+    const nm = escapeHtml(p.name);
+    const url = p.url ? safeUrl(p.url) : '';
+    const inner = `${iconTile(p, false)}<span class="snm">${nm}</span>`;
+    return url
+      ? `<a class="lbship" href="${escapeHtml(outboundUrl(url))}" target="_blank" rel="nofollow noopener" style="text-decoration:none">${inner}</a>`
+      : `<span class="lbship">${inner}</span>`;
+  }
+  /** 계급 배지(§16) — 보드 값이 아니라 전 기간 누적 기준이라 all 보드에서만 정확하다. */
+  function rankBadge(r) {
+    if (curBoard !== 'all') return '';
+    const i = rankOf(r.prompts || 0);
+    return `<span class="rkbadge${i >= 3 ? ' hi' : ''}">${escapeHtml(LANG === 'ko' ? RANKS[i].ko : RANKS[i].en)}</span>`;
+  }
+  /** 순위 변동(전일 대비). 스냅샷에 delta 가 없는 보드(구역 등)는 아무것도 안 그린다. */
+  function deltaChip(r) {
+    if (!('delta' in r)) return '';
+    if (r.delta === null) return `<span class="delta new">NEW</span>`;
+    if (r.delta > 0) return `<span class="delta up">▲${r.delta}</span>`;
+    if (r.delta < 0) return `<span class="delta down">▼${-r.delta}</span>`;
+    return `<span class="delta same">–</span>`;
+  }
+  // 게이지는 √ 스케일. 1위 5,145 대 4위 70 같은 판에서 선형이면 하위권이 1% 실선이 된다.
+  const gaugePct = (v, max) => (v <= 0 ? 0 : Math.round(Math.sqrt(v / max) * 100));
 
   function render(data) {
     const rows = data.ranking || [];
@@ -1262,38 +1433,73 @@
     $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} · ${t('every_5m')}` : '';
 
     if (!rows.length) {
-      $('tbody').innerHTML = `<tr><td colspan="7"><div class="msg">${t('empty')}</div></td></tr>`;
+      $('board').innerHTML = `<div class="msg">${t('empty')}</div>`;
+      $('meBar').hidden = true;
       return;
     }
     const max = Math.max(...rows.map((r) => r[curMetric] || 0), 1);
     const meLc = myNick.trim().toLowerCase();
+    const isMe = (r) => !!(meLc && r.nickname && r.nickname.toLowerCase() === meLc);
+    const secondOf = (r) => (curMetric === 'prompts' ? `${fmtCompact(r.chars || 0)} chars` : `${fmt(r.prompts || 0)} prompts`);
 
-    $('tbody').innerHTML = rows.map((r) => {
-      const primary = r[curMetric] || 0;
-      const second = curMetric === 'prompts' ? r.chars : r.prompts;
-      const pct = (primary / max) * 100;
-      const rankCls = r.rank === 1 ? 'rank one' : (r.rank <= 3 ? 'rank b' : 'rank');
-      const isMe = r.nickname && r.nickname.toLowerCase() === meLc && meLc !== '';
+    // 행 전체가 상세로 가는 클릭 타깃 — 닉네임 span 은 기존 위임(.nm.link)을 그대로 쓴다.
+    const nameCell = (r) => {
       const nm = escapeHtml(r.nickname || t('anon'));
-      // 등록 유저는 닉네임으로, 익명 유저는 공개 slug(public_id)로 상세 진입 → 모든 행 클릭 가능.
       const ref = r.registered ? r.nickname : r.public_id;
-      const nmCell = ref
-        ? `<span class="nm link" data-nick="${escapeHtml(ref)}" role="button" tabindex="0">${nm}</span>`
-        : `<span class="nm">${nm}</span>`;
+      return ref
+        ? `<span class="nm link lb-nick" data-nick="${escapeHtml(ref)}" role="button" tabindex="0">${nm}</span>`
+        : `<span class="nm lb-nick">${nm}</span>`;
+    };
+
+    const pods = rows.slice(0, 3).map((r) => {
+      const v = r[curMetric] || 0;
       // 톱3 랭크 병정: 1위는 기수, 2·3위는 병정 (순위 기반 군복색 — RANK_ARMY)
-      const mini = r.rank <= 3
-        ? `<span class="mini ${RANK_ARMY[r.rank]}" aria-hidden="true">${spriteSVG(r.rank === 1 ? 'flag' : 'march2')}</span>`
-        : '';
-      return `<tr class="${isMe ? 'me' : ''}">
-        <td><span class="${rankCls}">${r.rank}</span></td>
-        <td>${mini}${nmCell}${isMe ? ' <span class="you">[you]</span>' : ''}</td>
-        <td class="proj">${projCell(r.project)}</td>
-        <td class="num"><span class="pnum">${fmt(primary)}</span></td>
-        <td class="num"><span class="snum">${fmt(second)}</span></td>
-        <td><span class="bar">${bar(pct)}</span></td>
-        <td><span class="cc">${r.country ? escapeHtml(r.country) + ' ' + flagOf(r.country) : '–'}</span></td>
-      </tr>`;
+      const mini = `<span class="mini ${RANK_ARMY[r.rank]}" aria-hidden="true">${spriteSVG(r.rank === 1 ? 'flag' : 'march2')}</span>`;
+      const desc = r.project && r.project.desc ? `<div class="lb-desc">${escapeHtml(r.project.desc)}</div>` : '';
+      return `<div class="lb-row lb-pod${r.rank === 1 ? ' one' : ''}${isMe(r) ? ' me' : ''}" data-nick="${escapeHtml(r.registered ? r.nickname : (r.public_id || ''))}">
+        <span class="lb-g" style="width:${gaugePct(v, max)}%"></span>
+        <span class="lb-rk">${mini}#${r.rank}</span>
+        ${iconTile(r.project, true)}
+        <div class="lb-body">
+          <div class="lb-l1">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}</div>
+          <div class="lb-l2">${shipStrong(r.project)}</div>
+          ${desc}
+        </div>
+        <div class="lb-nums"><div class="lb-p">${fmt(v)}</div><div class="lb-c">${secondOf(r)}</div></div>
+      </div>`;
     }).join('');
+
+    const rest = rows.slice(3).map((r) => {
+      const v = r[curMetric] || 0;
+      return `<div class="lb-row lb-cmp${isMe(r) ? ' me' : ''}" data-nick="${escapeHtml(r.registered ? r.nickname : (r.public_id || ''))}">
+        <span class="lb-g" style="width:${gaugePct(v, max)}%"></span>
+        <span class="lb-rk">${r.rank}</span>
+        <div class="lb-mid">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}${shipSmall(r.project)}</div>
+        <div class="lb-nums"><span class="lb-p">${fmt(v)}</span><span class="lb-c">${curMetric === 'prompts' ? fmtCompact(r.chars || 0) : fmt(r.prompts || 0)}</span></div>
+      </div>`;
+    }).join('');
+
+    $('board').innerHTML = pods + (rest ? `<div class="lb-rest">${rest}</div>` : '');
+    wireIconFallback($('board'));
+    renderMeBar(rows);
+  }
+
+  /** 내 위치 바 — 목록이 길어져도 "나는 몇 등, 앞사람까지 얼마"가 항상 보이게. */
+  function renderMeBar(rows) {
+    const meLc = myNick.trim().toLowerCase();
+    const idx = meLc ? rows.findIndex((r) => r.nickname && r.nickname.toLowerCase() === meLc) : -1;
+    const bar = $('meBar');
+    if (idx < 0) { bar.hidden = true; bar.innerHTML = ''; return; }
+    const me = rows[idx];
+    const above = idx > 0 ? rows[idx - 1] : null;
+    const v = me[curMetric] || 0;
+    const gap = above
+      ? `<span class="me-gap">${escapeHtml(above.nickname || t('anon'))} ${t('me_until')} <b>${fmt((above[curMetric] || 0) - v + 1)}</b> ${curMetric}</span>`
+      : `<span class="me-gap">${t('me_top')}</span>`;
+    bar.innerHTML = `<span class="youtag">${t('you_tag')}</span><span>#${me.rank}</span>` +
+      `<span class="nm link" data-nick="${escapeHtml(me.registered ? me.nickname : (me.public_id || ''))}" role="button" tabindex="0">${escapeHtml(me.nickname || t('anon'))}</span>` +
+      `${rankBadge(me)}<span class="lb-p">${fmt(v)}</span>${gap}`;
+    bar.hidden = false;
   }
 
   function escapeHtml(s) {
@@ -1895,6 +2101,110 @@
       ].forEach((c) => wrap.appendChild(makeCmdRow(c)));
     }
   }
+  // ── 참전 기록(§25): GET /activity 60초 폴링 ─────────────────────────
+  // 보드는 5분 스냅샷이라 실시간으로 흔들지 않는다(화면 값과 서버 값이 어긋나면 새로고침에서 숫자가 뒤로 간다).
+  // 움직이는 건 이 지면 하나. 60초에 한 번이라 이벤트는 "한 건씩"이 아니라 묶음으로 도착한다 —
+  // 그래서 갱신 경계에 구분선을 남기고, 줄은 120ms 간격으로 쌓아 읽히게 한다.
+  const FEED_PERIOD = 60;
+  const FEED_MAX = 12;
+  let feedSeen = new Set();   // 이미 그린 이벤트 키(중복 방지)
+  let feedLastAt = 0;         // 마지막 이벤트 시각(ms)
+  let feedRemain = FEED_PERIOD;
+  let feedStarted = false;
+  const evKey = (e) => `${e.at}|${e.nickname}|${e.agent}|${e.prompts}`;
+  const hhmmss = (ms) => {
+    const d = new Date(ms);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
+  const hhmm = (ms) => hhmmss(ms).slice(0, 5);
+
+  function feedRow(e, fresh) {
+    const ag = escapeHtml(e.agent || 'claude-code');
+    const cls = e.agent && e.agent !== 'claude-code' ? ` ${ag}` : '';
+    const ref = e.registered ? e.nickname : e.public_id;
+    const nm = escapeHtml(e.nickname || t('anon'));
+    const el = document.createElement('div');
+    el.className = 'trow' + (fresh ? ' fresh' : '');
+    el.innerHTML = `<span class="t">${hhmmss(e.at)}</span>` +
+      (ref ? `<span class="n nm link" data-nick="${escapeHtml(ref)}" role="button" tabindex="0">${nm}</span>`
+           : `<span class="n">${nm}</span>`) +
+      `<span class="d">+${fmt(e.prompts)}</span><span class="ag${cls}" style="color:${agColor(e.agent)}">${ag}</span>` +
+      `<span class="fl">${e.country ? flagOf(e.country) : ''}</span>`;
+    return el;
+  }
+  function feedTrim() {
+    const el = $('feed');
+    while (el.querySelectorAll('.trow').length > FEED_MAX) el.lastElementChild.remove();
+    while (el.lastElementChild && el.lastElementChild.classList.contains('batchsep')) el.lastElementChild.remove();
+  }
+  async function pollFeed(first) {
+    let data;
+    try {
+      const res = await fetch(`${API}/activity`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    } catch { return; }
+    const events = Array.isArray(data.events) ? data.events : [];
+    const fresh = events.filter((e) => e && !feedSeen.has(evKey(e)));
+    for (const e of fresh) feedSeen.add(evKey(e));
+    if (feedSeen.size > 400) feedSeen = new Set(events.map(evKey));
+
+    const box = $('feedBox');
+    const el = $('feed');
+    if (first) {
+      // 첫 로드: 최근 기록을 조용히 깔아둔다(애니메이션 없이).
+      if (!events.length) { box.hidden = true; return; }
+      el.innerHTML = '';
+      events.slice(0, FEED_MAX).forEach((e) => el.appendChild(feedRow(e, false)));
+      feedLastAt = events[0].at;
+      $('feedPill').className = 'newpill zero';
+      $('feedPill').textContent = t('feed_wait');
+      $('feedLast').textContent = t('feed_last')(hhmmss(feedLastAt));
+      $('feedDot').className = 'dotlive beat';
+      $('feedRate').textContent = t('feed_rate');
+      box.hidden = false;
+      return;
+    }
+    if (!fresh.length) {
+      // 조용한 60초도 정상 상태다 — 참가자가 적으면 흔하다.
+      const mins = Math.max(1, Math.round((Date.now() - feedLastAt) / 60000));
+      $('feedPill').className = 'newpill zero';
+      $('feedPill').textContent = t('feed_none');
+      if (feedLastAt) $('feedLast').textContent = t('feed_last_ago')(hhmmss(feedLastAt), mins);
+      $('feedDot').className = 'dotlive idle';
+      return;
+    }
+    const sep = document.createElement('div');
+    sep.className = 'batchsep';
+    sep.textContent = t('feed_batch')(hhmm(Date.now()), fresh.length);
+    el.prepend(sep);
+    // 도착은 한 번의 응답이지만 한꺼번에 꽂으면 읽을 수가 없다.
+    fresh.slice(0, FEED_MAX).reverse().forEach((e, i) => setTimeout(() => {
+      el.insertBefore(feedRow(e, true), sep.nextSibling);
+      feedTrim();
+    }, i * 120));
+    feedLastAt = Math.max(feedLastAt, fresh[0].at);
+    $('feedPill').className = 'newpill';
+    $('feedPill').textContent = t('feed_new')(fresh.length);
+    $('feedLast').textContent = t('feed_last')(hhmmss(feedLastAt));
+    $('feedDot').className = 'dotlive beat';
+    box.hidden = false;
+  }
+  function startFeed() {
+    if (feedStarted) return;
+    feedStarted = true;
+    $('feedRate').textContent = t('feed_rate');
+    pollFeed(true);
+    setInterval(() => {
+      // 탭이 뒤에 있으면 폴링을 건너뛴다 — 안 보는 화면을 위해 D1 을 깨울 이유가 없다.
+      if (document.hidden) { feedRemain = FEED_PERIOD; return; }
+      feedRemain -= 1;
+      if (feedRemain <= 0) { feedRemain = FEED_PERIOD; pollFeed(false); }
+      $('feedNext').textContent = t('feed_next')(feedRemain);
+    }, 1000);
+  }
+
   // 진행 중 교전은 1분마다 순위 갱신(보고 있는 동안만).
   setInterval(() => {
     if (curBattle && !document.hidden) loadBattle(curBattle);
@@ -2458,6 +2768,13 @@
   document.addEventListener('click', (e) => {
     const link = e.target.closest && e.target.closest('.nm.link, .bearer');
     if (link && link.dataset.nick) { e.preventDefault(); navigateUser(link.dataset.nick); }
+  });
+  // 보드 행은 어디를 눌러도 상세로 — 단 shipping 링크(아웃바운드)는 그대로 통과시킨다.
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest) return;
+    if (e.target.closest('a.lbship, .nm.link, .bearer')) return;
+    const row = e.target.closest('.lb-row[data-nick]');
+    if (row && row.dataset.nick) navigateUser(row.dataset.nick);
   });
   document.addEventListener('keydown', (e) => {
     const el = e.target;
@@ -3107,6 +3424,7 @@
 
   applyLang();
   load();  // 리더보드를 미리 채워둠(상세에서 뒤로가기 시 즉시 표시)
+  startFeed(); // 참전 기록(§25) — 첫 로드 후 60초 주기 폴링
   loadZones(); // 구역 셀렉터 드롭다운 채우기(백그라운드)
   loadSession(); // 로그인 상태 확인(백그라운드) — 끝나면 편집 버튼 노출 여부가 정해진다
   route(); // 초기 URL(/u/<nick>) 에 맞춰 뷰 결정

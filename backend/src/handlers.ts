@@ -927,3 +927,62 @@ export async function handleUserHours(url: URL, env: Env, request: Request): Pro
 
   return json({ day, timezone: tz, hours, totals });
 }
+
+/**
+ * GET /activity — 참전 기록(§25). 최근 프롬프트를 "유저 × 에이전트 × 1분" 으로 묶어 돌려준다.
+ *
+ * 프롬프트 1건 = events 1행이라 그대로 흘리면 같은 사람이 같은 초에 여러 줄로 뜬다.
+ * 1분 버킷으로 묶으면 화면의 한 줄이 "그 1분 동안 N개 쳤다"가 되어 웹의 60초 폴링과 결이 맞는다.
+ *
+ * 내용은 원래 수집하지 않으므로(§9) 실을 것도 없다 — 시각·표시명·에이전트·건수·국가뿐이고,
+ * user_id 는 비밀키라 절대 담지 않는다(라우팅은 public_id/닉네임).
+ */
+const ACTIVITY_WINDOW_MS = 24 * 60 * 60 * 1000; // 조회 범위 상한(인덱스 스캔 축소용)
+const ACTIVITY_MAX = 50;
+
+export async function handleActivity(url: URL, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  // 엣지 캐시 60초 — 방문자가 몇 명이든 D1 은 분당 1회만 읽는다.
+  const cache = caches.default;
+  const cacheKey = new Request(new URL('/activity', url).toString(), { method: 'GET' });
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
+  const now = Date.now();
+  const res = await env.DB.prepare(
+    `SELECT e.user_id, u.nickname, u.public_id,
+            COALESCE(e.agent, 'claude-code') AS agent,
+            COALESCE(u.country, e.country) AS country,
+            COUNT(*) AS prompts, MAX(e.created_at) AS at
+     FROM events e JOIN users u ON u.user_id = e.user_id
+     WHERE e.created_at > ?
+     GROUP BY e.user_id, agent, e.created_at / 60000
+     ORDER BY at DESC
+     LIMIT ?`,
+  )
+    .bind(now - ACTIVITY_WINDOW_MS, ACTIVITY_MAX)
+    .all<{
+      user_id: string;
+      nickname: string | null;
+      public_id: string | null;
+      agent: string;
+      country: string | null;
+      prompts: number;
+      at: number;
+    }>();
+
+  const events = res.results.map((r) => ({
+    at: Number(r.at) || 0,
+    nickname: displayNickname(r.nickname, r.user_id),
+    registered: r.nickname != null,
+    public_id: r.public_id ?? null,
+    agent: r.agent,
+    country: r.country ?? null,
+    prompts: Number(r.prompts) || 0,
+  }));
+
+  const out = json({ events, builtAt: now }, 200, { 'Cache-Control': 'public, max-age=60' });
+  const write = cache.put(cacheKey, out.clone());
+  if (ctx) ctx.waitUntil(write);
+  else await write;
+  return out;
+}

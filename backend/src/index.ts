@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { CORS_HEADERS, json } from './http';
 import {
+  handleActivity,
   handleBriefing,
   handleDelete,
   handleLeaderboard,
@@ -42,6 +43,7 @@ import {
   visitorCountry,
   withVisitorCountry,
 } from './og';
+import { handleIcon, iconHostFromPath } from './icon';
 import { isValidNickname } from './validate';
 import { handleAgentDocs, markdownForPage, notFound, wantsMarkdownPage, withVaryAccept } from './agents';
 
@@ -102,6 +104,11 @@ export default {
       if (ogId !== null && isPageRead(request.method)) {
         return await handleOgImage(request, url, env, ogId, ctx);
       }
+      // /icon/<host>.png — shipping 도메인 파비콘(§26). 제3자 파비콘 API 대신 우리가 굽는다.
+      const iconHost = iconHostFromPath(pathname);
+      if (iconHost !== null && isPageRead(request.method)) {
+        return await handleIcon(request, env, iconHost, ctx);
+      }
       // /u/<nickname> — 프로필 페이지(에셋에 없는 경로라 Worker 폴백으로 도달).
       const pathNick = nicknameFromPath(pathname);
       if (pathNick !== null && isPageRead(request.method)) {
@@ -124,6 +131,10 @@ export default {
       }
       if (pathname === '/leaderboard' && request.method === 'GET') {
         return await handleLeaderboard(url, env, ctx);
+      }
+      // 참전 기록(§25) — 웹이 60초마다 폴링. 엣지 캐시가 앞을 막아 D1 은 분당 1회.
+      if (pathname === '/activity' && request.method === 'GET') {
+        return await handleActivity(url, env, ctx);
       }
       if (pathname === '/zones' && request.method === 'GET') {
         return await handleZones(env);

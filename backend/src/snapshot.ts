@@ -14,13 +14,13 @@ import type {
   RankProject,
   Snapshot,
 } from './types';
-import { utcToday, monthDays, weekDays, weekendDays } from './time';
+import { utcToday, utcDayNum, dayStr, monthDays, weekDays, weekendDays } from './time';
 import { displayNickname } from './nickname';
 import { isValidUrl, parseProjects } from './validate';
 
 // v2: 'all'(전체 기간) 보드 추가 / v3: 랭킹 항목에 대표 프로젝트 추가
-// v4: 활동 0인 가입자도 랭킹에 포함 — 배포 즉시 재빌드 유도
-export const SNAPSHOT_KEY = 'lb:snapshot:v4';
+// v4: 활동 0인 가입자도 랭킹에 포함 / v5: 순위 변동(delta) 추가 — 배포 즉시 재빌드 유도
+export const SNAPSHOT_KEY = 'lb:snapshot:v5';
 const SNAPSHOT_LIMIT = 100;
 const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30분
 const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend', 'monthly', 'all'];
@@ -77,12 +77,18 @@ export function pickMainProject(raw: string | null): RankProject | null {
   if (!name) return null;
   const project: RankProject = { name };
   if (isValidUrl(picked.url)) project.url = picked.url.trim();
+  // 한 줄 설명은 톱3 카드용(§7.4). 100행 스냅샷이라 KV 크기 영향은 무시할 수준.
+  const desc = typeof picked.desc === 'string' ? picked.desc.trim() : '';
+  if (desc) project.desc = desc;
   return project;
 }
 
-/** D1 원시 행 → 공개 랭킹 항목. user_id 는 비밀키라 응답에 담지 않는다. */
-function toRankEntry(r: LeaderboardRow, i: number): RankEntry {
-  return {
+/**
+ * D1 원시 행 → 공개 랭킹 항목. user_id 는 비밀키라 응답에 담지 않는다.
+ * prevMap 이 있으면 순위 변동(delta)을 붙인다 — 직전 창에 없던 유저는 null(신규).
+ */
+function toRankEntry(r: LeaderboardRow, i: number, prevMap?: Map<string, number>): RankEntry {
+  const entry: RankEntry = {
     rank: i + 1,
     nickname: displayNickname(r.nickname, r.user_id),
     registered: r.nickname != null,
@@ -92,6 +98,24 @@ function toRankEntry(r: LeaderboardRow, i: number): RankEntry {
     prompts: Number(r.prompts) || 0,
     chars: Number(r.chars) || 0,
   };
+  if (prevMap) {
+    const prev = prevMap.get(r.user_id);
+    entry.delta = prev === undefined ? null : prev - (i + 1); // 양수 = 그만큼 올라섬
+  }
+  return entry;
+}
+
+/**
+ * 순위 변동(§7.4)용 "직전 창" 조건. 지금 화면에 있는 두 보드만 지원한다.
+ *  · all   → 어제까지 누적(오늘 친 건 빼고 세운 순위)
+ *  · daily → 어제 하루
+ * 나머지 보드(weekly·weekend·monthly)는 웹에 노출되지 않아 계산하지 않는다(null).
+ */
+export function prevDayFilter(type: BoardType, now: number): { sql: string; binds: string[] } | null {
+  const yesterday = dayStr(utcDayNum(now) - 1);
+  if (type === 'all') return { sql: 's.day <= ?', binds: [yesterday] };
+  if (type === 'daily') return { sql: 's.day = ?', binds: [yesterday] };
+  return null;
 }
 
 /** 특정 보드×지표의 top-N 랭킹을 D1에서 계산 */
@@ -100,6 +124,7 @@ export async function computeRanking(
   type: BoardType,
   metric: Metric,
   limit: number,
+  prevMap?: Map<string, number>,
 ): Promise<RankEntry[]> {
   const orderCol = METRIC_COL[metric];
   const now = Date.now();
@@ -126,7 +151,33 @@ export async function computeRanking(
     .bind(...dayBinds, limit)
     .all<LeaderboardRow>();
 
-  return result.results.map(toRankEntry);
+  return result.results.map((r, i) => toRankEntry(r, i, prevMap));
+}
+
+/**
+ * 직전 창의 user_id → 순위 맵. 지금 순위와 빼서 delta 를 만든다.
+ * 프로젝트·닉네임이 필요 없으므로 컬럼을 최소로 뽑는다(같은 정렬 규칙 유지가 핵심).
+ */
+export async function computePrevRankMap(
+  env: Env,
+  type: BoardType,
+  metric: Metric,
+  limit: number,
+): Promise<Map<string, number>> {
+  const prev = prevDayFilter(type, Date.now());
+  if (!prev) return new Map();
+  const orderCol = METRIC_COL[metric];
+  const result = await env.DB.prepare(
+    `SELECT u.user_id,
+            COALESCE(SUM(s.prompts), 0) AS prompts, COALESCE(SUM(s.chars), 0) AS chars
+     FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND ${prev.sql}
+     GROUP BY u.user_id, u.created_at
+     ORDER BY ${orderCol} DESC, u.created_at ASC, u.user_id ASC
+     LIMIT ?`,
+  )
+    .bind(...prev.binds, limit)
+    .all<{ user_id: string }>();
+  return new Map(result.results.map((r, i) => [r.user_id, i + 1]));
 }
 
 /**
@@ -164,7 +215,8 @@ export async function computeZoneRanking(
     .bind(...binds)
     .all<LeaderboardRow>();
 
-  return result.results.map(toRankEntry);
+  // 구역 보드는 순위 변동을 계산하지 않는다(조합이 많고 저트래픽 — §7.4).
+  return result.results.map((r, i) => toRankEntry(r, i));
 }
 
 /** 전 보드/지표를 계산해 스냅샷 객체 생성 */
@@ -172,9 +224,17 @@ export async function buildSnapshot(env: Env): Promise<Snapshot> {
   const now = Date.now();
   const boards = {} as Record<BoardType, BoardSnapshot>;
   for (const type of BOARDS) {
+    // 순위 변동은 웹이 실제로 보여주는 두 보드(all·daily)만 — 나머지는 쿼리를 아낀다.
+    const withDelta = prevDayFilter(type, now) !== null;
+    const [prevP, prevC] = withDelta
+      ? await Promise.all([
+          computePrevRankMap(env, type, 'prompts', SNAPSHOT_LIMIT),
+          computePrevRankMap(env, type, 'chars', SNAPSHOT_LIMIT),
+        ])
+      : [undefined, undefined];
     const [prompts, chars] = await Promise.all([
-      computeRanking(env, type, 'prompts', SNAPSHOT_LIMIT),
-      computeRanking(env, type, 'chars', SNAPSHOT_LIMIT),
+      computeRanking(env, type, 'prompts', SNAPSHOT_LIMIT, prevP),
+      computeRanking(env, type, 'chars', SNAPSHOT_LIMIT, prevC),
     ]);
     boards[type] = { period: periodOf(type, now), prompts, chars };
   }
