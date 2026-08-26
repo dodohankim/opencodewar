@@ -261,7 +261,7 @@ export const HOME_MD = `# Open Code War — the contribution graph for the agent
 
 > A live leaderboard of coding-agent activity. Tracks prompts, characters and time per project for Claude Code, Codex, OpenCode and pi — never the content.
 
-Your agent writes the code. So where does your work show up? Open Code War records every day you work with a coding agent and turns it into a rank, a streak, a developer card and, if you want, a war.
+Nobody sees your effort anymore. Open Code War puts it on a board — how many times you asked, how much you wrote, how many days in a row. No money, no prompt text, no code: effort is the only thing we take.
 
 ## Rules
 
