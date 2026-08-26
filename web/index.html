@@ -641,6 +641,10 @@
   .ship.main { border-color:var(--ok); }  /* 대표 프로젝트 강조 */
   .ship.sel { border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
   .ship-main { min-width:0; flex:1; }
+  /* 카드 왼쪽 아이콘 — 보드(§7.5)와 같은 타일 규칙, 카드라 한 치수 크게(36px). */
+  .fav.xl { width:36px; height:36px; border-radius:8px; }
+  .mono.xl { width:36px; height:36px; border-radius:8px; font-size:18px; }
+  .slot.xl { width:36px; height:36px; border-radius:8px; }
   .ship-name { font-size:13.5px; font-weight:700; color:var(--fg); overflow-wrap:break-word; }
   .ship-badge { display:inline-block; vertical-align:1px; margin-left:8px; font-size:9.5px; font-weight:700;
     letter-spacing:0.06em; text-transform:uppercase; color:var(--rev-fg); background:var(--ok);
@@ -1353,26 +1357,28 @@
   function hostOf(u) {
     try { return new URL(u).hostname.toLowerCase(); } catch { return ''; }
   }
-  function monoTile(name, lg) {
+  // 크기 변형: '' (17px, 컴팩트 줄) · 'lg' (32px, 톱3 카드) · 'xl' (36px, 유저 상세 shipping 카드)
+  function monoTile(name, size) {
     const ch = escapeHtml((name || '?').trim().charAt(0).toUpperCase());
     let h = 0;
     for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 9973;
-    return `<span class="mono${lg ? ' lg' : ''}" style="background:${PJ_TILE[h % PJ_TILE.length]}">${ch}</span>`;
+    return `<span class="mono${size ? ' ' + size : ''}" style="background:${PJ_TILE[h % PJ_TILE.length]}">${ch}</span>`;
   }
   /** 아이콘 타일: 도메인이 있으면 /icon 시도(실패 시 모노그램), 없으면 바로 모노그램. */
-  function iconTile(p, lg) {
-    if (!p || !p.name) return `<span class="slot${lg ? ' lg' : ''}"></span>`;
+  function iconTile(p, lg, size) {
+    const sz = size || (lg ? 'lg' : '');
+    if (!p || !p.name) return `<span class="slot${sz ? ' ' + sz : ''}"></span>`;
     const host = p.url ? hostOf(safeUrl(p.url)) : '';
-    if (!host) return monoTile(p.name, lg);
-    return `<img class="fav${lg ? ' lg' : ''}" src="${API}/icon/${encodeURIComponent(host)}.png" alt=""
-      data-mono="${escapeHtml(p.name)}"${lg ? ' data-lg="1"' : ''}>`;
+    if (!host) return monoTile(p.name, sz);
+    return `<img class="fav${sz ? ' ' + sz : ''}" src="${API}/icon/${encodeURIComponent(host)}.png" alt=""
+      data-mono="${escapeHtml(p.name)}" data-size="${sz}">`;
   }
   /** 아이콘 로드 실패 → 모노그램으로 교체(인라인 핸들러 없이 렌더 후 한 번에 건다). */
   function wireIconFallback(root) {
     root.querySelectorAll('img.fav[data-mono]').forEach((img) => {
       img.addEventListener('error', () => {
         const span = document.createElement('span');
-        span.innerHTML = monoTile(img.dataset.mono, img.dataset.lg === '1');
+        span.innerHTML = monoTile(img.dataset.mono, img.dataset.size || '');
         img.replaceWith(span.firstElementChild);
       }, { once: true });
     });
@@ -2386,7 +2392,8 @@
         const selCls = uPjSel && uPjSel === name ? ' sel' : '';
         // 잠수함의 공개 표기(서버가 익명화해서 내려줌): 점선 카드, 이름·설명·링크 없음.
         if (p && p.secret) {
-          return `<div class="ship secret${selCls}" data-pj="${escapeHtml(name)}"><div class="ship-main"><div class="ship-name">🤿 ${escapeHtml(name)}</div><div class="ship-desc">${escapeHtml(t('secret_desc'))}</div></div></div>`;
+          // 잠수함의 공개 표기엔 이름도 URL 도 없다 — 아이콘 자리만 점선으로 비워 카드 정렬을 맞춘다.
+          return `<div class="ship secret${selCls}" data-pj="${escapeHtml(name)}"><span class="slot xl"></span><div class="ship-main"><div class="ship-name">🤿 ${escapeHtml(name)}</div><div class="ship-desc">${escapeHtml(t('secret_desc'))}</div></div></div>`;
         }
         const url = p && p.url ? safeUrl(p.url) : '';
         const host = url ? `<div class="ship-host">${escapeHtml(linkLabel(url))}</div>` : '';
@@ -2402,9 +2409,12 @@
           badge += `<span class="ship-badge sub">${t('pj_sub')}</span>`;
           hint = `<div class="ship-hint">${escapeHtml(t('sub_hint')(secretNoOf.get(name) || 1))}</div>`;
         }
-        return `<div class="ship${isMain ? ' main' : ''}${selCls}" data-pj="${escapeHtml(name)}"><div class="ship-main"><div class="ship-name">${escapeHtml(name)}${badge}</div>${desc}${host}${hint}</div>${visit}</div>`;
+        // 왼쪽 아이콘: 도메인이 있으면 /icon(§26), 없으면 첫 글자 모노그램. 보드와 같은 규칙이다.
+        const ico = iconTile({ name, url }, false, 'xl');
+        return `<div class="ship${isMain ? ' main' : ''}${selCls}" data-pj="${escapeHtml(name)}">${ico}<div class="ship-main"><div class="ship-name">${escapeHtml(name)}${badge}</div>${desc}${host}${hint}</div>${visit}</div>`;
       })
       .join('');
+    wireIconFallback($('uShips')); // 파비콘 실패 → 모노그램(§26)
     box.hidden = false;
   }
   function renderUser(data) {
