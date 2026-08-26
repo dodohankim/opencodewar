@@ -1,0 +1,501 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCW 시안 — 히어로에 걸 숫자 5축</title>
+<style>
+  /* 본 서비스(web/index.html)의 토큰·프레임을 그대로 가져온 시안. */
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
+    --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    --grass-0:rgba(79,130,88,0.12); --grass-1:rgba(79,130,88,0.30);
+    --grass-2:rgba(79,130,88,0.50); --grass-3:rgba(79,130,88,0.72); --grass-4:rgba(79,130,88,0.92);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+      --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+      --grass-0:rgba(109,168,117,0.14); --grass-1:rgba(109,168,117,0.32);
+      --grass-2:rgba(109,168,117,0.52); --grass-3:rgba(109,168,117,0.74); --grass-4:rgba(109,168,117,0.95);
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+    --grass-0:rgba(109,168,117,0.14); --grass-1:rgba(109,168,117,0.32);
+    --grass-2:rgba(109,168,117,0.52); --grass-3:rgba(109,168,117,0.74); --grass-4:rgba(109,168,117,0.95);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg);
+    font-size:14px; line-height:1.5; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased;
+    word-break:keep-all; overflow-wrap:break-word; }
+  .page { max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+
+  .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; position:sticky; top:0; z-index:5;
+    background:var(--backdrop); padding:6px 0 8px; }
+  .head h1 { font-size:15px; margin:0; letter-spacing:.03em; }
+  .head .tag { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--rev-fg);
+    background:var(--amber); border-radius:4px; padding:1px 7px; font-weight:700; }
+  .head .sub { font-size:12px; color:var(--dim); flex:1; min-width:180px; }
+  .btn { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg);
+    color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; }
+  .btn:hover { color:var(--fg); border-color:var(--fg); }
+
+  .why { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:12.5px; color:var(--dim); }
+  .why b { color:var(--fg); }
+  .why ul { margin:8px 0 0; padding-left:18px; }
+  .why li { margin:4px 0; }
+  .why code { background:var(--hover); border-radius:3px; padding:0 4px; }
+  .why .dead { color:var(--faint); }
+
+  .vhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-top:22px; }
+  .vhead h2 { font-size:14px; margin:0; letter-spacing:.02em; }
+  .vhead .no { font-size:12px; color:var(--rev-fg); background:var(--rev-bg); border-radius:4px; padding:1px 8px; font-weight:700; }
+  .vhead .cost { font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; border:1px solid var(--line);
+    border-radius:4px; padding:1px 7px; color:var(--dim); }
+  .vhead .cost.c1 { border-color:var(--ok); color:var(--ok); }
+  .vhead .cost.c2 { border-color:var(--amber); color:var(--amber); }
+  .vhead .cost.c3 { border-color:var(--err); color:var(--err); }
+  .vhead .kw { font-size:12px; color:var(--dim); }
+
+  .term { background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; font-size:13px; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .banner .big { font-size:clamp(22px,4.4vw,34px); font-weight:700; letter-spacing:0.04em; margin:0; }
+  .banner p { margin:0; color:var(--dim); font-size:13px; }
+  .banner .slogan { margin:10px 0 7px; color:var(--fg); font-size:clamp(17px,3.4vw,25px); font-weight:700; letter-spacing:-0.01em; line-height:1.3; }
+  .banner .slogan b { background:var(--rev-bg); color:var(--rev-fg); padding:0 7px; border-radius:3px; }
+  .banner .slogan em { font-style:normal; font-variant-numeric:tabular-nums; }
+  .status { margin-top:14px; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
+  .status b { color:var(--fg); font-weight:600; }
+  .dotlive { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
+  .dotlive.pulse { animation:pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+
+  .field { margin:8px 0 12px; }
+  .grass { display:grid; grid-template-columns:repeat(30,1fr); gap:3px; }
+  .grass i { display:block; aspect-ratio:1; border-radius:2px; background:var(--grass-0); }
+  .grass i.g1 { background:var(--grass-1); } .grass i.g2 { background:var(--grass-2); }
+  .grass i.g3 { background:var(--grass-3); } .grass i.g4 { background:var(--grass-4); }
+
+  .hi { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px;
+    border:1px solid var(--line); border-radius:5px; padding:8px 12px; background:var(--hover);
+    font-size:13px; overflow-x:auto; }
+  .hi .ps1 { color:var(--ok); }
+  .hi .cmd { white-space:nowrap; }
+  .hi .copy { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    border-radius:4px; padding:1px 7px; cursor:pointer; }
+  .hi .agents { margin-left:auto; font-size:11px; color:var(--dim); white-space:nowrap; }
+
+  /* ── A · 잔디 두 줄 ── */
+  .twin { margin-top:12px; display:flex; flex-direction:column; gap:9px; }
+  .twin .lane { display:grid; grid-template-columns:104px 1fr auto; gap:11px; align-items:center; }
+  .twin .lab { font-size:11.5px; color:var(--dim); text-align:right; }
+  .twin .num { font-size:12.5px; color:var(--fg); font-weight:700; font-variant-numeric:tabular-nums; }
+  .twin .cells { display:grid; grid-template-columns:repeat(30,1fr); gap:3px; }
+  .twin .cells i { display:block; aspect-ratio:1; border-radius:2px; background:var(--grass-0); }
+  .twin .cells i.on { background:var(--grass-2); }
+  .twin .cells i.hot { background:var(--grass-4); }
+  .twin .lane.pale .num { color:var(--faint); }
+  .twin .lane.pale .lab { color:var(--faint); }
+
+  /* ── B · 태운 돈 ── */
+  .burn { margin-top:12px; border:1px solid var(--line); border-radius:6px; overflow:hidden; font-size:12.5px; }
+  .brow { display:grid; grid-template-columns:30px 1fr 78px 62px; gap:10px; align-items:center; padding:7px 12px; }
+  .brow + .brow { border-top:1px solid var(--line); }
+  .brow .rk { color:var(--faint); font-variant-numeric:tabular-nums; }
+  .brow .who { color:var(--fg); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .brow .usd { text-align:right; color:var(--fg); font-variant-numeric:tabular-nums; font-weight:700; }
+  .brow .pr { text-align:right; color:var(--faint); font-variant-numeric:tabular-nums; font-size:11.5px; }
+  .brow.sum { background:var(--hover); border-top:1px solid var(--fg); }
+  .brow.sum .who { color:var(--dim); font-weight:400; }
+  .brow.sum .usd { color:var(--amber); }
+
+  /* ── C · 국가전 ── */
+  .vs { margin-top:12px; border:1px solid var(--line); border-radius:6px; padding:12px 14px; background:var(--hover); }
+  .vsrow { display:flex; align-items:baseline; justify-content:space-between; gap:12px; font-size:13px; }
+  .vsrow .side { display:flex; align-items:baseline; gap:8px; }
+  .vsrow .flag { font-size:16px; }
+  .vsrow .cc { font-weight:700; }
+  .vsrow .n { font-variant-numeric:tabular-nums; font-weight:700; font-size:16px; }
+  .vsrow .n.lead { color:var(--ok); }
+  .vsbar { display:flex; height:9px; border-radius:5px; overflow:hidden; margin:9px 0 7px; background:var(--line); }
+  .vsbar span { display:block; height:100%; }
+  .vsbar .a { background:var(--fg); }
+  .vsbar .b { background:var(--faint); }
+  .vsnote { font-size:11.5px; color:var(--dim); display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .vsnote b { color:var(--fg); font-variant-numeric:tabular-nums; }
+
+  /* ── D · 분포 ── */
+  .dist { margin-top:12px; border:1px solid var(--line); border-radius:6px; padding:13px 14px 11px; background:var(--hover); }
+  .bars { display:flex; align-items:flex-end; gap:4px; height:56px; }
+  .bars i { display:block; flex:1; background:var(--line); border-radius:2px 2px 0 0; }
+  .bars i.me { background:var(--amber); }
+  .bars i.mid { background:var(--dim); }
+  .axis { display:flex; justify-content:space-between; font-size:11px; color:var(--faint); margin-top:6px; }
+  .distnote { font-size:12px; color:var(--dim); margin-top:8px; }
+  .distnote b { color:var(--fg); font-variant-numeric:tabular-nums; }
+
+  /* ── E · 로그 ── */
+  .log { margin-top:12px; border:1px solid var(--line); border-radius:6px; padding:11px 13px; background:var(--hover);
+    font-size:12.5px; color:var(--dim); }
+  .log div { padding:2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .log b { color:var(--fg); font-variant-numeric:tabular-nums; }
+  .log .t { color:var(--faint); }
+
+  .note { border-left:2px solid var(--line); padding:2px 0 2px 12px; margin-top:12px; font-size:12.5px; color:var(--dim); }
+  .note + .note { margin-top:8px; }
+  .note b { color:var(--fg); }
+  .note code { background:var(--hover); border-radius:3px; padding:0 4px; }
+  .note.risk { border-left-color:var(--err); }
+  .note.risk b { color:var(--err); }
+
+  .cmp { width:100%; border-collapse:collapse; font-size:12.5px; background:var(--bg);
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .cmp th, .cmp td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .cmp th { font-size:11px; color:var(--faint); font-weight:400; }
+  .cmp tr:last-child td { border-bottom:0; }
+  .cmp td.n { color:var(--fg); font-weight:600; white-space:nowrap; }
+  .cmp td.d { color:var(--dim); }
+  .cmp td.y { color:var(--ok); white-space:nowrap; }
+  .cmp td.x { color:var(--err); white-space:nowrap; }
+
+  @media (max-width:620px) {
+    .grass, .twin .cells { grid-template-columns:repeat(20,1fr); }
+    .twin .lane { grid-template-columns:80px 1fr auto; gap:8px; }
+    .hi .agents { margin-left:0; }
+    .brow { grid-template-columns:24px 1fr 68px; } .brow .pr { display:none; }
+  }
+</style>
+
+<div class="page">
+  <div class="head">
+    <h1>OCW 시안 — 히어로에 걸 숫자</h1>
+    <span class="tag">v3 · 축 5개</span>
+    <span class="sub">문장이 아니라 숫자를 바꿨다</span>
+    <button class="btn" id="langBtn" type="button">한국어 → EN</button>
+    <button class="btn" id="themeBtn" type="button">◐ theme</button>
+  </div>
+
+  <div class="why">
+    <b>앞의 두 번이 안 끌린 이유</b> — v1(광고판 자랑)도 v2(규칙 설명)도 결국 <b>같은 축</b>이었다: 리더보드 순위.
+    그런데 참가자 10명짜리 보드에서 “오늘 5개면 3위”는 정직할수록 판이 작다는 자백이 된다.
+    <span class="dead">문장을 아무리 다듬어도 이 축에선 안 커진다.</span>
+    <ul>
+      <li>outbid 이 파는 건 순위가 아니라 <b>숫자 하나의 긴장</b>이다. $17,005 라는 액수 자체가 후킹이지 문구가 후킹이 아니다.</li>
+      <li>그래서 이번엔 <b>간판에 걸 숫자를 바꿨다</b>. 축 5개, 서로 완전히 다른 감정을 건드린다 — 정체성 · 돈 · 국가 · 비교 · 증명.</li>
+      <li>톤은 v2 규칙 그대로 유지(자랑 없음, 비유 없음, 없는 숫자 없음). 아래 모든 숫자는 <b>실제로 있는지</b>를 각 안 밑에 적었다.</li>
+    </ul>
+  </div>
+
+  <!-- ══════════════ A ══════════════ -->
+  <div class="vhead">
+    <span class="no">A</span><h2>커밋 vs 프롬프트 — 잔디가 못 세는 것</h2>
+    <span class="cost c2">깃허브 연동 필요</span>
+    <span class="kw">정체성 · “내가 논 게 아닌데”</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <p class="slogan"
+           data-ko="이번 주 커밋 <em>12</em>개.<br>에이전트한테 시킨 건 <b><em>480</em>번.</b>"
+           data-en="<em>12</em> commits this week.<br><b><em>480</em> prompts</b> to get them."></p>
+        <p data-ko="깃허브 잔디는 결과만 셉니다. 몇 번을 시켰는지, 몇 글자를 썼는지, 어느 프로젝트에서 몇 시간을 태웠는지는 아무 데도 안 남습니다. 그쪽을 셉니다. 내용은 수집하지 않습니다."
+           data-en="The commit graph counts results. How many times you asked, how much you wrote, which project ate the hours — none of that is recorded anywhere. This counts that side. Never the content."></p>
+        <div class="twin">
+          <div class="lane pale"><span class="lab">github</span><span class="cells" data-fill="sparse"></span><span class="num">12</span></div>
+          <div class="lane"><span class="lab">open-code-war</span><span class="cells" data-fill="dense"></span><span class="num">480</span></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 에이전트 쓰는 사람이면 다 아는 감각이다 — <b>일은 더 하는데 잔디는 더 연해진다</b>.
+    두 줄을 나란히 놓는 순간 설명이 필요 없다. 앞의 두 시안과 달리 이건 <b>판 크기와 무관</b>하다. 참가자가 1명이어도 성립한다.</p>
+  <p class="note risk"><b>숫자 상태:</b> 프롬프트 480 = <b>있다</b>. 커밋 12 = <b>없다</b> — 깃허브 OAuth 스코프 추가 + 커밋 조회가 필요하다.
+    비로그인 방문자에게 뭘 보여줄지도 문제(남의 숫자를 예시로 박으면 그게 곧 거짓말). 대안: 커밋 줄은 “입력하는 곳”으로 두고
+    설치 후 본인 숫자로 채우기 — 대신 첫인상에선 대비가 약해진다.</p>
+
+  <!-- ══════════════ B ══════════════ -->
+  <div class="vhead">
+    <span class="no">B</span><h2>태운 돈 — 이 판의 가격표</h2>
+    <span class="cost c3">ccusage 구현 필요</span>
+    <span class="kw">돈 · outbid 의 $17,005 자리</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=daily&amp;metric=usd <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <p class="slogan"
+           data-ko="오늘 이 사람들이 태운 돈<br><b><em>$312.40</em></b>"
+           data-en="Burned here today<br><b><em>$312.40</em></b>"></p>
+        <p data-ko="구독료로 쓰든 API 로 쓰든, 토큰을 API 단가로 환산한 금액입니다. 실제 청구서와는 다릅니다 — 자기가 오늘 얼마치를 굴렸는지 보는 숫자입니다. 계산은 로컬에서 하고 서버로는 금액만 보냅니다."
+           data-en="Tokens converted at API rates, whether you pay by subscription or by API. It isn't your invoice — it's what you actually ran today. Computed locally; only the amount is sent."></p>
+        <div class="burn">
+          <div class="brow"><span class="rk">1</span><span class="who">dododo</span><span class="usd">$84.10</span><span class="pr">67p</span></div>
+          <div class="brow"><span class="rk">2</span><span class="who">yeom</span><span class="usd">$41.60</span><span class="pr">30p</span></div>
+          <div class="brow"><span class="rk">3</span><span class="who">VoidLight</span><span class="usd">$28.90</span><span class="pr">24p</span></div>
+          <div class="brow sum"><span class="rk"></span><span class="who" data-ko="오늘 합계 · 10명" data-en="today, 10 people"></span><span class="usd">$312.40</span><span class="pr"></span></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span data-ko="이번 달 누적 <b>$4,870</b>" data-en="this month <b>$4,870</b>"></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> outbid 의 $17,005 자리에 정확히 대응하는 유일한 숫자다. 그리고 <b>10명이어도 커 보인다</b> —
+    사람 수는 안 커도 금액은 합쳐지니까. “남들 얼마 태우나”는 Claude Code 쓰는 사람이 제일 궁금해하는 숫자이기도 하고,
+    <b>스크린샷이 그대로 트윗</b>이 된다. 프롬프트 수는 자랑거리가 아니지만 $84 는 이야깃거리다.</p>
+  <p class="note risk"><b>숫자 상태:</b> <b>전부 없다.</b> §23 설계만 있고 코드는 아직 0줄 — ccusage 호출·스냅샷 upsert·스키마까지 붙여야 한다.
+    5안 중 제일 비싸다. 추가 리스크: 금액 공개는 <b>연봉 공개와 비슷한 압력</b>을 만든다(옵트인 필수, §23.3),
+    구독제 유저에게 “$84 태움”은 오해 소지가 있어 <b>“API 환산”</b> 표기가 항상 붙어야 한다.</p>
+
+  <!-- ══════════════ C ══════════════ -->
+  <div class="vhead">
+    <span class="no">C</span><h2>국가전 — 지금 한국이 이기고 있다</h2>
+    <span class="cost c1">쿼리만 추가</span>
+    <span class="kw">경쟁 · 개인 순위 대신 편 싸움</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /zones?type=daily <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <p class="slogan"
+           data-ko="지금 <b>한국</b>이 앞선다.<br><em>4,120</em> : <em>3,880</em>"
+           data-en="<b>Korea</b> is ahead right now.<br><em>4,120</em> : <em>3,880</em>"></p>
+        <p data-ko="오늘 친 프롬프트가 그대로 나라 점수에 합산됩니다. 매일 UTC 0시에 초기화되고, 국가는 프로필에서 직접 고릅니다. 개인 순위는 아래 보드에 그대로 있습니다."
+           data-en="Every prompt you send today adds to your country's total. It resets at 00:00 UTC, and you pick your country in your profile. Individual standings are on the board below."></p>
+        <div class="vs">
+          <div class="vsrow">
+            <span class="side"><span class="flag">🇰🇷</span><span class="cc">KR</span><span class="n lead">4,120</span></span>
+            <span class="side"><span class="n">3,880</span><span class="cc">JP</span><span class="flag">🇯🇵</span></span>
+          </div>
+          <div class="vsbar"><span class="a" style="width:51.5%"></span><span class="b" style="width:48.5%"></span></div>
+          <div class="vsnote">
+            <span data-ko="격차 <b>240</b> · 오늘 남은 시간 <b>7시간 20분</b>" data-en="gap <b>240</b> · <b>7h 20m</b> left today"></span>
+            <span data-ko="3위 <b>US</b> 2,010" data-en="#3 <b>US</b> 2,010"></span>
+          </div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span data-ko="내 나라 <b>KR</b>" data-en="your country <b>KR</b>"></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 개인 순위는 10명이면 초라하지만 <b>편으로 묶으면 숫자가 커진다</b>. 그리고 “내가 안 치면 진다”가
+    개인 3위보다 훨씬 센 동기다 — 이름이 <b>Open Code War</b> 인 이유가 여기서 처음으로 간판에 드러난다(§21 이 내렸던 3겹을 되올리는 셈).
+    이기고 있든 지고 있든 <b>매일 문구가 바뀐다</b>는 것도 크다. 재방문 이유가 생긴다.</p>
+  <p class="note"><b>숫자 상태:</b> <b>있다.</b> <code>users.country</code> + <code>daily_stats</code> 합산 — <code>/zones</code> 에 프롬프트 합계를 더하는 쿼리 하나면 된다.</p>
+  <p class="note risk"><b>리스크:</b> 참가자 분포가 KR 에 쏠려 있어서 지금 켜면 <b>4,120 : 0</b> 같은 그림이 나온다 — 상대가 없으면 경기가 아니다.
+    JP·US 에 최소 몇 명이 들어온 뒤에야 켤 수 있다. 그때까지는 “KR 안에서 도시 대결”로 축소해 쓸 수 있다(<code>users.city</code> 이미 있음).</p>
+
+  <!-- ══════════════ D ══════════════ -->
+  <div class="vhead">
+    <span class="no">D</span><h2>남들 숫자 — 하루에 몇 번이 보통인가</h2>
+    <span class="cost c1">집계만 추가</span>
+    <span class="kw">호기심 · 아무도 안 알려주는 값</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /stats/distribution <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <p class="slogan"
+           data-ko="여기 사람들은 하루 <b><em>34</em>번</b> 시킨다.<br>상위 10%는 <em>187</em>번."
+           data-en="People here send <b><em>34</em> prompts a day.</b><br>The top 10%: <em>187</em>."></p>
+        <p data-ko="자기가 많이 쓰는 편인지 아닌지 알 방법이 없습니다. 여기 있는 사람들의 실제 분포입니다. 설치하면 내 값이 이 분포 어디쯤인지 매일 아침 터미널에 한 줄로 뜹니다."
+           data-en="There's no way to tell whether you use it a lot. This is the actual distribution here. Install it and where you land shows up in your terminal each morning, one line."></p>
+        <div class="dist">
+          <div class="bars" id="bars"></div>
+          <div class="axis"><span>0</span><span>34</span><span>100</span><span>187</span><span>400+</span></div>
+          <p class="distnote" data-ko="중간값 <b>34</b> · 상위 10% <b>187</b> · 최고 <b>412</b> — 최근 7일, 참가자 <b>10</b>명 기준"
+             data-en="median <b>34</b> · top 10% <b>187</b> · max <b>412</b> — last 7 days, <b>10</b> participants"></p>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> “남들은 얼마나 쓰나”는 <b>아무도 안 알려주는데 다들 궁금한</b> 숫자다. 순위표는 1등만 주인공이지만
+    분포는 <b>읽는 사람이 주인공</b>이다 — 내 위치를 알려면 설치할 수밖에 없다. 설치 동기가 카피가 아니라 구조에서 나온다.</p>
+  <p class="note"><b>숫자 상태:</b> <b>있다.</b> <code>daily_stats</code> 에서 중간값·백분위 계산만 추가.</p>
+  <p class="note risk"><b>리스크:</b> 표본 10명이면 “상위 10%”가 사실상 1명이라 값이 매일 요동친다. 표본 수(n)를 반드시 같이 적어야 하고,
+    n 이 작을 땐 <b>중간값만</b> 쓰는 편이 안전하다. 그리고 이 숫자는 무섭게 읽힐 수도 있다 — “하루 187번? 나는 뭐 하고 있지”.</p>
+
+  <!-- ══════════════ E ══════════════ -->
+  <div class="vhead">
+    <span class="no">E</span><h2>증명 — “그거 AI가 짠 거죠?”</h2>
+    <span class="cost c1">카피만</span>
+    <span class="kw">실용 · 명함/이력서 쪽</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /u/dododo <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <p class="slogan"
+           data-ko="“그거 AI가 짠 거잖아요.”<br><b>그래서 뭘 시켰는지 남긴다.</b>"
+           data-en="&ldquo;AI wrote that, though.&rdquo;<br><b>So keep the record of what you asked.</b>"></p>
+        <p data-ko="에이전트를 쓸수록 “뭘 했는지”가 커밋에서 사라집니다. 며칠 동안, 몇 번을 고쳐 시켰고, 어느 프로젝트에 붙어 있었는지가 링크 하나로 남습니다. 코드도 프롬프트 내용도 안 남깁니다 — 양만 남습니다."
+           data-en="The more you use an agent, the less your commits show what you did. How many days, how many passes, which project you stayed on — one link keeps it. No code, no prompt text. Just the amounts."></p>
+        <div class="log">
+          <div><span class="t">2026-08-26</span> &nbsp;opencodewar &nbsp;<b>67</b> prompts &nbsp;<b>18,400</b> chars &nbsp;<span class="t">claude-code</span></div>
+          <div><span class="t">2026-08-25</span> &nbsp;opencodewar &nbsp;<b>41</b> prompts &nbsp;<b>9,820</b> chars &nbsp;<span class="t">claude-code · codex</span></div>
+          <div><span class="t">2026-08-24</span> &nbsp;<span class="t" data-ko="기타" data-en="other"></span> &nbsp;<b>12</b> prompts &nbsp;<b>3,110</b> chars &nbsp;<span class="t">codex</span></div>
+          <div class="t" data-ko="… 연속 <b>34</b>일 · 누적 <b>2,667</b>" data-en="… <b>34</b>-day streak · <b>2,667</b> total"></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 5안 중 유일하게 <b>바깥에 쓸모</b>가 있다 — 이직·외주·사이드 프로젝트 소개에서 내밀 링크.
+    “AI가 짠 거 아니냐”는 지금 실제로 도는 말이고, 그 말에 대한 답이 제품 그 자체다.</p>
+  <p class="note"><b>숫자 상태:</b> <b>전부 있다.</b> 프로필 화면 그대로다 — 카피만 바꾸면 오늘 나간다.</p>
+  <p class="note risk"><b>리스크:</b> 방어적 프레임이라 사람에 따라 피곤하게 읽힌다(“해명해야 하나”). 그리고 저 로그가
+    <b>증명이 되긴 하냐</b>는 반론이 가능하다 — 프롬프트 횟수는 실력도 결과물도 아니니까. 표현을 “증명”보다
+    <b>“기록”</b> 쪽으로 눌러야 한다.</p>
+
+  <!-- ══════════════ 비교 ══════════════ -->
+  <div class="vhead"><h2>한눈에</h2></div>
+  <table class="cmp">
+    <thead><tr><th>축</th><th>거는 숫자</th><th>건드리는 감정</th><th>지금 데이터</th><th>참가자 10명에서</th></tr></thead>
+    <tbody>
+      <tr><td class="n">A 커밋 대비</td><td class="d">12 vs 480</td><td class="d">정체성 · 억울함</td><td class="x">커밋 없음(깃허브 연동)</td><td class="d">문제 없음 — 1명이어도 성립</td></tr>
+      <tr><td class="n">B 태운 돈</td><td class="d">$312.40</td><td class="d">돈 · 호기심</td><td class="x">없음(§23 미구현)</td><td class="d">합계라 커 보임 · 가장 강함</td></tr>
+      <tr><td class="n">C 국가전</td><td class="d">4,120 : 3,880</td><td class="d">편 · 승부</td><td class="y">있음(쿼리)</td><td class="d">상대가 없어 지금은 불가</td></tr>
+      <tr><td class="n">D 분포</td><td class="d">34 / 187</td><td class="d">비교 · 궁금증</td><td class="y">있음(집계)</td><td class="d">표본이 흔들림 · 중간값만</td></tr>
+      <tr><td class="n">E 증명</td><td class="d">34일 · 2,667</td><td class="d">실용 · 불안</td><td class="y">전부 있음</td><td class="d">문제 없음 — 남 숫자 필요 없음</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><b>내 판단:</b> 후킹 크기만 보면 <b>B(돈)</b> 가 압도적이다. outbid 이 액수로 하는 일을 그대로 하고, 참가자가 적어도 숫자가 크고,
+    스크린샷이 알아서 퍼진다. 대신 §23 을 다 만들어야 한다 — <b>카피 작업이 아니라 기능 작업</b>이다.
+    지금 당장 바꿀 수 있는 것 중에서는 <b>A</b> 가 제일 세다(“일은 더 하는데 잔디는 연해진다” — 판 크기와 무관).
+    <b>C·D</b> 는 사람이 더 모인 뒤. <b>E</b> 는 후킹은 약해도 유일하게 바깥에서 쓸모가 있어, 히어로가 아니라 프로필/README 쪽 문구로 잘 맞는다.</p>
+  <p class="note">셋 중 하나 고르라면: <b>지금 = A</b>, <b>다음 분기 = B</b>, <b>사람 모이면 = C</b>.</p>
+</div>
+
+<script>
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const cur = root.getAttribute('data-theme');
+    const sysDark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const now = cur || (sysDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', now === 'dark' ? 'light' : 'dark');
+  });
+
+  let lang = 'ko';
+  const langBtn = document.getElementById('langBtn');
+  function paint() {
+    for (const el of document.querySelectorAll('[data-ko][data-en]')) {
+      el.innerHTML = el.getAttribute(lang === 'ko' ? 'data-ko' : 'data-en');
+    }
+    langBtn.textContent = lang === 'ko' ? '한국어 → EN' : 'EN → 한국어';
+  }
+  langBtn.addEventListener('click', () => { lang = lang === 'ko' ? 'en' : 'ko'; paint(); });
+  paint();
+
+  // 잔디(히어로 자리 표시용 결정적 패턴)
+  for (const g of document.querySelectorAll('.grass')) {
+    for (let i = 0; i < 120; i++) {
+      const cell = document.createElement('i');
+      const lv = [0, 1, 2, 0, 3, 1, 4, 2, 0, 1, 3, 0][i % 12];
+      if (lv) cell.className = 'g' + lv;
+      g.appendChild(cell);
+    }
+  }
+
+  // A: 두 줄 대비 — 위(github)는 듬성듬성, 아래(ocw)는 빽빽하게
+  for (const c of document.querySelectorAll('.twin .cells')) {
+    const dense = c.getAttribute('data-fill') === 'dense';
+    for (let i = 0; i < 30; i++) {
+      const cell = document.createElement('i');
+      if (dense) cell.className = [0, 4, 8, 12, 17, 22, 26].includes(i) ? 'hot' : 'on';
+      else if ([2, 3, 9, 14, 15, 21, 27].includes(i)) cell.className = 'on';
+      c.appendChild(cell);
+    }
+  }
+
+  // D: 분포 히스토그램(롱테일 — 실제 프롬프트 분포 모양)
+  const HIST = [3, 7, 12, 18, 22, 17, 13, 9, 7, 5, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1];
+  const bars = document.getElementById('bars');
+  const max = Math.max(...HIST);
+  HIST.forEach((v, i) => {
+    const b = document.createElement('i');
+    b.style.height = Math.round((v / max) * 100) + '%';
+    if (i === 4) b.className = 'mid';      // 중간값 구간
+    if (i === 13) b.className = 'me';      // 상위 10% 구간
+    bars.appendChild(b);
+  });
+</script>

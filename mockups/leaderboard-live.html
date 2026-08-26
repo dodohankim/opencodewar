@@ -1,0 +1,538 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Code War — Leaderboard (live)</title>
+<style>
+  /* web/index.html 토큰 그대로. 이 파일은 "그대로 배포됐을 때의 화면"이다. */
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
+    --gauge:rgba(27,27,26,0.07); --gauge-1:rgba(183,134,46,0.20);
+    --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    --grass-0:rgba(79,130,88,0.10); --grass-1:rgba(79,130,88,0.28);
+    --grass-2:rgba(79,130,88,0.50); --grass-3:rgba(79,130,88,0.74); --grass-4:#4F8258;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+      --gauge:rgba(231,231,227,0.09); --gauge-1:rgba(217,164,65,0.22);
+      --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+      --grass-0:rgba(109,168,117,0.12); --grass-1:rgba(109,168,117,0.30);
+      --grass-2:rgba(109,168,117,0.55); --grass-3:rgba(109,168,117,0.80); --grass-4:#6DA875;
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+    --gauge:rgba(231,231,227,0.09); --gauge-1:rgba(217,164,65,0.22);
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+    --grass-0:rgba(109,168,117,0.12); --grass-1:rgba(109,168,117,0.30);
+    --grass-2:rgba(109,168,117,0.55); --grass-3:rgba(109,168,117,0.80); --grass-4:#6DA875;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg); font-size:14px; line-height:1.5;
+    padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased; word-break:keep-all; overflow-wrap:break-word; }
+  .term { max-width:920px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .tbtn { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    padding:4px 10px; border-radius:5px; cursor:pointer; }
+  .tbtn:hover { color:var(--fg); border-color:var(--fg); }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; margin-top:22px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .box > .rlegend { position:absolute; top:-0.7em; right:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--faint);
+    display:flex; align-items:center; gap:6px; }
+
+  /* ── 배너 ── */
+  .banner .big { font-size:clamp(22px,4.4vw,34px); font-weight:700; letter-spacing:0.04em; margin:0; }
+  .banner p { margin:0; color:var(--dim); font-size:13px; }
+  .banner .slogan { margin:0 0 7px; color:var(--fg); font-size:clamp(17px,3.4vw,25px); font-weight:700; letter-spacing:-0.01em; line-height:1.3; }
+  .banner .slogan b { background:var(--rev-bg); color:var(--rev-fg); padding:0 7px; border-radius:3px; }
+  .field { margin:8px 0 12px; }
+  .grass { display:grid; grid-template-columns:repeat(30,1fr); gap:2px; }
+  .grass i { display:block; aspect-ratio:1; border-radius:2px; background:var(--grass-0); }
+  .grass i.l1 { background:var(--grass-1); } .grass i.l2 { background:var(--grass-2); }
+  .grass i.l3 { background:var(--grass-3); } .grass i.l4 { background:var(--grass-4); }
+  .hero-install { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px;
+    border:1px solid var(--line); border-radius:6px; padding:9px 12px; background:var(--hover); }
+  .hero-install .hi-ps1 { color:var(--ok); margin-right:6px; }
+  .hero-install .hi-cmd { font-size:13px; }
+  .cmd-copy { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    border-radius:4px; padding:2px 7px; cursor:pointer; }
+  .cmd-copy:hover { color:var(--fg); border-color:var(--fg); }
+  .hero-install .hi-agents { margin-left:auto; font-size:11px; color:var(--dim); white-space:nowrap; }
+  .status { margin-top:14px; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
+  .status b { color:var(--fg); font-weight:600; }
+  .dotlive { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
+  .dotlive.pulse { animation:pulse 1.8s ease-in-out infinite; }
+  .dotlive.idle { background:var(--faint); animation:none; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+
+  /* ── 컨트롤 ── */
+  .controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:22px; }
+  .tabs, .sorts, .scopes { display:inline-flex; gap:6px; }
+  .tab, .sort, .scope { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    padding:6px 12px; border-radius:5px; cursor:pointer; white-space:nowrap; }
+  .tab:hover, .sort:hover, .scope:hover { color:var(--fg); }
+  .tab[aria-selected="true"], .sort[aria-pressed="true"], .scope[aria-pressed="true"] {
+    background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .zonebar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px; }
+  .toolbar { margin-top:10px; }
+  .toolbar input { font:inherit; font-size:13px; background:var(--bg); color:var(--fg); border:1px solid var(--line);
+    border-radius:5px; padding:6px 10px; width:200px; }
+  .toolbar input::placeholder { color:var(--faint); }
+
+  /* ── 보드 ── */
+  .rkbadge { font-size:10px; color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:0 5px; white-space:nowrap; flex:none; }
+  .rkbadge.hi { color:var(--amber); border-color:var(--amber); }
+  .delta { font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; flex:none; }
+  .delta.up { color:var(--ok); } .delta.down { color:var(--err); } .delta.same { color:var(--faint); }
+  .fav { width:17px; height:17px; border-radius:4px; border:1px solid var(--line); background:var(--bg); object-fit:contain; flex:none; }
+  .fav.lg { width:32px; height:32px; border-radius:7px; }
+  .mono { display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px; border-radius:4px;
+    font-size:10px; font-weight:700; color:#fff; flex:none; }
+  .mono.lg { width:32px; height:32px; border-radius:7px; font-size:16px; }
+  .slot { width:17px; height:17px; border-radius:4px; border:1px dashed var(--line); flex:none; }
+  .ship { display:inline-flex; align-items:center; gap:6px; min-width:0; max-width:100%; }
+  .ship .snm { font-size:12px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:2px; cursor:pointer; }
+  .ship .snm:hover { color:var(--fg); text-decoration-color:var(--fg); }
+  .ship.empty { color:var(--faint); font-size:11.5px; }
+  .ship.strong .snm { font-size:13.5px; font-weight:700; color:var(--fg); }
+  .ship.strong .host { font-size:11px; color:var(--faint); white-space:nowrap; flex:none; }
+  .ship.strong .arr { color:var(--faint); font-size:11px; flex:none; }
+  .mainbadge { font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--rev-fg); background:var(--ok); border-radius:4px; padding:0 5px; flex:none; }
+  .pnum { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .cnum { font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+  .row { position:relative; overflow:hidden; }
+  .row .g { position:absolute; inset:0 auto 0 0; z-index:0;
+    background:linear-gradient(90deg, var(--gauge) 0%, var(--gauge) 62%, transparent 100%); }
+  .row > * { position:relative; z-index:1; }
+  .pod { display:flex; align-items:center; gap:13px; border:1px solid var(--line); border-radius:8px;
+    padding:11px 13px; margin-bottom:8px; cursor:pointer; }
+  .pod:hover { background:var(--hover); }
+  .pod.r1 { border-color:var(--amber); }
+  .pod.r1 .g { background:linear-gradient(90deg, var(--gauge-1) 0%, var(--gauge-1) 62%, transparent 100%); }
+  .pod .rkp { font-size:13px; font-weight:700; color:var(--dim); flex:none; width:34px; }
+  .pod.r1 .rkp { color:var(--amber); }
+  .pod .body { min-width:0; flex:1; }
+  .pod .l1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .pod .nick { font-size:16px; font-weight:700; }
+  .pod .l2 { margin-top:3px; }
+  .pod .desc { font-size:12px; color:var(--dim); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pod .nums { text-align:right; flex:none; }
+  .pod .nums .pnum { font-size:22px; }
+  .cmp { display:flex; align-items:center; gap:10px; padding:7px 10px; cursor:pointer; }
+  .cmp:hover { background:var(--hover); }
+  .cmp + .cmp { border-top:1px solid var(--line); }
+  .cmp .rk { width:26px; color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums; flex:none; }
+  .cmp .nick { font-size:13px; font-weight:600; }
+  .cmp .mid { display:flex; align-items:center; gap:8px; min-width:0; flex:1; flex-wrap:wrap; }
+  .cmp .nums { margin-left:auto; text-align:right; flex:none; display:flex; align-items:baseline; gap:8px; }
+  .cmp .nums .pnum { font-size:14px; }
+  .youtag { font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--rev-fg); background:var(--fg);
+    border-radius:3px; padding:0 5px; flex:none; }
+  .mebar { position:sticky; bottom:0; margin-top:10px; display:flex; align-items:center; gap:12px;
+    border:1px solid var(--fg); border-radius:7px; padding:9px 12px; background:var(--bg); font-size:12.5px; }
+  .mebar .pnum { font-size:15px; }
+  .mebar .gap { margin-left:auto; color:var(--dim); font-size:12px; }
+  .mebar .gap b { color:var(--fg); }
+
+  /* ── 참전 기록 ── */
+  .feedhead { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--dim); margin-bottom:10px; }
+  .feedhead .last { color:var(--faint); }
+  .feedhead .next { margin-left:auto; font-variant-numeric:tabular-nums; color:var(--faint); font-size:11.5px; }
+  .newpill { font-size:10.5px; font-weight:700; color:var(--rev-fg); background:var(--ok); border-radius:4px; padding:1px 6px; }
+  .newpill.zero { background:transparent; color:var(--faint); font-weight:400; border:1px solid var(--line); }
+  .ticker { font-size:12.5px; }
+  .trow { display:grid; grid-template-columns:74px 128px 46px 1fr 30px; gap:10px; align-items:center;
+    padding:5px 6px; border-radius:4px; white-space:nowrap; }
+  .trow .t { color:var(--faint); font-variant-numeric:tabular-nums; }
+  .trow .n { color:var(--fg); font-weight:600; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+  .trow .n:hover { text-decoration:underline; text-underline-offset:2px; }
+  .trow .d { color:var(--ok); font-weight:700; font-variant-numeric:tabular-nums; }
+  .trow .a { color:var(--dim); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; }
+  .trow .a.codex { color:var(--ag-codex); }
+  .trow .a.opencode { color:var(--ag-opencode); }
+  .trow .a.pi { color:var(--ag-pi); }
+  .trow .c { color:var(--faint); font-size:11.5px; text-align:right; }
+  .trow.fresh { animation:evin .5s ease-out; }
+  @keyframes evin { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+  .batchsep { display:flex; align-items:center; gap:8px; margin:8px 2px; font-size:10.5px; color:var(--faint); }
+  .batchsep::before, .batchsep::after { content:''; height:1px; background:var(--line); flex:1; }
+
+  /* ── 하단 ── */
+  .lower { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:22px; }
+  .lower .box { margin-top:0; }
+  .list { list-style:none; margin:0; padding:0; font-size:12.5px; color:var(--dim); }
+  .list li { display:flex; gap:9px; margin:6px 0; }
+  .list .k { color:var(--faint); flex:none; }
+  .list b { color:var(--fg); }
+  .agents { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px; }
+  .agent { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    padding:4px 10px; border-radius:5px; cursor:pointer; }
+  .agent[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); border-color:var(--rev-bg); }
+  .cmd { font-size:12.5px; background:var(--hover); border:1px solid var(--line); border-radius:5px;
+    padding:6px 9px; margin-bottom:5px; word-break:break-all; }
+  .install p { font-size:12px; color:var(--dim); margin:8px 0 0; }
+  .install code { background:var(--hover); border-radius:3px; padding:0 4px; }
+  .foot { display:flex; gap:14px; flex-wrap:wrap; margin-top:18px; font-size:11.5px; color:var(--faint); }
+  .foot a { color:var(--faint); }
+
+  @media (max-width:640px) {
+    .pod .desc { display:none; }
+    .ship.strong .host, .ship.strong .arr { display:none; }
+    .pod { gap:10px; padding:10px; }
+    .pod .nums .pnum { font-size:19px; }
+    .trow { grid-template-columns:66px 1fr 46px; }
+    .trow .a, .trow .c { display:none; }
+    .lower { grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="term">
+  <div class="titlebar">
+    <div class="lights"><i></i><i></i><i></i></div>
+    <span class="name">ocw — open-code-war (live)</span>
+    <button class="tbtn" type="button">로그인</button>
+    <button class="tbtn" type="button">EN</button>
+    <button class="tbtn" id="themeBtn" type="button">◐ theme</button>
+  </div>
+  <div class="screen">
+    <div class="echo"><span class="sig">you@open-code-war</span>:~$ <span id="echoCmd">GET /leaderboard?type=all&amp;metric=prompts</span> <span class="cursor"></span></div>
+
+    <section class="box banner">
+      <span class="legend">ocw · live</span>
+      <h1 class="big">OPEN CODE WAR</h1>
+      <div class="field" aria-hidden="true"><div class="grass" id="grass"></div></div>
+      <p class="slogan">코드는 에이전트가 쓴다.<br>그럼 <b>당신의 노력</b>은 어디에 남지?</p>
+      <p>커밋 잔디로는 안 보이는 매일을 기록합니다 — 프롬프트 횟수·글자 수·프로젝트별 시간. 내용은 절대 수집하지 않습니다. 기록은 계급·스트릭·개발자 명함이 되고, 원하면 전쟁에도 참전합니다.</p>
+      <div class="hero-install">
+        <span class="hi-cmd"><span class="hi-ps1">❯</span>/plugin marketplace add dodohankim/opencodewar</span>
+        <button class="cmd-copy" type="button" title="명령어 복사">⧉</button>
+        <span class="hi-agents">Claude Code 기준 — Codex · OpenCode · pi ↓</span>
+      </div>
+      <div class="status">
+        <span><span class="dotlive pulse"></span>집계 중</span>
+        <span>참가 <b>10</b></span>
+        <span>region <b>KR 🇰🇷</b></span>
+        <span>1위 <b>dododo</b></span>
+        <span>집계 KST 16:40:19 · 5분마다</span>
+      </div>
+    </section>
+
+    <div class="controls">
+      <div class="tabs" role="tablist" aria-label="board period">
+        <button class="tab" data-board="total" aria-selected="true">total</button>
+        <button class="tab" data-board="daily" aria-selected="false">daily</button>
+      </div>
+      <div class="sorts">
+        <button class="sort" data-metric="prompts" aria-pressed="true">prompts</button>
+        <button class="sort" data-metric="chars" aria-pressed="false">chars</button>
+      </div>
+    </div>
+    <div class="zonebar">
+      <div class="scopes" role="tablist" aria-label="zone scope">
+        <button class="scope" aria-pressed="true">전체</button>
+        <button class="scope" aria-pressed="false">국가</button>
+      </div>
+    </div>
+    <div class="toolbar"><input type="text" placeholder="닉네임 검색"></div>
+
+    <section class="box">
+      <span class="legend" id="boardLegend">leaderboard · all · prompts</span>
+      <div id="boardOut"></div>
+      <div class="mebar" id="meBar"></div>
+    </section>
+
+    <section class="box">
+      <span class="legend">참전 기록</span>
+      <span class="rlegend"><span class="dotlive pulse" id="feedDot"></span>live · 60초마다</span>
+      <div class="feedhead">
+        <span class="newpill zero" id="newPill">대기 중</span>
+        <span class="last" id="lastAt"></span>
+        <span class="next" id="nextIn"></span>
+      </div>
+      <div class="ticker" id="ticker"></div>
+    </section>
+
+    <div class="lower">
+      <section class="box">
+        <span class="legend">rules</span>
+        <ul class="list">
+          <li><span class="k">01</span><span><b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.</span></li>
+          <li><span class="k">02</span><span><b>내용 미수집.</b> 글자 수(숫자)만 전송.</span></li>
+          <li><span class="k">03</span><span><b>전체 · 데일리 보드.</b> 전체는 모든 입력 누적, 데일리는 UTC 00:00 리셋.</span></li>
+        </ul>
+      </section>
+      <section class="box">
+        <span class="legend">참가 · 설치</span>
+        <div class="install">
+          <div class="agents" role="tablist" aria-label="agent">
+            <button class="agent" type="button" aria-pressed="true">Claude Code</button>
+            <button class="agent" type="button" aria-pressed="false">Codex</button>
+            <button class="agent" type="button" aria-pressed="false">OpenCode</button>
+            <button class="agent" type="button" aria-pressed="false">pi</button>
+          </div>
+          <div class="cmd">/plugin marketplace add dodohankim/opencodewar</div>
+          <div class="cmd">/plugin install open-code-war@opencodewar</div>
+          <p>설치 후 Claude Code에 프롬프트를 입력하면 집계가 시작됩니다. <code>/open-code-war:ocw nickname &lt;이름&gt;</code> 으로 표시명을 등록하세요.</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="foot">
+      <span>[privacy] 프롬프트 내용 미수집 · 글자 수만</span>
+      <a href="#">개인정보처리방침</a>
+      <a href="#">소개</a>
+      <a href="#">문의</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  const OCW_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJPcGVuIENvZGUgV2FyIj4KICA8cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI3IiBmaWxsPSIjMEUwRTBEIi8+CiAgPHBhdGggZD0iTTcgMTAgTDEzIDE2IEw3IDIyIiBmaWxsPSJub25lIiBzdHJva2U9IiNFN0U3RTMiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPHBhdGggZD0iTTI1IDEwIEwxOSAxNiBMMjUgMjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZEQTg3NSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSIxNC42IiB5PSIxNC42IiB3aWR0aD0iMi44IiBoZWlnaHQ9IjIuOCIgZmlsbD0iI0UwNzg1QyIgdHJhbnNmb3JtPSJyb3RhdGUoNDUgMTYgMTYpIi8+Cjwvc3ZnPgo=';
+
+  // 히어로 잔디(최근 90일 히트맵 자리)
+  (() => {
+    const LV = ['', '', 'l1', '', 'l2', 'l1', 'l3', '', 'l1', 'l4', 'l2', ''];
+    const el = document.getElementById('grass');
+    for (let i = 0; i < 120; i++) {
+      const c = document.createElement('i');
+      const lv = LV[(i * 7 + (i % 5) * 3) % LV.length];
+      if (lv) c.className = lv;
+      el.appendChild(c);
+    }
+  })();
+
+  // GET /leaderboard 응답(2026-08-26 실측) — shipping 은 실제 등록분만 있다.
+  const SHIP = {
+    dododo: { name: 'Open Code War', icon: OCW_ICON, host: 'opencodewar.dev',
+              desc: '누가 제일 많이 타이핑했나 — Claude Code 리더보드 & 터미널 개발자 명함' },
+  };
+  const BASE = {
+    total: [
+      { nick: 'dododo', fl: '🇰🇷', p: 5145, c: 4885572, d: 0, me: true },
+      { nick: 'VoidLight', fl: '🇰🇷', p: 1796, c: 878708, d: 1 },
+      { nick: 'yeom', fl: '🇰🇷', p: 327, c: 199131, d: -1 },
+      { nick: '스치니', fl: '🇰🇷', p: 70, c: 9327, d: 0 },
+      { nick: 'NewRay53', fl: '🇩🇪', p: 13, c: 3026, d: 2 },
+      { nick: 'MadAnt67', fl: '🇯🇵', p: 1, c: 0, d: 0 },
+      { nick: 'MadJay77', fl: '🇷🇺', p: 1, c: 0, d: -1 },
+      { nick: 'FoxRam56', fl: '🇷🇺', p: 1, c: 0, d: 0 },
+      { nick: 'Khan', fl: '🇰🇷', p: 0, c: 0, d: 0 },
+      { nick: 'DimJay68', fl: '🇰🇷', p: 0, c: 0, d: 0 },
+    ],
+    daily: [
+      { nick: 'dododo', fl: '🇰🇷', p: 67, c: 92706, d: 0, me: true },
+      { nick: 'yeom', fl: '🇰🇷', p: 30, c: 12563, d: 1 },
+      { nick: 'VoidLight', fl: '🇰🇷', p: 5, c: 8544, d: -1 },
+      { nick: 'MadAnt67', fl: '🇯🇵', p: 0, c: 0, d: 0 },
+      { nick: '스치니', fl: '🇰🇷', p: 0, c: 0, d: 0 },
+      { nick: 'Khan', fl: '🇰🇷', p: 0, c: 0, d: 0 },
+      { nick: 'MadJay77', fl: '🇷🇺', p: 0, c: 0, d: 0 },
+      { nick: 'FoxRam56', fl: '🇷🇺', p: 0, c: 0, d: 0 },
+      { nick: 'NewRay53', fl: '🇩🇪', p: 0, c: 0, d: 0 },
+      { nick: 'DimJay68', fl: '🇰🇷', p: 0, c: 0, d: 0 },
+    ],
+  };
+  const RANKS = [
+    { ko: '이병', min: 0 }, { ko: '일병', min: 200 }, { ko: '상병', min: 1000 }, { ko: '병장', min: 3000 },
+    { ko: '하사', min: 7000 }, { ko: '중사', min: 15000 }, { ko: '상사', min: 30000 }, { ko: '소위', min: 60000 },
+  ];
+  const ALLTIME = Object.fromEntries(BASE.total.map((r) => [r.nick, r.p]));
+  const rankOf = (p) => { let i = 0; while (i + 1 < RANKS.length && p >= RANKS[i + 1].min) i++; return i; };
+  const fmt = (n) => n.toLocaleString('en-US');
+  const compact = (n) => (n >= 1000000 ? (n / 1000000).toFixed(2) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n));
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let board = 'total';
+  let metric = 'prompts';
+
+  const shipOf = (nick, strong) => {
+    const s = SHIP[nick];
+    if (!s) return strong ? `<span class="ship empty"><span class="slot"></span>여기에 내 프로젝트</span>` : '';
+    if (strong) {
+      return `<span class="ship strong"><span class="snm">${esc(s.name)}</span><span class="mainbadge">main</span>` +
+        `<span class="host">${esc(s.host)}</span><span class="arr">↗</span></span>`;
+    }
+    return `<span class="ship"><img class="fav" src="${s.icon}" alt=""><span class="snm">${esc(s.name)}</span></span>`;
+  };
+  const shipLg = (nick) => {
+    const s = SHIP[nick];
+    return s ? `<img class="fav lg" src="${s.icon}" alt="">`
+      : `<span class="slot" style="width:32px;height:32px;border-radius:7px"></span>`;
+  };
+  const descOf = (nick) => (SHIP[nick] ? `<div class="desc">${esc(SHIP[nick].desc)}</div>` : '');
+  const badge = (nick) => {
+    const at = ALLTIME[nick] || 0;
+    return `<span class="rkbadge${at >= 3000 ? ' hi' : ''}">${RANKS[rankOf(at)].ko}</span>`;
+  };
+  const delta = (d) => (d > 0 ? `<span class="delta up">▲${d}</span>`
+    : d < 0 ? `<span class="delta down">▼${-d}</span>` : `<span class="delta same">–</span>`);
+  const valOf = (r) => (metric === 'chars' ? r.c : r.p);
+  const subOf = (r) => (metric === 'chars' ? `${fmt(r.p)} prompts` : `${compact(r.c)} chars`);
+  const gauge = (r, max) => (valOf(r) <= 0 ? 0 : Math.round(Math.sqrt(valOf(r) / max) * 100));
+
+  function paintBoard() {
+    const list = BASE[board].slice().sort((a, b) => valOf(b) - valOf(a));
+    const max = Math.max(valOf(list[0]), 1);
+    const pods = list.slice(0, 3).map((r, i) => `
+      <div class="row pod r${i + 1}">
+        <span class="g" style="width:${gauge(r, max)}%"></span>
+        <span class="rkp">#${i + 1}</span>
+        ${shipLg(r.nick)}
+        <div class="body">
+          <div class="l1"><span class="nick">${esc(r.nick)}</span>${r.me ? '<span class="youtag">YOU</span>' : ''}${badge(r.nick)}<span>${r.fl}</span>${delta(r.d)}</div>
+          <div class="l2">${shipOf(r.nick, true)}</div>
+          ${descOf(r.nick)}
+        </div>
+        <div class="nums"><div class="pnum">${fmt(valOf(r))}</div><div class="cnum">${subOf(r)}</div></div>
+      </div>`).join('');
+    const rest = list.slice(3).map((r, i) => `
+      <div class="row cmp">
+        <span class="g" style="width:${gauge(r, max)}%"></span>
+        <span class="rk">${i + 4}</span>
+        <div class="mid"><span class="nick">${esc(r.nick)}</span>${r.me ? '<span class="youtag">YOU</span>' : ''}${badge(r.nick)}<span>${r.fl}</span>${delta(r.d)}${shipOf(r.nick, false)}</div>
+        <div class="nums"><span class="pnum">${fmt(valOf(r))}</span><span class="cnum">${metric === 'chars' ? fmt(r.p) : compact(r.c)}</span></div>
+      </div>`).join('');
+    document.getElementById('boardOut').innerHTML = pods + `<div style="margin-top:12px">${rest}</div>`;
+
+    const idx = list.findIndex((r) => r.me);
+    const me = list[idx];
+    const above = idx > 0 ? list[idx - 1] : null;
+    const gap = above
+      ? `<span class="gap">${esc(above.nick)} 까지 <b>${fmt(valOf(above) - valOf(me) + 1)}</b> ${metric}</span>`
+      : `<span class="gap">이 판의 <b>1위</b></span>`;
+    document.getElementById('meBar').innerHTML =
+      `<span class="youtag">YOU</span><span>#${idx + 1}</span><span>${esc(me.nick)}</span>${badge(me.nick)}` +
+      `<span class="pnum">${fmt(valOf(me))}</span>${gap}`;
+  }
+
+  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    board = b.dataset.board;
+    document.getElementById('boardLegend').textContent = `leaderboard · ${board === 'total' ? 'all' : 'daily'} · ${metric}`;
+    document.getElementById('echoCmd').textContent = `GET /leaderboard?type=${board === 'total' ? 'all' : 'daily'}&metric=${metric}`;
+    paintBoard();
+  }));
+  document.querySelectorAll('.sort').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.sort').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    metric = b.dataset.metric;
+    document.getElementById('boardLegend').textContent = `leaderboard · ${board === 'total' ? 'all' : 'daily'} · ${metric}`;
+    document.getElementById('echoCmd').textContent = `GET /leaderboard?type=${board === 'total' ? 'all' : 'daily'}&metric=${metric}`;
+    paintBoard();
+  }));
+  document.querySelectorAll('.scope, .agent').forEach((b) => b.addEventListener('click', () => {
+    const sel = b.classList.contains('scope') ? '.scope' : '.agent';
+    document.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+
+  // ── 참전 기록: GET /activity?limit=20 을 60초마다 폴링한 모습 ──
+  const AGENTS = { dododo: 'claude-code', yeom: 'claude-code', VoidLight: 'codex', MadAnt67: 'opencode',
+    '스치니': 'claude-code', Khan: 'pi', MadJay77: 'codex', FoxRam56: 'codex', NewRay53: 'opencode', DimJay68: 'claude-code' };
+  const FLAG = Object.fromEntries(BASE.total.map((r) => [r.nick, r.fl]));
+  const POOL = ['yeom', 'dododo', 'VoidLight', 'dododo', '스치니', 'yeom', 'Khan', 'dododo', 'MadAnt67', 'VoidLight'];
+  const DELTAS = [9, 3, 12, 5, 7, 14, 4, 11, 6, 8];
+  const BATCH = [2, 0, 1, 3, 0, 1, 2, 0, 4, 1];
+  const PERIOD = 60, MAX_ROWS = 12;
+
+  let k = 0, poll = 0, remain = 8; // 첫 갱신은 8초 뒤, 그다음부터 60초 주기
+  let clock = new Date(2026, 7, 26, 16, 41, 2);
+  let lastEventAt = new Date(2026, 7, 26, 16, 39, 41);
+  const pad = (v) => String(v).padStart(2, '0');
+  const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const hhmmss = (d) => `${hhmm(d)}:${pad(d.getSeconds())}`;
+
+  function rowEl(at, nick, d, fresh) {
+    const ag = AGENTS[nick];
+    const el = document.createElement('div');
+    el.className = 'trow' + (fresh ? ' fresh' : '');
+    el.innerHTML = `<span class="t">${hhmmss(at)}</span><span class="n">${esc(nick)}</span>` +
+      `<span class="d">+${d}</span><span class="a ${ag === 'claude-code' ? '' : ag}">${ag}</span>` +
+      `<span class="c">${FLAG[nick] || ''}</span>`;
+    return el;
+  }
+  function trim() {
+    const el = document.getElementById('ticker');
+    while (el.querySelectorAll('.trow').length > MAX_ROWS) el.lastElementChild.remove();
+    while (el.lastElementChild && el.lastElementChild.classList.contains('batchsep')) el.lastElementChild.remove();
+  }
+  (function seed() {
+    const el = document.getElementById('ticker');
+    const s = [[[16, 39, 41], 'dododo', 9], [[16, 38, 12], 'yeom', 4], [[16, 36, 55], 'VoidLight', 2],
+      [[16, 35, 20], 'dododo', 11], [[16, 33, 2], 'yeom', 6]];
+    for (const [[h, m, sec], n, d] of s) el.appendChild(rowEl(new Date(2026, 7, 26, h, m, sec), n, d, false));
+    document.getElementById('lastAt').textContent = `마지막 기록 ${hhmmss(lastEventAt)}`;
+  })();
+
+  function doPoll() {
+    poll += 1;
+    const n = BATCH[poll % BATCH.length];
+    clock = new Date(clock.getTime() + PERIOD * 1000);
+    const pill = document.getElementById('newPill');
+    const el = document.getElementById('ticker');
+
+    if (n === 0) {
+      pill.className = 'newpill zero';
+      pill.textContent = '새 기록 없음';
+      const mins = Math.max(1, Math.round((clock - lastEventAt) / 60000));
+      document.getElementById('lastAt').textContent = `마지막 기록 ${hhmmss(lastEventAt)} · ${mins}분 전`;
+      document.getElementById('feedDot').className = 'dotlive idle';
+      return;
+    }
+    const sep = document.createElement('div');
+    sep.className = 'batchsep';
+    sep.textContent = `${hhmm(clock)} 갱신 · ${n}건`;
+    el.prepend(sep);
+
+    const evs = [];
+    for (let i = 0; i < n; i++) {
+      const nick = POOL[k % POOL.length];
+      const d = DELTAS[(k * 3) % DELTAS.length];
+      k += 1;
+      evs.push({ at: new Date(clock.getTime() - Math.round((PERIOD * 1000 * (i + 1)) / (n + 1))), nick, d });
+    }
+    evs.sort((a, b) => b.at - a.at);
+    lastEventAt = evs[0].at;
+    evs.slice().reverse().forEach((e, i) => setTimeout(() => {
+      el.insertBefore(rowEl(e.at, e.nick, e.d, true), sep.nextSibling);
+      trim();
+    }, i * 120));
+
+    pill.className = 'newpill';
+    pill.textContent = `새 기록 ${n}건`;
+    document.getElementById('feedDot').className = 'dotlive pulse';
+    document.getElementById('lastAt').textContent = `마지막 기록 ${hhmmss(evs[0].at)}`;
+  }
+
+  paintBoard();
+  document.getElementById('nextIn').textContent = `다음 갱신 ${remain}s`;
+  setInterval(() => {
+    remain -= 1;
+    if (remain <= 0) { doPoll(); remain = PERIOD; }
+    document.getElementById('nextIn').textContent = `다음 갱신 ${remain}s`;
+  }, 1000);
+</script>

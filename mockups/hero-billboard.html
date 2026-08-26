@@ -1,0 +1,556 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCW 시안 — 히어로 문구 5안 (규칙 설명체)</title>
+<style>
+  /* 본 서비스(web/index.html)의 토큰·프레임을 그대로 가져온 시안. 색·폰트·박스는 실제와 동일하다. */
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
+    --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    --grass-0:rgba(79,130,88,0.12); --grass-1:rgba(79,130,88,0.30);
+    --grass-2:rgba(79,130,88,0.50); --grass-3:rgba(79,130,88,0.72); --grass-4:rgba(79,130,88,0.92);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+      --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+      --grass-0:rgba(109,168,117,0.14); --grass-1:rgba(109,168,117,0.32);
+      --grass-2:rgba(109,168,117,0.52); --grass-3:rgba(109,168,117,0.74); --grass-4:rgba(109,168,117,0.95);
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+    --ag-codex:#7FA6E0; --ag-opencode:#D99A55; --ag-pi:#AC85DC;
+    --grass-0:rgba(109,168,117,0.14); --grass-1:rgba(109,168,117,0.32);
+    --grass-2:rgba(109,168,117,0.52); --grass-3:rgba(109,168,117,0.74); --grass-4:rgba(109,168,117,0.95);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg);
+    font-size:14px; line-height:1.5; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased;
+    word-break:keep-all; overflow-wrap:break-word; }
+  .page { max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+
+  /* ── 시안 머리말(실제 화면 아님) ── */
+  .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; position:sticky; top:0; z-index:5;
+    background:var(--backdrop); padding:6px 0 8px; }
+  .head h1 { font-size:15px; margin:0; letter-spacing:.03em; }
+  .head .tag { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--rev-fg);
+    background:var(--amber); border-radius:4px; padding:1px 7px; font-weight:700; }
+  .head .sub { font-size:12px; color:var(--dim); flex:1; min-width:180px; }
+  .btn { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg);
+    color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; }
+  .btn:hover { color:var(--fg); border-color:var(--fg); }
+
+  .why { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:12.5px; color:var(--dim); }
+  .why b { color:var(--fg); }
+  .why ul { margin:8px 0 0; padding-left:18px; }
+  .why li { margin:4px 0; }
+  .why code { background:var(--hover); border-radius:3px; padding:0 4px; }
+  .quote { border-left:2px solid var(--fg); padding:2px 0 2px 12px; margin:10px 0; color:var(--fg); font-size:12.5px; }
+  .quote .src { color:var(--faint); font-size:11.5px; }
+
+  /* 톤 규칙 — 이번 시안의 제약 */
+  .tone { display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--line); border-radius:8px;
+    overflow:hidden; background:var(--bg); font-size:12.5px; }
+  .tone > div { padding:12px 14px; }
+  .tone > div + div { border-left:1px solid var(--line); }
+  .tone h3 { margin:0 0 7px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:400; }
+  .tone .no h3 { color:var(--err); }
+  .tone .yes h3 { color:var(--ok); }
+  .tone ul { margin:0; padding-left:16px; color:var(--dim); }
+  .tone li { margin:3px 0; }
+  .tone .x { color:var(--faint); text-decoration:line-through; }
+  @media (max-width:620px) { .tone { grid-template-columns:1fr; } .tone > div + div { border-left:0; border-top:1px solid var(--line); } }
+
+  /* ── 시안 카드 머리 ── */
+  .vhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-top:20px; }
+  .vhead h2 { font-size:14px; margin:0; letter-spacing:.02em; }
+  .vhead .no { font-size:12px; color:var(--rev-fg); background:var(--rev-bg); border-radius:4px;
+    padding:1px 8px; font-weight:700; }
+  .vhead .cost { font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; border:1px solid var(--line);
+    border-radius:4px; padding:1px 7px; color:var(--dim); }
+  .vhead .cost.c1 { border-color:var(--ok); color:var(--ok); }
+  .vhead .cost.c2 { border-color:var(--amber); color:var(--amber); }
+  .vhead .kw { font-size:12px; color:var(--dim); }
+
+  /* ── 실제 사이트와 동일한 터미널 프레임 ── */
+  .term { background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; font-size:13px; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .banner .big { font-size:clamp(22px,4.4vw,34px); font-weight:700; letter-spacing:0.04em; margin:0; }
+  .banner p { margin:0; color:var(--dim); font-size:13px; }
+  .banner .slogan { margin:10px 0 7px; color:var(--fg); font-size:clamp(17px,3.4vw,25px); font-weight:700; letter-spacing:-0.01em; line-height:1.3; }
+  .banner .slogan b { background:var(--rev-bg); color:var(--rev-fg); padding:0 7px; border-radius:3px; }
+  .status { margin-top:14px; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
+  .status b { color:var(--fg); font-weight:600; }
+  .dotlive { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
+  .dotlive.pulse { animation:pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+
+  /* 잔디밭(실제 히어로의 픽셀 병정·히트맵 자리 — 시안에선 잔디만) */
+  .field { margin:8px 0 12px; }
+  .grass { display:grid; grid-template-columns:repeat(30,1fr); gap:3px; }
+  .grass i { display:block; aspect-ratio:1; border-radius:2px; background:var(--grass-0); }
+  .grass i.g1 { background:var(--grass-1); } .grass i.g2 { background:var(--grass-2); }
+  .grass i.g3 { background:var(--grass-3); } .grass i.g4 { background:var(--grass-4); }
+
+  /* 설치 한 줄(실제 .hero-install 과 동일) */
+  .hi { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px;
+    border:1px solid var(--line); border-radius:5px; padding:8px 12px; background:var(--hover);
+    font-size:13px; overflow-x:auto; }
+  .hi .ps1 { color:var(--ok); }
+  .hi .cmd { white-space:nowrap; }
+  .hi .copy { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    border-radius:4px; padding:1px 7px; cursor:pointer; }
+  .hi .agents { margin-left:auto; font-size:11px; color:var(--dim); white-space:nowrap; }
+
+  /* ── 보드 미리보기(빈 자리) ── */
+  .mini { margin-top:12px; border:1px solid var(--line); border-radius:6px; overflow:hidden; font-size:12.5px; }
+  .mrow { display:grid; grid-template-columns:38px 1fr auto; gap:12px; align-items:center; padding:7px 12px; }
+  .mrow + .mrow { border-top:1px solid var(--line); }
+  .mrow .rk { color:var(--dim); font-variant-numeric:tabular-nums; }
+  .mrow .who { color:var(--fg); font-weight:600; display:flex; align-items:center; gap:7px; min-width:0; }
+  .mrow .pj { color:var(--dim); font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mrow .pj .arr { color:var(--faint); margin-right:5px; }
+  .mrow .n { color:var(--fg); font-variant-numeric:tabular-nums; }
+  .mrow .n s { color:var(--faint); }
+  .mrow.open { background:var(--hover); }
+  .mrow.open .rk { color:var(--amber); }
+  .mrow.open .who { color:var(--faint); font-weight:400; }
+  .mrow.open .n { color:var(--amber); }
+  .tile { width:16px; height:16px; border-radius:4px; border:1px solid var(--line); flex:none;
+    display:inline-flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:#fff; }
+  .mrow.open .tile { border-style:dashed; background:none; }
+
+  /* ── 지면 목록 ── */
+  .surf { margin-top:12px; border:1px solid var(--line); border-radius:6px; padding:11px 14px; background:var(--hover); font-size:12.5px; }
+  .srow { display:grid; grid-template-columns:auto 1fr; gap:6px 10px; padding:4px 0; color:var(--dim); }
+  .srow + .srow { border-top:1px solid var(--line); }
+  .srow .k { color:var(--faint); }
+  .srow .v { color:var(--fg); }
+  .srow .v i { color:var(--dim); font-style:normal; }
+
+  /* ── 단가표 ── */
+  .rate { margin-top:12px; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .rate table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .rate th, .rate td { text-align:left; padding:7px 12px; border-bottom:1px solid var(--line); }
+  .rate th { font-size:11px; color:var(--faint); font-weight:400; background:var(--hover); }
+  .rate tr:last-child td { border-bottom:0; }
+  .rate td.p { color:var(--fg); font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .rate td.s { color:var(--dim); }
+  .rate tr.me td { background:var(--hover); }
+  .rate tr.me td.p { color:var(--amber); }
+
+  /* ── 컷라인 한 줄 ── */
+  .cut { margin-top:12px; font-size:13px; color:var(--dim); border:1px solid var(--line);
+    border-radius:5px; padding:8px 12px; background:var(--hover); }
+  .cut b { color:var(--fg); font-variant-numeric:tabular-nums; }
+  .cut .amb { color:var(--amber); font-weight:700; }
+
+  /* ── 시안 해설 ── */
+  .note { border-left:2px solid var(--line); padding:2px 0 2px 12px; margin-top:12px; font-size:12.5px; color:var(--dim); }
+  .note + .note { margin-top:8px; }
+  .note b { color:var(--fg); }
+  .note code { background:var(--hover); border-radius:3px; padding:0 4px; }
+  .note.risk { border-left-color:var(--err); }
+  .note.risk b { color:var(--err); }
+  .note.was { border-left-color:var(--faint); color:var(--faint); }
+  .note.was s { color:var(--faint); }
+
+  /* ── 비교표 ── */
+  .cmp { width:100%; border-collapse:collapse; font-size:12.5px; background:var(--bg);
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .cmp th, .cmp td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .cmp th { font-size:11px; color:var(--faint); font-weight:400; }
+  .cmp tr:last-child td { border-bottom:0; }
+  .cmp td.n { color:var(--fg); font-weight:600; white-space:nowrap; }
+  .cmp td.d { color:var(--dim); }
+
+  @media (max-width:620px) {
+    .grass { grid-template-columns:repeat(20,1fr); }
+    .hi .agents { margin-left:0; }
+    .mrow { grid-template-columns:30px 1fr auto; gap:8px; }
+  }
+</style>
+
+<div class="page">
+  <div class="head">
+    <h1>OCW 시안 — 히어로 문구 5안</h1>
+    <span class="tag">v2 · 설명체</span>
+    <span class="sub">규칙만 말한다 · 자랑·비유·1인칭 선언 없음</span>
+    <button class="btn" id="langBtn" type="button">한국어 → EN</button>
+    <button class="btn" id="themeBtn" type="button">◐ theme</button>
+  </div>
+
+  <div class="why">
+    <b>기준으로 삼은 문장</b>
+    <div class="quote">
+      “New spots start at $5. Paying less than the #1 price still puts you on the board at whatever place that bid can take.”
+      <span class="src">— outbid.lol</span>
+    </div>
+    자랑이 한 글자도 없다. <b>규칙만 말한다</b> — 얼마부터, 못 이기면 어떻게 되는지. “광고판”이라는 말도 안 쓴다.
+    광고판인 건 규칙을 읽으면 알아서 이해된다.
+    <ul>
+      <li><b>가져올 규칙</b> — “1등을 이길 필요 없다”. OCW 에도 이미 있다: 오늘 5개면 3위. 그런데 화면에서 그 말을 안 하고 있었다.</li>
+      <li><b>가져올 문장 구조</b> — 주어는 “너”, 동사는 중립(<i>puts you on the board</i>). 우리가 뭘 해준다고 안 하고, <b>무슨 일이 일어나는지</b>만 쓴다.</li>
+      <li><b>화폐</b> — 돈 대신 프롬프트. 이건 그대로.</li>
+    </ul>
+  </div>
+
+  <div class="tone">
+    <div class="no">
+      <h3>안 쓴다 (v1 에서 뺀 것)</h3>
+      <ul>
+        <li><span class="x">알리는 건 우리가 한다</span> — 우리를 주어로 한 선언</li>
+        <li><span class="x">떠드는 건 내가 한다</span> — 비유·의인화</li>
+        <li><span class="x">오늘 12,480번 보여줬다</span> — 아직 없는 숫자</li>
+        <li><span class="x">돈으로는 못 사는 광고판</span> — 자화자찬</li>
+        <li>느낌표 · 강조 반복 · “유일한”</li>
+      </ul>
+    </div>
+    <div class="yes">
+      <h3>쓴다</h3>
+      <ul>
+        <li>숫자는 실제 값만 (오늘 3위 컷 5, 1위 67)</li>
+        <li>주어는 “당신/네 기록”, 우리는 안 나선다</li>
+        <li>슬로건은 두 줄 · 사실 한 개</li>
+        <li>tagline 은 규칙 설명 — 초기화 시각, 세는 것, 안 세는 것</li>
+        <li>기존 문체 유지: 슬로건 평서(…한다) · 설명 존댓말(…합니다)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════════ 0 · 현재 ══════════════ -->
+  <div class="vhead">
+    <span class="no">0</span><h2>현재 (비교용)</h2>
+    <span class="kw">질문형 · 규칙 없음</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="코드는 에이전트가 쓴다.<br>그럼 <b>당신의 노력</b>은 어디에 남지?"
+           data-en="Your agent writes the code.<br>So where does <b>your work</b> show up?"></p>
+        <p data-ko="커밋 잔디로는 안 보이는 매일을 기록합니다 — 프롬프트 횟수·글자 수·프로젝트별 시간. 내용은 절대 수집하지 않습니다. 기록은 계급·스트릭·개발자 명함이 되고, 원하면 전쟁에도 참전합니다."
+           data-en="A record of every day you work with a coding agent — prompts, characters, time per project. Never the content. Your record becomes your rank, your streak, your developer card. And if you want — your war."></p>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+          <span data-ko="1위 <b>dododo</b>" data-en="#1 <b>dododo</b>"></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note">지금 첫 화면엔 <b>규칙이 하나도 없다</b>. 뭘 세는지, 얼마면 어디에 걸리는지, 언제 초기화되는지 — 전부 스크롤 아래에 있다.</p>
+
+  <!-- ══════════════ A ══════════════ -->
+  <div class="vhead">
+    <span class="no">A</span><h2>진입선 — “1등을 이길 필요는 없다”</h2>
+    <span class="cost c1">카피 + 보드 3줄</span>
+    <span class="kw">outbid 의 $5 줄을 그대로 옮긴 것</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=daily&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="오늘 프롬프트 5개면 3위다.<br><b>1등을 이길 필요는 없다.</b>"
+           data-en="Five prompts today puts you at #3.<br><b>You don't have to beat #1.</b>"></p>
+        <p data-ko="보드는 매일 UTC 0시에 초기화됩니다. 아래 자리는 대체로 비어 있고, 자리에 오르면 등록해둔 프로젝트가 이름 옆에 같이 실립니다. 프롬프트 횟수와 글자 수만 셉니다 — 내용은 수집하지 않습니다."
+           data-en="The board resets at 00:00 UTC. The lower spots are usually open, and taking one puts the project you registered next to your name. We count prompts and characters. Never the content."></p>
+        <div class="mini">
+          <div class="mrow"><span class="rk">#1</span><span class="who"><span class="tile" style="background:#3E6FB8">O</span>dododo<span class="pj"><span class="arr">▸</span>opencodewar.dev</span></span><span class="n">67</span></div>
+          <div class="mrow"><span class="rk">#2</span><span class="who"><span class="tile" style="background:#B8742E">Y</span>yeom<span class="pj"><span class="arr">▸</span>yeom.tools</span></span><span class="n">30</span></div>
+          <div class="mrow open"><span class="rk">#3</span><span class="who"><span class="tile"></span><span data-ko="빈 자리" data-en="open"></span></span><span class="n">5</span></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+          <span data-ko="초기화까지 <b>7시간 20분</b>" data-en="resets in <b>7h 20m</b>"></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> outbid 문장이 하는 일이 정확히 이거다 — <b>가장 낮은 진입 가격</b>을 먼저 말해서 “어차피 못 이겨” 를 막는다.
+    OCW 는 그 숫자가 이미 있는데(오늘 3위 컷 5) 화면에서 한 번도 말한 적이 없다. 보드 3줄은 그 문장의 증거일 뿐, 설명을 더 붙이지 않는다.</p>
+  <p class="note"><b>바뀌는 것:</b> <code>slogan</code>·<code>tagline</code> 2키 + 보드 미리보기 3줄. 숫자는 <code>/leaderboard?type=daily</code> 응답 그대로 — 신규 집계 없음.</p>
+  <p class="note risk"><b>리스크:</b> 컷값이 매일 바뀌고, 사람이 늘면 “5개면 3위”가 “40개면 3위”가 된다. 슬로건에 숫자를 박으려면
+    <b>서버 값으로 렌더</b>해야 한다(정적 문구로 두면 그 순간 거짓말). 참가자가 아주 적을 땐 “3위” 자체가 초라해 보일 수 있어 — 그 땐 국가 보드 기준으로 돌리는 편이 낫다.</p>
+
+  <!-- ══════════════ B ══════════════ -->
+  <div class="vhead">
+    <span class="no">B</span><h2>지면 — “이름 옆에 프로젝트가 같이 간다”</h2>
+    <span class="cost c1">카피 + 목록</span>
+    <span class="kw">해준다고 안 하고, 어디에 실리는지만</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="기록이 오르면<br><b>만들던 것도 같이 올라간다.</b>"
+           data-en="When your record goes up,<br><b>what you're building goes up with it.</b>"></p>
+        <p data-ko="프로젝트를 최대 5개까지 등록해두면 아래 네 곳에 이름과 링크가 실립니다. 자리는 돈이 아니라 그날의 기록으로 정해지고, 코드 내용은 수집하지 않습니다."
+           data-en="Register up to five projects and their name and link ride along on the four surfaces below. Position comes from the day's record, not money. We never collect code."></p>
+        <div class="surf">
+          <div class="srow"><span class="k">1</span><span class="v" data-ko="리더보드 <i>— 이름 오른쪽 shipping 열</i>" data-en="the leaderboard <i>— shipping column, right of your name</i>"></span></div>
+          <div class="srow"><span class="k">2</span><span class="v" data-ko="프로필 페이지 <i>— 링크·소속·프로젝트 카드</i>" data-en="your profile <i>— links, affiliation, project cards</i>"></span></div>
+          <div class="srow"><span class="k">3</span><span class="v" data-ko="공유 카드 <i>— 프로필을 SNS 에 붙이면 뜨는 이미지</i>" data-en="your share card <i>— the image that shows when the profile is pasted</i>"></span></div>
+          <div class="srow"><span class="k">4</span><span class="v" data-ko="터미널 브리핑 <i>— 참가자들이 아침에 보는 한 줄</i>" data-en="the terminal briefing <i>— the line others see each morning</i>"></span></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> v1 의 “노출수 12,480” 을 <b>숫자 없이</b> 다시 쓴 안. 어차피 방문자가 알고 싶은 건 “어디에 걸리냐”지 몇 번이냐가 아니고,
+    지면 4개는 <b>지금 전부 존재한다</b> — 거짓말할 게 없다.</p>
+  <p class="note was"><s>v1: “당신은 만들고, 우리는 오늘 12,480번 보여줬다.”</s> → 없는 숫자 + 우리가 주어. 둘 다 뺐다.</p>
+  <p class="note risk"><b>리스크:</b> 목록 4줄이라 히어로가 길어진다. 그리고 4번(브리핑)은 참가자가 적으면 실제 노출이 거의 없다 — “아침에 보는 한 줄”이 과장이 되지 않으려면 브리핑 노출 규칙(§19.5, 우선순위 1개만)을 지켜야 한다.</p>
+
+  <!-- ══════════════ C ══════════════ -->
+  <div class="vhead">
+    <span class="no">C</span><h2>단가표 — 누적별로 열리는 자리</h2>
+    <span class="cost c2">카피 + 표</span>
+    <span class="kw">계급(§16)을 “자리”로 다시 읽기</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="자리는 <b>프롬프트로 매겨진다.</b><br>0부터 시작해도 첫 칸은 열려 있다."
+           data-en="Spots are <b>priced in prompts.</b><br>Starting at zero still opens the first one."></p>
+        <p data-ko="누적 기록이 늘어날수록 이름이 실리는 자리가 늘어납니다. 아래가 전부입니다 — 결제 수단은 없습니다."
+           data-en="The more you accumulate, the more places your name appears. The table below is all of it. There is nothing to pay."></p>
+        <div class="rate">
+          <table>
+            <thead><tr>
+              <th data-ko="누적 프롬프트" data-en="total prompts"></th>
+              <th data-ko="열리는 자리" data-en="what opens"></th>
+            </tr></thead>
+            <tbody>
+              <tr class="me">
+                <td class="p" data-ko="0 — 설치 직후" data-en="0 — right after install"></td>
+                <td class="s" data-ko="프로필 · 공유 카드 (프로젝트 5개까지)" data-en="profile + share card (up to 5 projects)"></td>
+              </tr>
+              <tr>
+                <td class="p" data-ko="그날 3위 안" data-en="top 3 today"></td>
+                <td class="s" data-ko="일간 보드 · 우승 퍼레이드" data-en="the daily board + the victory parade"></td>
+              </tr>
+              <tr>
+                <td class="p">500</td>
+                <td class="s" data-ko="계급 · 스트릭 표시" data-en="rank badge + streak"></td>
+              </tr>
+              <tr>
+                <td class="p">3,000</td>
+                <td class="s" data-ko="전체 기간 보드 상위권 · 국가 보드" data-en="all-time board + your country's board"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 5안 중 유일하게 <b>경로</b>를 준다. 0에서 시작해도 다음 칸이 보인다(§21.1 의 “1위와의 거리가 아득하다” 문제).
+    표에 적은 4줄은 전부 지금 동작하는 것만 골랐다 — v1 에 있던 “첫 화면 상단 노출”은 없는 기능이라 뺐다.</p>
+  <p class="note risk"><b>리스크:</b> 히어로에 표가 들어가 무겁다(모바일에서 스크롤을 먹는다). 히어로엔 슬로건 두 줄만 두고
+    표는 아래 “설치하면 보이는 것” 섹션으로 내리는 절충이 현실적이다.</p>
+
+  <!-- ══════════════ D ══════════════ -->
+  <div class="vhead">
+    <span class="no">D</span><h2>동작 설명 — 세는 것과 안 세는 것</h2>
+    <span class="cost c1">카피만</span>
+    <span class="kw">가장 담백 · 광고 어휘 0</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="매일 몇 번 시켰는지 센다.<br>그 숫자로 <b>줄을 세운다.</b>"
+           data-en="It counts how much you sent each day,<br>and <b>lines everyone up</b> by that number."></p>
+        <p data-ko="프롬프트 횟수, 글자 수, 프로젝트별 시간까지. 내용은 수집하지 않습니다. 쌓인 숫자는 계급과 스트릭이 되고, 등록한 프로젝트는 순위 옆에 같이 실립니다. 보드는 매일 UTC 0시에 초기화됩니다."
+           data-en="Prompt counts, characters, time per project. Never the content. What accumulates becomes your rank and streak, and the project you registered rides next to your position. The board resets at 00:00 UTC."></p>
+        <div class="cut" data-ko="오늘 <b>3위</b> 자리는 <span class='amb'>5</span> 프롬프트에서 열려 있다. 1위는 <b>67</b>."
+             data-en="The <b>#3</b> spot today opens at <span class='amb'>5</span> prompts. #1 is at <b>67</b>."></div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 광고·입찰·노출 같은 단어를 하나도 안 쓰고 동작만 적은 안. 오글거릴 여지가 구조적으로 없다.
+    광고판 성격은 마지막 한 줄(컷라인)이 조용히 담당한다.</p>
+  <p class="note"><b>바뀌는 것:</b> <code>slogan</code>·<code>tagline</code> 2키 + 컷라인 한 줄. 5안 중 제일 싸다.</p>
+  <p class="note risk"><b>리스크:</b> 담백한 만큼 심심하다. “줄을 세운다”가 <b>경쟁</b>만 남기고 §21 의 1겹(혼자여도 유용한 기록)을 가릴 수 있다 —
+    tagline 첫 문장이 그걸 받아주는지 확인해야 한다.</p>
+
+  <!-- ══════════════ E ══════════════ -->
+  <div class="vhead">
+    <span class="no">E</span><h2>현재 유지 + 규칙 한 줄</h2>
+    <span class="cost c1">최소 변경</span>
+    <span class="kw">슬로건은 안 건드림</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="코드는 에이전트가 쓴다.<br>그럼 <b>당신의 노력</b>은 어디에 남지?"
+           data-en="Your agent writes the code.<br>So where does <b>your work</b> show up?"></p>
+        <p data-ko="프롬프트 횟수·글자 수·프로젝트별 시간을 기록합니다. 내용은 수집하지 않습니다. 기록은 계급과 스트릭이 되고, 등록해둔 프로젝트는 보드의 이름 옆에 같이 실립니다."
+           data-en="It records prompt counts, characters, and time per project. Never the content. The record becomes your rank and streak, and the project you registered rides next to your name on the board."></p>
+        <div class="cut" data-ko="오늘 <b>5</b> 프롬프트면 <span class='amb'>3위</span>. 1등을 이길 필요는 없습니다."
+             data-en="<b>Five</b> prompts today puts you at <span class='amb'>#3</span>. You don't have to beat #1."></div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+          <span data-ko="초기화까지 <b>7시간 20분</b>" data-en="resets in <b>7h 20m</b>"></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 지금 슬로건은 그대로 두고, <b>tagline 을 짧게 줄이고 규칙 한 줄을 새로 넣는</b> 안.
+    간판(거울)은 유지하면서 outbid 이 잘한 것 하나 — 진입선 — 만 가져온다. 되돌리기도 제일 쉽다.</p>
+  <p class="note risk"><b>리스크:</b> 변화가 작아서, 지금 첫 화면이 안 먹히는 이유가 슬로건 자체였다면 아무것도 안 바뀐다.</p>
+
+  <!-- ══════════════ 비교 ══════════════ -->
+  <div class="vhead"><h2>한눈에</h2></div>
+  <table class="cmp">
+    <thead><tr><th>안</th><th>슬로건</th><th>말하는 규칙</th><th>비용</th><th>리스크</th></tr></thead>
+    <tbody>
+      <tr><td class="n">A 진입선</td><td class="d">오늘 5개면 3위다 / 1등을 이길 필요는 없다</td><td class="d">최저 진입가</td><td class="d">카피 + 보드 3줄</td><td class="d">숫자를 서버 값으로 렌더해야</td></tr>
+      <tr><td class="n">B 지면</td><td class="d">기록이 오르면 만들던 것도 같이 올라간다</td><td class="d">어디에 실리나(4곳)</td><td class="d">카피 + 목록</td><td class="d">히어로가 길어짐</td></tr>
+      <tr><td class="n">C 단가표</td><td class="d">자리는 프롬프트로 매겨진다</td><td class="d">누적별로 열리는 자리</td><td class="d">카피 + 표</td><td class="d">표가 무겁다 · 아래로 내리는 게 나음</td></tr>
+      <tr><td class="n">D 동작</td><td class="d">매일 몇 번 시켰는지 센다 / 그 숫자로 줄을 세운다</td><td class="d">세는 것·안 세는 것</td><td class="d">카피 2키</td><td class="d">심심하다 · 경쟁만 남을 수 있음</td></tr>
+      <tr><td class="n">E 최소</td><td class="d">(현재 유지)</td><td class="d">진입선 한 줄만</td><td class="d">tagline + 한 줄</td><td class="d">변화가 너무 작을 수도</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><b>추천:</b> <b>A</b>. outbid 문장이 실제로 하는 일(“못 이겨도 들어온다”)을 그대로 하고, 필요한 숫자가 이미 응답에 있다.
+    한 번에 갈아엎기 부담되면 <b>E 로 규칙 한 줄만 먼저</b> 넣고 반응을 본 뒤 A 로 확장하는 순서가 안전하다.
+    <b>B 의 지면 4줄</b>은 히어로 말고 그 아래 섹션에 두면 A·E 어느 쪽과도 같이 쓸 수 있다.</p>
+  <p class="note"><b>같이 갈아야 하는 곳:</b> <code>web/index.html</code> 의 <code>slogan</code>·<code>tagline</code>(en·ko 두 사전) ·
+    <code>&lt;title&gt;</code>/<code>meta description</code>/<code>og:*</code> · <code>README.md</code>·<code>README.en.md</code> 첫 줄.
+    A 를 고르면 <b>컷값을 서버에서 받아 렌더</b>하는 코드가 추가로 필요하다(<code>/leaderboard?type=daily</code> 3위 값).</p>
+</div>
+
+<script>
+  // ── 테마 ──
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const cur = root.getAttribute('data-theme');
+    const sysDark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const now = cur || (sysDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', now === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── 언어 토글: data-ko / data-en 을 가진 요소만 갈아끼운다(시안 해설은 항상 한국어) ──
+  let lang = 'ko';
+  const langBtn = document.getElementById('langBtn');
+  function paint() {
+    for (const el of document.querySelectorAll('[data-ko][data-en]')) {
+      el.innerHTML = el.getAttribute(lang === 'ko' ? 'data-ko' : 'data-en');
+    }
+    langBtn.textContent = lang === 'ko' ? '한국어 → EN' : 'EN → 한국어';
+  }
+  langBtn.addEventListener('click', () => { lang = lang === 'ko' ? 'en' : 'ko'; paint(); });
+  paint();
+
+  // ── 잔디: 실제 히어로와 같은 30×4 히트맵. 시안이라 결정적 패턴(§21.4 의 비로그인 연출과 같은 지위) ──
+  for (const g of document.querySelectorAll('.grass')) {
+    for (let i = 0; i < 120; i++) {
+      const cell = document.createElement('i');
+      const lv = [0, 1, 2, 0, 3, 1, 4, 2, 0, 1, 3, 0][i % 12];
+      if (lv) cell.className = 'g' + lv;
+      g.appendChild(cell);
+    }
+  }
+</script>

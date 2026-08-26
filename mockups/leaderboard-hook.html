@@ -1,0 +1,484 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCW 시안 — 리더보드 한눈에</title>
+<style>
+  /* 본 서비스(web/index.html)의 토큰 그대로. 색·폰트·박스는 실제와 동일하다. */
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
+    --gauge:rgba(27,27,26,0.07); --gauge-1:rgba(183,134,46,0.20);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+      --gauge:rgba(231,231,227,0.09); --gauge-1:rgba(217,164,65,0.22);
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+    --gauge:rgba(231,231,227,0.09); --gauge-1:rgba(217,164,65,0.22);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg);
+    font-size:14px; line-height:1.5; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased;
+    word-break:keep-all; overflow-wrap:break-word; }
+  .page { max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+
+  .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .head h1 { font-size:15px; margin:0; letter-spacing:.03em; }
+  .head .tag { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--rev-fg);
+    background:var(--amber); border-radius:4px; padding:1px 7px; font-weight:700; }
+  .head .sub { font-size:12px; color:var(--dim); }
+  .themebtn { margin-left:auto; font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg);
+    color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; }
+  .themebtn:hover { color:var(--fg); border-color:var(--fg); }
+
+  .why { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:12.5px; color:var(--dim); }
+  .why b { color:var(--fg); }
+  .why ul { margin:8px 0 0; padding-left:18px; }
+  .why li { margin:3px 0; }
+  .why code { font-size:12px; }
+
+  /* 뷰 토글 + 옵션 */
+  .vseg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--bg); }
+  .vseg button { font:inherit; font-size:13px; border:0; background:var(--bg); color:var(--dim); padding:8px 15px; cursor:pointer; }
+  .vseg button + button { border-left:1px solid var(--line); }
+  .vseg button[aria-pressed="true"] { background:var(--rev-bg); color:var(--rev-fg); font-weight:700; }
+  .vbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .opts { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim); }
+  .opts label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+  .vcap { font-size:12.5px; color:var(--dim); width:100%; }
+  .vcap b { color:var(--fg); }
+
+  /* 실제 사이트와 동일한 터미널 프레임 */
+  .term { background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; margin-top:22px; }
+  .box:first-of-type { margin-top:6px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .box > .rlegend { position:absolute; top:-0.7em; right:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--faint); }
+
+  /* ── 공통 부품 ───────────────────────────────── */
+  /* 계급 배지(§16) — 이미 계산되는 값. 닉네임만 있는 줄에 "이 사람 뭐냐"를 한 글자로 얹는다. */
+  .rkbadge { font-size:10px; letter-spacing:.02em; color:var(--dim); border:1px solid var(--line);
+    border-radius:4px; padding:0 5px; white-space:nowrap; flex:none; }
+  .rkbadge.hi { color:var(--amber); border-color:var(--amber); }
+  /* 순위 변동(전일 대비) */
+  .delta { font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; flex:none; }
+  .delta.up { color:var(--ok); }
+  .delta.down { color:var(--err); }
+  .delta.same { color:var(--faint); }
+  /* 파비콘 · 모노그램 · 빈 슬롯 */
+  .fav { width:17px; height:17px; border-radius:4px; border:1px solid var(--line); background:var(--bg);
+    object-fit:contain; flex:none; }
+  .fav.lg { width:32px; height:32px; border-radius:7px; }
+  .mono { display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px; border-radius:4px;
+    font-size:10px; font-weight:700; color:#fff; flex:none; }
+  .mono.lg { width:32px; height:32px; border-radius:7px; font-size:16px; }
+  .slot { width:17px; height:17px; border-radius:4px; border:1px dashed var(--line); flex:none; }
+  .ship { display:inline-flex; align-items:center; gap:6px; min-width:0; max-width:100%; }
+  .ship .snm { font-size:12px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:2px; cursor:pointer; }
+  .ship .snm:hover { color:var(--fg); text-decoration-color:var(--fg); }
+  .ship.empty { color:var(--faint); font-size:11.5px; }
+  /* 포디움용 — 프로젝트 이름을 닉네임 다음가는 무게로. 광고 지면이면 이름이 읽혀야 한다. */
+  .ship.strong .snm { font-size:13.5px; font-weight:700; color:var(--fg); text-decoration-color:var(--line); }
+  .ship.strong .host { font-size:11px; color:var(--faint); white-space:nowrap; flex:none; }
+  .ship.strong .arr { color:var(--faint); font-size:11px; flex:none; }
+  .pod .desc { font-size:12px; color:var(--dim); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mainbadge { font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--rev-fg); background:var(--ok); border-radius:4px; padding:0 5px; flex:none; }
+  .flag { flex:none; }
+  /* 숫자 계층: prompts 가 주인공, chars 는 보조 */
+  .pnum { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .cnum { font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+  /* ── A안: 포디움 + 컴팩트 리스트 ───────────────── */
+  .pod { display:flex; align-items:center; gap:13px; border:1px solid var(--line); border-radius:8px;
+    padding:11px 13px; margin-bottom:8px; position:relative; overflow:hidden; }
+  .pod .g { position:absolute; inset:0 auto 0 0; z-index:0;
+    background:linear-gradient(90deg, var(--gauge) 0%, var(--gauge) 62%, transparent 100%); }
+  .pod > * { position:relative; z-index:1; }
+  .pod.r1 { border-color:var(--amber); }
+  .pod.r1 .g { background:linear-gradient(90deg, var(--gauge-1) 0%, var(--gauge-1) 62%, transparent 100%); }
+  .pod .rkp { font-size:13px; font-weight:700; color:var(--dim); flex:none; width:34px; }
+  .pod.r1 .rkp { color:var(--amber); }
+  .pod .body { min-width:0; flex:1; }
+  .pod .l1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .pod .nick { font-size:16px; font-weight:700; }
+  .pod .l2 { margin-top:3px; }
+  .pod .nums { text-align:right; flex:none; }
+  .pod .nums .pnum { font-size:22px; }
+
+  .cmp { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:5px;
+    position:relative; overflow:hidden; }
+  .cmp + .cmp { border-top:1px solid var(--line); border-radius:0; }
+  .cmp .g { position:absolute; inset:0 auto 0 0; z-index:0;
+    background:linear-gradient(90deg, var(--gauge) 0%, var(--gauge) 62%, transparent 100%); }
+  .cmp > * { position:relative; z-index:1; }
+  .cmp .rk { width:26px; color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums; flex:none; }
+  .cmp .nick { font-size:13px; font-weight:600; }
+  .cmp .mid { display:flex; align-items:center; gap:8px; min-width:0; flex:1; flex-wrap:wrap; }
+  .cmp .nums { margin-left:auto; text-align:right; flex:none; display:flex; align-items:baseline; gap:8px; }
+  .cmp .nums .pnum { font-size:14px; }
+
+  /* ── B안: 전 행 리스트 ─────────────────────────── */
+  .lrow { display:flex; align-items:center; gap:12px; padding:10px 12px; position:relative; overflow:hidden;
+    border:1px solid var(--line); border-radius:7px; margin-bottom:6px; }
+  .lrow .g { position:absolute; inset:0 auto 0 0; z-index:0;
+    background:linear-gradient(90deg, var(--gauge) 0%, var(--gauge) 62%, transparent 100%); }
+  .lrow > * { position:relative; z-index:1; }
+  .lrow.top3 { border-left:3px solid var(--amber); }
+  .lrow.top3 .g { background:linear-gradient(90deg, var(--gauge-1) 0%, var(--gauge-1) 62%, transparent 100%); }
+  .lrow .rk { width:30px; font-size:13px; font-weight:700; color:var(--dim); flex:none; font-variant-numeric:tabular-nums; }
+  .lrow.top3 .rk { color:var(--amber); }
+  .lrow .who { min-width:0; flex:1.2; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .lrow .nick { font-size:14px; font-weight:700; }
+  .lrow .shipwrap { flex:1; min-width:0; }
+  .lrow .nums { text-align:right; flex:none; }
+  .lrow.me { border-color:var(--fg); box-shadow:inset 0 0 0 1px var(--fg); }
+  .youtag { font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--rev-fg); background:var(--fg);
+    border-radius:3px; padding:0 5px; }
+
+  /* ── C안: 표 유지 + 계층 ───────────────────────── */
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { font-size:11px; color:var(--faint); font-weight:400; }
+  td.num, th.num { text-align:right; }
+  tbody tr { position:relative; }
+  tbody tr .gcell { position:absolute; left:0; top:0; bottom:0; z-index:0; pointer-events:none;
+    background:linear-gradient(90deg, var(--gauge) 0%, var(--gauge) 62%, transparent 100%); }
+  tbody tr.r1 .gcell { background:linear-gradient(90deg, var(--gauge-1) 0%, var(--gauge-1) 62%, transparent 100%); }
+  td > * { position:relative; z-index:1; }
+  td.rkc { font-variant-numeric:tabular-nums; color:var(--dim); width:44px; }
+  tr.r1 td.rkc, tr.r2 td.rkc, tr.r3 td.rkc { color:var(--amber); font-weight:700; }
+  td.nick { font-weight:700; }
+  tbody tr.me td { box-shadow:inset 0 1px 0 var(--fg), inset 0 -1px 0 var(--fg); }
+  tbody tr.me td:first-child { box-shadow:inset 1px 1px 0 var(--fg), inset 0 -1px 0 var(--fg); }
+  tbody tr.me td:last-child { box-shadow:inset -1px 1px 0 var(--fg), inset 0 -1px 0 var(--fg); }
+  .cellwrap { display:inline-flex; align-items:center; gap:7px; }
+
+  .note { margin-top:12px; font-size:12px; color:var(--faint); border-left:2px solid var(--line); padding-left:10px; }
+  .note b { color:var(--dim); }
+  .hidden { display:none !important; }
+
+  /* 내 위치 고정 바 — 스크롤이 길어졌을 때 "나는 어디?"를 항상 보이게 */
+  .mebar { position:sticky; bottom:0; margin-top:10px; display:flex; align-items:center; gap:12px;
+    border:1px solid var(--fg); border-radius:7px; padding:9px 12px; background:var(--bg); font-size:12.5px; }
+  .mebar .pnum { font-size:15px; }
+  .mebar .gap { margin-left:auto; color:var(--dim); font-size:12px; }
+  .mebar .gap b { color:var(--fg); }
+
+  /* 좁은 폭에서 shipping 을 통째로 숨기면 안 된다 — 홍보하려는 대상이 제일 먼저 사라진다.
+     접는 건 부가정보(도메인·한 줄 설명)까지. 프로젝트 이름은 어떤 폭에서도 남는다. */
+  @media (max-width:640px) {
+    .pod .desc { display:none; }
+    .ship.strong .host, .ship.strong .arr { display:none; }
+    .pod { gap:10px; padding:10px; }
+    .pod .nums .pnum { font-size:19px; }
+    .lrow { flex-wrap:wrap; }
+    .lrow .who { flex:1 1 auto; }
+    .lrow .shipwrap { flex:1 0 100%; order:3; padding-left:42px; }
+    .lrow .nums { order:2; }
+    .cmp { flex-wrap:wrap; }
+    .cmp .mid { gap:6px; }
+  }
+</style>
+
+<div class="page">
+  <div class="head">
+    <h1>OCW 시안 — 리더보드 한눈에</h1>
+    <span class="tag">mockup</span>
+    <span class="sub">실제 전체 보드(2026-08-26) 데이터 그대로</span>
+    <button class="themebtn" id="themeBtn" type="button">◐ theme</button>
+  </div>
+
+  <div class="why">
+    <b>지금 보드가 한눈에 안 들어오는 이유</b> — 정보가 없어서가 아니라 <b>전부 같은 크기</b>라서다.
+    <ul>
+      <li><code>#</code> · <code>coder</code> · <code>shipping</code> · <code>prompts</code> · <code>chars</code> · <code>activity</code> · <code>cc</code> 7칸이 전부 13px 같은 굵기 —
+        1위 줄과 47위 줄이 <b>스캔했을 때 구분이 안 된다</b>.</li>
+      <li>주인공 숫자(<code>prompts</code>)가 보조 숫자(<code>chars</code>)와 같은 크기다.</li>
+      <li>격차를 보여주는 막대가 <b>제일 좁은 칸</b>에 갇혀 있다.</li>
+      <li>“나는 지금 몇 등인가”를 보려면 <b>검색을 해야 한다</b>.</li>
+    </ul>
+    <b>그래서 4개를 손본다</b> — ① 막대를 칸에서 꺼내 <b>행 배경</b>으로 (칸 하나 줄고 대비는 세짐)
+    ② <code>prompts</code> 만 크게, <code>chars</code> 는 보조로 ③ 계급(§16)·순위변동·파비콘을 줄에 얹어 <b>줄 하나로 사람이 읽히게</b>
+    ④ 내 줄은 <b>하단 고정 바</b>로 항상 보이게.
+  </div>
+
+  <div class="vbar">
+    <div class="vseg" role="tablist" aria-label="variant">
+      <button id="vA" aria-pressed="true">A · 포디움</button>
+      <button id="vB" aria-pressed="false">B · 리스트</button>
+      <button id="vC" aria-pressed="false">C · 표 유지</button>
+      <button id="vNow" aria-pressed="false">현재</button>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="optSqrt" checked> 게이지 압축(√)</label>
+      <label><input type="checkbox" id="optShip"> shipping 다 찼을 때</label>
+      <label><input type="checkbox" id="optMe" checked> 내 위치 바</label>
+      <label><input type="checkbox" id="optDesc" checked> 프로젝트 한 줄 설명</label>
+    </div>
+    <p class="vcap" id="vcap"><b>A · 포디움</b> — 톱3만 카드로 키우고 4위부터는 얇은 줄. “누가 왕인가”가 먼저 박힌다.</p>
+  </div>
+
+  <div class="term">
+    <div class="titlebar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <span class="name">ocw — open-code-war (live)</span>
+    </div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box">
+        <span class="legend" id="boardLegend">leaderboard · all · prompts</span>
+        <span class="rlegend">참가 10 · 집계 KST 16:40</span>
+        <div id="boardOut"></div>
+        <div class="mebar hidden" id="meBar"></div>
+      </section>
+      <div id="noteOut"></div>
+    </div>
+  </div>
+
+  <div class="why">
+    <b>공통으로 붙는 것 (안 3개 전부)</b>
+    <ul>
+      <li><b>행 게이지</b> — <code>activity</code> 칸 삭제. 1위 5,145 대 4위 70 이라 <b>선형이면 4위 줄은 1.4% 실선</b>이 된다.
+        위 옵션에서 “게이지 압축(√)”을 꺼보면 그 문제가 그대로 보인다 — 실제로는 √ 스케일이 맞다(순위 격차는 이미 숫자가 말한다).</li>
+      <li><b>계급 배지</b>(§16) — <code>allTime prompts</code> 로 이미 계산되는 값. 보드 스냅샷엔 없지만 <code>prompts</code> 만 있으면 웹에서 바로 뽑는다(<code>RANKS</code> 상수가 이미 web 에 있다).</li>
+      <li><b>순위 변동 ▲▼</b> — 전일 대비. 이건 <b>공짜가 아니다</b>: 스냅샷 빌드 때 “어제까지 누적” 랭킹을 한 번 더 구해 <code>prevRank</code> 를 한 필드 굽는 작업이 필요하다.</li>
+      <li><b>파비콘</b> — <code>/icon/&lt;host&gt;.png</code> 자체 호스팅 + 모노그램 폴백(별도 시안 <code>mockups/hero-hook.html</code> 의 favicon 섹션 참고).</li>
+      <li><b>내 위치 바</b> — 하단 sticky. 내 순위·다음 순위까지 남은 프롬프트를 항상 띄운다. 데이터는 이미 다 있다.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  const OCW_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJPcGVuIENvZGUgV2FyIj4KICA8cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI3IiBmaWxsPSIjMEUwRTBEIi8+CiAgPHBhdGggZD0iTTcgMTAgTDEzIDE2IEw3IDIyIiBmaWxsPSJub25lIiBzdHJva2U9IiNFN0U3RTMiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPHBhdGggZD0iTTI1IDEwIEwxOSAxNiBMMjUgMjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZEQTg3NSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cmVjdCB4PSIxNC42IiB5PSIxNC42IiB3aWR0aD0iMi44IiBoZWlnaHQ9IjIuOCIgZmlsbD0iI0UwNzg1QyIgdHJhbnNmb3JtPSJyb3RhdGUoNDUgMTYgMTYpIi8+Cjwvc3ZnPgo=';
+  const GAEMI_ICON = 'data:image/png;base64,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';
+
+  // 실제 GET /leaderboard?type=all&metric=prompts 응답(2026-08-26) 그대로.
+  // delta 는 아직 없는 필드 — 있었다면 이렇게 보인다는 예시.
+  const ROWS = [
+    { rank: 1, nick: 'dododo', cc: 'KR', fl: '🇰🇷', p: 5145, c: 4885572, d: 0, me: true,
+      ship: { name: 'Open Code War', icon: OCW_ICON, host: 'opencodewar.dev',
+              desc: '누가 제일 많이 타이핑했나 — Claude Code 리더보드 & 터미널 개발자 명함' } },
+    { rank: 2, nick: 'VoidLight', cc: 'KR', fl: '🇰🇷', p: 1796, c: 878708, d: 1,
+      demo: { name: 'notch-island', mono: 'N', color: '#4E7DC4', host: 'notch-island.app',
+              desc: '맥북 노치를 위젯 독으로 쓰는 유틸리티' } },
+    { rank: 3, nick: 'yeom', cc: 'KR', fl: '🇰🇷', p: 327, c: 199131, d: -1,
+      demo: { name: '개미랩', icon: GAEMI_ICON, host: 'gaemilab.com',
+              desc: '국내외 증권사 주식 거래 수수료 실시간 비교·랭킹 서비스' } },
+    { rank: 4, nick: '스치니', cc: 'KR', fl: '🇰🇷', p: 70, c: 9327, d: 0,
+      demo: { name: 'k-datafast', mono: 'K', color: '#B8862E', host: 'k-datafast.dev',
+              desc: '공공데이터 API 를 한 줄로 붙이는 SDK' } },
+    { rank: 5, nick: 'NewRay53', cc: 'DE', fl: '🇩🇪', p: 13, c: 3026, d: 2 },
+    { rank: 6, nick: 'MadAnt67', cc: 'JP', fl: '🇯🇵', p: 1, c: 0, d: 0 },
+    { rank: 7, nick: 'MadJay77', cc: 'RU', fl: '🇷🇺', p: 1, c: 0, d: -1 },
+    { rank: 8, nick: 'FoxRam56', cc: 'RU', fl: '🇷🇺', p: 1, c: 0, d: 0 },
+    { rank: 9, nick: 'Khan', cc: 'KR', fl: '🇰🇷', p: 0, c: 0, d: 0 },
+    { rank: 10, nick: 'DimJay68', cc: 'KR', fl: '🇰🇷', p: 0, c: 0, d: 0 },
+  ];
+
+  // 계급(§16) — web/index.html 의 RANKS 와 같은 기준선.
+  const RANKS = [
+    { ko: '이병', min: 0 }, { ko: '일병', min: 200 }, { ko: '상병', min: 1000 }, { ko: '병장', min: 3000 },
+    { ko: '하사', min: 7000 }, { ko: '중사', min: 15000 }, { ko: '상사', min: 30000 }, { ko: '소위', min: 60000 },
+    { ko: '대위', min: 120000 }, { ko: '소령', min: 250000 }, { ko: '대령', min: 500000 }, { ko: '장군', min: 1000000 },
+  ];
+  const rankOf = (p) => { let i = 0; while (i + 1 < RANKS.length && p >= RANKS[i + 1].min) i++; return i; };
+  const fmt = (n) => n.toLocaleString('en-US');
+  const compact = (n) => (n >= 1000000 ? (n / 1000000).toFixed(2) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n));
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const opt = (id) => document.getElementById(id).checked;
+  const MAX = Math.max(...ROWS.map((r) => r.p), 1);
+  // 선형이면 4위(70/5145)가 1.4% 라 안 보인다 → √ 로 눌러서 하위권도 읽히게.
+  function gauge(p) {
+    if (p <= 0) return 0;
+    const lin = p / MAX;
+    return Math.round((opt('optSqrt') ? Math.sqrt(lin) : lin) * 100);
+  }
+  function badge(p) {
+    const r = RANKS[rankOf(p)];
+    return `<span class="rkbadge${p >= 3000 ? ' hi' : ''}">${r.ko}</span>`;
+  }
+  function delta(d) {
+    if (d > 0) return `<span class="delta up">▲${d}</span>`;
+    if (d < 0) return `<span class="delta down">▼${-d}</span>`;
+    return `<span class="delta same">–</span>`;
+  }
+  // 빈 자리 안내는 눈에 걸려야 할 줄에서만 — 톱3와 내 줄. 나머지까지 다 붙이면 그냥 소음이 된다.
+  function shipOf(r, strong) {
+    const s = r.ship || (opt('optShip') ? r.demo : null);
+    if (!s) {
+      // 톱3·내 줄만 초대 문구. 나머지 빈 줄은 아예 비운다 — 점선 사각형이 줄마다 떠 있으면 그게 더 시끄럽다.
+      return strong || r.me ? `<span class="ship empty"><span class="slot"></span>여기에 내 프로젝트</span>` : '';
+    }
+    // 포디움(strong): 이름을 닉네임 다음 무게로 + MAIN 배지 + 도메인. 컴팩트 줄: 아이콘 + 이름만.
+    if (strong) {
+      return `<span class="ship strong"><span class="snm" title="${esc(s.host)}">${esc(s.name)}</span>` +
+        `<span class="mainbadge">main</span><span class="host">${esc(s.host)}</span><span class="arr">↗</span></span>`;
+    }
+    const ico = s.icon
+      ? `<img class="fav" src="${s.icon}" alt="">`
+      : `<span class="mono" style="background:${s.color}">${esc(s.mono)}</span>`;
+    return `<span class="ship">${ico}<span class="snm" title="${esc(s.host)}">${esc(s.name)}</span></span>`;
+  }
+  function descOf(r) {
+    const s = r.ship || (opt('optShip') ? r.demo : null);
+    return s && s.desc && opt('optDesc') ? `<div class="desc">${esc(s.desc)}</div>` : '';
+  }
+  function shipLg(r) {
+    const s = r.ship || (opt('optShip') ? r.demo : null);
+    if (!s) return `<span class="slot" style="width:32px;height:32px;border-radius:7px"></span>`;
+    return s.icon
+      ? `<img class="fav lg" src="${s.icon}" alt="">`
+      : `<span class="mono lg" style="background:${s.color}">${esc(s.mono)}</span>`;
+  }
+
+  // ── A안: 톱3 포디움 + 4위부터 컴팩트 ──
+  function viewA() {
+    const pods = ROWS.slice(0, 3).map((r) => `
+      <div class="pod r${r.rank}">
+        <span class="g" style="width:${gauge(r.p)}%"></span>
+        <span class="rkp">#${r.rank}</span>
+        ${shipLg(r)}
+        <div class="body">
+          <div class="l1"><span class="nick">${esc(r.nick)}</span>${badge(r.p)}<span class="flag">${r.fl}</span>${delta(r.d)}</div>
+          <div class="l2">${shipOf(r, true)}</div>
+          ${descOf(r)}
+        </div>
+        <div class="nums"><div class="pnum">${fmt(r.p)}</div><div class="cnum">${compact(r.c)} chars</div></div>
+      </div>`).join('');
+    const rest = ROWS.slice(3).map((r) => `
+      <div class="cmp">
+        <span class="g" style="width:${gauge(r.p)}%"></span>
+        <span class="rk">${r.rank}</span>
+        <div class="mid"><span class="nick">${esc(r.nick)}</span>${badge(r.p)}<span class="flag">${r.fl}</span>${delta(r.d)}${shipOf(r)}</div>
+        <div class="nums"><span class="pnum">${fmt(r.p)}</span><span class="cnum">${compact(r.c)}</span></div>
+      </div>`).join('');
+    return pods + `<div style="margin-top:12px">${rest}</div>`;
+  }
+
+  // ── B안: 전 행 같은 구조 ──
+  function viewB() {
+    return ROWS.map((r) => `
+      <div class="lrow${r.rank <= 3 ? ' top3' : ''}${r.me && opt('optMe') ? ' me' : ''}">
+        <span class="g" style="width:${gauge(r.p)}%"></span>
+        <span class="rk">${r.rank}</span>
+        <div class="who"><span class="nick">${esc(r.nick)}</span>${r.me && opt('optMe') ? '<span class="youtag">YOU</span>' : ''}${badge(r.p)}<span class="flag">${r.fl}</span>${delta(r.d)}</div>
+        <div class="shipwrap">${shipOf(r)}</div>
+        <div class="nums"><div class="pnum">${fmt(r.p)}</div><div class="cnum">${compact(r.c)} chars</div></div>
+      </div>`).join('');
+  }
+
+  // ── C안: 표 유지, 계층만 ──
+  function viewC() {
+    const body = ROWS.map((r) => `
+      <tr class="${r.rank <= 3 ? 'r' + r.rank : ''}${r.me && opt('optMe') ? ' me' : ''}">
+        <td class="rkc"><span class="gcell" style="width:${gauge(r.p)}%"></span><span>${r.rank}</span>${r.d ? ' ' + delta(r.d) : ''}</td>
+        <td class="nick"><span class="cellwrap">${esc(r.nick)}${r.me && opt('optMe') ? '<span class="youtag">YOU</span>' : ''}${badge(r.p)}<span class="flag">${r.fl}</span></span></td>
+        <td>${shipOf(r)}</td>
+        <td class="num"><span class="pnum">${fmt(r.p)}</span></td>
+        <td class="num"><span class="cnum">${fmt(r.c)}</span></td>
+      </tr>`).join('');
+    return `<table>
+      <thead><tr><th>#</th><th>coder</th><th>shipping</th><th class="num">prompts</th><th class="num">chars</th></tr></thead>
+      <tbody>${body}</tbody></table>`;
+  }
+
+  // ── 현재(비교용): 지금 배포된 보드 구조 그대로 ──
+  function viewNow() {
+    const body = ROWS.map((r) => `
+      <tr>
+        <td style="color:var(--dim)">${r.rank}</td>
+        <td>${esc(r.nick)}</td>
+        <td style="color:var(--dim);font-size:12.5px">${r.ship ? esc(r.ship.name) + ' ↗' : '<span style="color:var(--faint)">–</span>'}</td>
+        <td class="num" style="font-variant-numeric:tabular-nums">${fmt(r.p)}</td>
+        <td class="num" style="font-variant-numeric:tabular-nums">${fmt(r.c)}</td>
+        <td><span style="display:inline-block;width:70px;height:6px;background:var(--gauge);border-radius:3px;position:relative">
+          <span style="position:absolute;inset:0 auto 0 0;width:${Math.round((r.p / MAX) * 100)}%;background:var(--fg);border-radius:3px"></span></span></td>
+        <td style="color:var(--dim);font-size:12px">${r.cc} ${r.fl}</td>
+      </tr>`).join('');
+    return `<table>
+      <thead><tr><th>#</th><th>coder</th><th>shipping</th><th class="num">prompts</th><th class="num">chars</th><th>activity</th><th>cc</th></tr></thead>
+      <tbody>${body}</tbody></table>`;
+  }
+
+  const NOTES = {
+    vA: `<section class="box"><span class="legend">A · 포디움 — 언제 쓰나</span>
+      <p style="margin:0;font-size:12.5px;color:var(--dim)">톱3의 격차가 크고 <b>1위 자리에 상징성</b>을 주고 싶을 때. 지금 보드가 정확히 그 상태다(5,145 · 1,796 · 327).
+      1위 카드에 파비콘 32px 가 들어가서 <b>shipping 이 실제로 광고 지면처럼</b> 보이는 유일한 안이기도 하다.</p>
+      <p class="note"><b>대가:</b> 톱3와 4위 사이가 시각적으로 끊긴다. 참가자가 늘어 4~10위 경쟁이 치열해지면 그 구간이 상대적으로 초라해 보인다.</p></section>`,
+    vB: `<section class="box"><span class="legend">B · 리스트 — 언제 쓰나</span>
+      <p style="margin:0;font-size:12.5px;color:var(--dim)">모든 줄이 같은 구조라 <b>스캔 속도가 제일 빠르고</b> 모바일에서 안 깨진다. 표가 아니라서 칸 폭 싸움도 없다.
+      줄마다 게이지가 깔려 순위 격차가 <b>줄 길이</b>로 읽힌다.</p>
+      <p class="note"><b>대가:</b> 세로 밀도가 낮다(한 화면에 10줄 남짓). 100명 보드에선 스크롤이 길어진다 — 내 위치 바가 그래서 필요하다.</p></section>`,
+    vC: `<section class="box"><span class="legend">C · 표 유지 — 언제 쓰나</span>
+      <p style="margin:0;font-size:12.5px;color:var(--dim)">지금 구조를 그대로 두고 <b>시각 계층만</b> 바꾼 안. 변경량이 제일 작고 밀도가 제일 높다.
+      <code>activity</code> 칸을 지우고 게이지를 <code>#</code> 칸 뒤 행 배경으로 옮겼다.</p>
+      <p class="note"><b>대가:</b> 여전히 “표”라서 1위의 상징성은 약하다. 후킹보다 <b>정보 밀도</b>를 택하는 안.</p></section>`,
+    vNow: `<section class="box"><span class="legend">현재 — 뭐가 문제인가</span>
+      <p style="margin:0;font-size:12.5px;color:var(--dim)">같은 데이터, 지금 배포된 구조. 7칸이 전부 같은 굵기라 <b>1위 줄이 눈에 안 박히고</b>,
+      막대는 70px 칸에 갇혀 있고, <code>prompts</code> 와 <code>chars</code> 가 같은 크기다.
+      <b>선형 막대</b>라서 4위(70) 아래는 사실상 안 보인다.</p></section>`,
+  };
+
+  function meBarHtml() {
+    const me = ROWS.find((r) => r.me);
+    const above = ROWS.find((r) => r.rank === me.rank - 1);
+    const gap = above ? `<span class="gap">${above.nick} 까지 <b>${fmt(above.p - me.p + 1)}</b> prompts</span>` : `<span class="gap">이 판의 <b>1위</b></span>`;
+    return `<span class="youtag">YOU</span><span>#${me.rank}</span><span>${esc(me.nick)}</span>${badge(me.p)}<span class="pnum">${fmt(me.p)}</span>${gap}`;
+  }
+
+  let cur = 'vA';
+  const VIEWS = { vA: viewA, vB: viewB, vC: viewC, vNow: viewNow };
+  const CAPS = {
+    vA: '<b>A · 포디움</b> — 톱3만 카드로 키우고 4위부터는 얇은 줄. “누가 왕인가”가 먼저 박힌다.',
+    vB: '<b>B · 리스트</b> — 모든 줄이 같은 구조. 스캔이 제일 빠르고 모바일에 강하다.',
+    vC: '<b>C · 표 유지</b> — 지금 구조 그대로, 시각 계층만 손봤다. 변경량 최소.',
+    vNow: '<b>현재</b> — 지금 배포된 보드(비교용).',
+  };
+  function paint() {
+    document.getElementById('boardOut').innerHTML = VIEWS[cur]();
+    document.getElementById('noteOut').innerHTML = NOTES[cur];
+    document.getElementById('vcap').innerHTML = CAPS[cur];
+    document.getElementById('boardLegend').textContent = 'leaderboard · all · prompts';
+    const bar = document.getElementById('meBar');
+    const on = opt('optMe') && cur !== 'vNow';
+    bar.classList.toggle('hidden', !on);
+    if (on) bar.innerHTML = meBarHtml();
+  }
+  for (const id of Object.keys(VIEWS)) {
+    document.getElementById(id).addEventListener('click', () => {
+      cur = id;
+      for (const b of Object.keys(VIEWS)) document.getElementById(b).setAttribute('aria-pressed', String(b === id));
+      paint();
+    });
+  }
+  for (const id of ['optSqrt', 'optShip', 'optMe', 'optDesc']) document.getElementById(id).addEventListener('change', paint);
+  paint();
+</script>

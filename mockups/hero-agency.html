@@ -1,0 +1,433 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCW 시안 — “당신의 열정을 광고해드립니다”</title>
+<style>
+  :root {
+    --backdrop:#E9E9E6; --bg:#F6F6F4; --fg:#1B1B1A; --dim:#6C6C68; --faint:#9C9C97;
+    --line:#D6D6D2; --rev-bg:#1B1B1A; --rev-fg:#F6F6F4; --hover:rgba(27,27,26,0.05);
+    --ok:#4F8258; --err:#B0553F; --amber:#B7862E;
+    --ag-codex:#3E6FB8; --ag-opencode:#B8742E; --ag-pi:#7C55B0;
+    --grass-0:rgba(79,130,88,0.12); --grass-1:rgba(79,130,88,0.30);
+    --grass-2:rgba(79,130,88,0.50); --grass-3:rgba(79,130,88,0.72); --grass-4:rgba(79,130,88,0.92);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "D2Coding", monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+      --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+      --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+      --grass-0:rgba(109,168,117,0.14); --grass-1:rgba(109,168,117,0.32);
+      --grass-2:rgba(109,168,117,0.52); --grass-3:rgba(109,168,117,0.74); --grass-4:rgba(109,168,117,0.95);
+    }
+  }
+  :root[data-theme="dark"] {
+    --backdrop:#050504; --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56;
+    --line:#2A2A26; --rev-bg:#E7E7E3; --rev-fg:#0E0E0D; --hover:rgba(231,231,227,0.06);
+    --ok:#6DA875; --err:#E0785C; --amber:#D9A441; color-scheme: dark;
+    --grass-0:rgba(109,168,117,0.14); --grass-1:rgba(109,168,117,0.32);
+    --grass-2:rgba(109,168,117,0.52); --grass-3:rgba(109,168,117,0.74); --grass-4:rgba(109,168,117,0.95);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--backdrop); font-family:var(--mono); color:var(--fg);
+    font-size:14px; line-height:1.5; padding:clamp(10px,3vw,30px); -webkit-font-smoothing:antialiased;
+    word-break:keep-all; overflow-wrap:break-word; }
+  .page { max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+
+  .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; position:sticky; top:0; z-index:5;
+    background:var(--backdrop); padding:6px 0 8px; }
+  .head h1 { font-size:15px; margin:0; letter-spacing:.03em; }
+  .head .tag { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--rev-fg);
+    background:var(--amber); border-radius:4px; padding:1px 7px; font-weight:700; }
+  .head .sub { font-size:12px; color:var(--dim); flex:1; min-width:180px; }
+  .btn { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg);
+    color:var(--dim); padding:5px 11px; border-radius:5px; cursor:pointer; }
+  .btn:hover { color:var(--fg); border-color:var(--fg); }
+
+  .why { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:12.5px; color:var(--dim); }
+  .why b { color:var(--fg); }
+  .why ul { margin:8px 0 0; padding-left:18px; }
+  .why li { margin:4px 0; }
+  .why code { background:var(--hover); border-radius:3px; padding:0 4px; }
+
+  /* 톤 눈금 */
+  .dial { display:grid; grid-template-columns:1fr 1fr 1fr; border:1px solid var(--line); border-radius:8px;
+    overflow:hidden; background:var(--bg); font-size:12.5px; }
+  .dial > div { padding:12px 14px; }
+  .dial > div + div { border-left:1px solid var(--line); }
+  .dial h3 { margin:0 0 6px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:400; color:var(--dim); }
+  .dial .l { color:var(--fg); }
+  .dial .v { color:var(--dim); margin-top:5px; font-size:11.5px; }
+  .dial.bad h3 { color:var(--err); }
+  .dial > div.pick { background:var(--hover); }
+  .dial > div.pick h3 { color:var(--ok); }
+  @media (max-width:680px) { .dial { grid-template-columns:1fr; } .dial > div + div { border-left:0; border-top:1px solid var(--line); } }
+
+  .vhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-top:22px; }
+  .vhead h2 { font-size:14px; margin:0; letter-spacing:.02em; }
+  .vhead .no { font-size:12px; color:var(--rev-fg); background:var(--rev-bg); border-radius:4px; padding:1px 8px; font-weight:700; }
+  .vhead .no.pick { background:var(--ok); }
+  .vhead .kw { font-size:12px; color:var(--dim); }
+
+  .term { background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .titlebar { display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; color:var(--dim); }
+  .lights { display:flex; gap:7px; }
+  .lights i { width:11px; height:11px; border-radius:50%; border:1px solid var(--faint); display:block; }
+  .titlebar .name { flex:1; text-align:center; }
+  .screen { padding:clamp(14px,2.5vw,24px); }
+  .echo { color:var(--dim); margin-bottom:16px; word-break:break-all; font-size:13px; }
+  .echo .sig { color:var(--fg); }
+  .cursor { display:inline-block; width:8px; height:1.05em; background:var(--fg); vertical-align:text-bottom; animation:blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .box { position:relative; border:1px solid var(--line); border-radius:6px; padding:18px 16px 16px; }
+  .box > .legend { position:absolute; top:-0.7em; left:12px; background:var(--bg); padding:0 8px; font-size:11px; color:var(--dim); }
+  .banner .big { font-size:clamp(22px,4.4vw,34px); font-weight:700; letter-spacing:0.04em; margin:0; }
+  .banner p { margin:0; color:var(--dim); font-size:13px; }
+  .banner .slogan { margin:10px 0 7px; color:var(--fg); font-size:clamp(17px,3.4vw,25px); font-weight:700; letter-spacing:-0.01em; line-height:1.3; }
+  .banner .slogan b { background:var(--rev-bg); color:var(--rev-fg); padding:0 7px; border-radius:3px; }
+  .banner .slogan em { font-style:normal; font-variant-numeric:tabular-nums; }
+  .status { margin-top:14px; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--dim); }
+  .status b { color:var(--fg); font-weight:600; }
+  .dotlive { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
+  .dotlive.pulse { animation:pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+
+  .field { margin:8px 0 12px; }
+  .grass { display:grid; grid-template-columns:repeat(30,1fr); gap:3px; }
+  .grass i { display:block; aspect-ratio:1; border-radius:2px; background:var(--grass-0); }
+  .grass i.g1 { background:var(--grass-1); } .grass i.g2 { background:var(--grass-2); }
+  .grass i.g3 { background:var(--grass-3); } .grass i.g4 { background:var(--grass-4); }
+
+  .hi { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px;
+    border:1px solid var(--line); border-radius:5px; padding:8px 12px; background:var(--hover);
+    font-size:13px; overflow-x:auto; }
+  .hi .ps1 { color:var(--ok); }
+  .hi .cmd { white-space:nowrap; }
+  .hi .copy { font:inherit; font-size:12px; border:1px solid var(--line); background:var(--bg); color:var(--dim);
+    border-radius:4px; padding:1px 7px; cursor:pointer; }
+  .hi .agents { margin-left:auto; font-size:11px; color:var(--dim); white-space:nowrap; }
+
+  /* 환산표 — 능청의 핵심 소품 */
+  .conv { margin-top:12px; border:1px solid var(--line); border-radius:6px; overflow:hidden; font-size:12.5px; }
+  .crow { display:grid; grid-template-columns:1fr auto; gap:12px; padding:7px 12px; }
+  .crow + .crow { border-top:1px solid var(--line); }
+  .crow .k { color:var(--dim); }
+  .crow .v { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
+  .crow.foot { background:var(--hover); color:var(--faint); font-size:11.5px; }
+  .crow.foot .k { color:var(--faint); }
+
+  /* 대행사 버전 소품 */
+  .invoice { margin-top:12px; border:1px solid var(--line); border-radius:6px; padding:12px 14px; font-size:12.5px; }
+  .invoice .ttl { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-bottom:8px; }
+  .irow { display:grid; grid-template-columns:1fr auto; gap:10px; padding:4px 0; color:var(--dim); }
+  .irow + .irow { border-top:1px dotted var(--line); }
+  .irow .v { color:var(--fg); font-variant-numeric:tabular-nums; }
+  .irow.tot { border-top:1px solid var(--fg); margin-top:6px; padding-top:7px; }
+  .irow.tot .k { color:var(--fg); font-weight:700; }
+  .irow.tot .v { color:var(--amber); font-weight:700; }
+
+  .note { border-left:2px solid var(--line); padding:2px 0 2px 12px; margin-top:12px; font-size:12.5px; color:var(--dim); }
+  .note + .note { margin-top:8px; }
+  .note b { color:var(--fg); }
+  .note code { background:var(--hover); border-radius:3px; padding:0 4px; }
+  .note.risk { border-left-color:var(--err); }
+  .note.risk b { color:var(--err); }
+  .note.good { border-left-color:var(--ok); }
+  .note.good b { color:var(--ok); }
+
+  .cmp { width:100%; border-collapse:collapse; font-size:12.5px; background:var(--bg);
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .cmp th, .cmp td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .cmp th { font-size:11px; color:var(--faint); font-weight:400; }
+  .cmp tr:last-child td { border-bottom:0; }
+  .cmp td.n { color:var(--fg); font-weight:600; white-space:nowrap; }
+  .cmp td.d { color:var(--dim); }
+
+  @media (max-width:620px) { .grass { grid-template-columns:repeat(20,1fr); } .hi .agents { margin-left:0; } }
+</style>
+
+<div class="page">
+  <div class="head">
+    <h1>OCW 시안 — “당신의 열정을 광고해드립니다”</h1>
+    <span class="tag">v4 · 대행사</span>
+    <span class="sub">부풀린 단어 + 쩨쩨한 단위 = 능청</span>
+    <button class="btn" id="langBtn" type="button">한국어 → EN</button>
+    <button class="btn" id="themeBtn" type="button">◐ theme</button>
+  </div>
+
+  <div class="why">
+    <b>이 방향이 앞의 셋보다 나은 이유</b> — 광고하는 <b>대상</b>이 바뀌었다.
+    <ul>
+      <li>v1 의 “당신 프로젝트를 광고해준다”는 참가자 10명짜리 보드가 <b>못 지키는 약속</b>이었다. 반면 <b>노력을 숫자로 바꿔 전시하는 건 이 제품이 실제로 하는 일</b>이다 — 과장할 게 없다.</li>
+      <li>현재 슬로건이 던진 질문(“당신의 노력은 어디에 남지?”)의 <b>답</b>이 그대로 된다. 간판을 갈아엎는 게 아니라 <b>문답을 완성</b>하는 것.</li>
+      <li>“광고대행”이라는 <b>배역</b>이 생긴다 — 사이트가 1인칭으로 떠들 명분. v1 의 1인칭이 오글거렸던 건 배역 없이 떠들어서였다.</li>
+    </ul>
+    <b>걸리는 것 둘</b> — ① <code>열정</code>은 한국 개발자 사이에서 <b>열정페이</b>로 오염된 단어다. ② <code>~해드립니다</code>는 자기계발서·영업 톤이다.
+    둘 다 <b>진지하게 말할 때만</b> 터진다. 아래 톤 눈금 참고.
+  </div>
+
+  <div class="dial">
+    <div>
+      <h3>진지 (위험)</h3>
+      <p class="l">“당신의 열정을 광고해드립니다.<br>당신의 노력은 사라지지 않습니다.”</p>
+      <p class="v">→ 채용공고·자기계발서. 열정페이 정면으로 밟는다.</p>
+    </div>
+    <div class="pick">
+      <h3>능청 (권장)</h3>
+      <p class="l">“당신의 열정을 광고해드립니다.<br>열정은 프롬프트 수로 환산됩니다.”</p>
+      <p class="v">→ 부풀린 단어를 쩨쩨한 단위로 받아친다. 문장이 스스로를 놀리니 오글거릴 수가 없다.</p>
+    </div>
+    <div>
+      <h3>냉소 (과함)</h3>
+      <p class="l">“당신의 열정을 팔아드립니다.<br>수수료는 없습니다. 살 사람도 없고요.”</p>
+      <p class="v">→ 웃기지만 제품을 깎아내린다. 설치할 이유가 사라진다.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════ A ══════════════ -->
+  <div class="vhead">
+    <span class="no pick">A</span><h2>환산 — 열정을 단위로 받아친다</h2>
+    <span class="kw">권장 · 카피 2키 + 환산표</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="당신의 열정을 광고해드립니다.<br><b>열정은 프롬프트 수로 환산됩니다.</b>"
+           data-en="We advertise your passion.<br><b>Passion is measured in prompts.</b>"></p>
+        <p data-ko="에이전트가 코드를 쓰기 시작한 뒤로 노력은 커밋에 안 남습니다. 대신 여기 남습니다 — 몇 번 시켰는지, 몇 글자를 썼는지, 며칠 연속인지. 내용은 수집하지 않습니다."
+           data-en="Since the agent started writing the code, the effort stopped showing up in commits. It shows up here instead — how many times you asked, how much you wrote, how many days in a row. Never the content."></p>
+        <div class="conv">
+          <div class="crow"><span class="k" data-ko="어제의 열정" data-en="yesterday's passion"></span><span class="v" data-ko="프롬프트 67 · 18,400자" data-en="67 prompts · 18,400 chars"></span></div>
+          <div class="crow"><span class="k" data-ko="이번 달의 열정" data-en="this month's passion"></span><span class="v" data-ko="프롬프트 1,204 · 34일 연속" data-en="1,204 prompts · 34-day streak"></span></div>
+          <div class="crow foot"><span class="k" data-ko="환산 기준" data-en="conversion basis"></span><span class="k" data-ko="1 열정 = 1 프롬프트. 반올림 없음." data-en="1 passion = 1 prompt. No rounding."></span></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note good"><b>왜 이게 제일 낫나:</b> “1 열정 = 1 프롬프트. 반올림 없음.” 이 한 줄이 <b>열정페이 리스크를 무장해제</b>한다.
+    열정을 숭배하는 게 아니라 <b>계량기에 올려놓고 있는</b> 태도라서, 읽는 사람이 놀림당하는 게 아니라 같이 웃게 된다.
+    그리고 이 능청은 <b>제품 설명과 100% 일치</b>한다 — 우리는 진짜로 프롬프트를 센다.</p>
+  <p class="note"><b>바뀌는 것:</b> <code>slogan</code>·<code>tagline</code> 2키 + 환산표(있는 숫자 그대로). 오늘 배포 가능.</p>
+  <p class="note risk"><b>리스크:</b> 영어 “We advertise your passion”은 한국어보다 <b>더 진지하게</b> 읽힌다(링크드인 톤).
+    영어는 “Your effort, itemized.” 처럼 능청 쪽을 더 세게 잡는 편이 낫다 — 아래 E 참고.</p>
+
+  <!-- ══════════════ B ══════════════ -->
+  <div class="vhead">
+    <span class="no">B</span><h2>단어 교체 — 열정 대신 갈아넣은 것</h2>
+    <span class="kw">열정페이 회피 · 개발자 어휘</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=chars <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="당신이 갈아넣은 걸 광고해드립니다.<br><b>단위는 프롬프트입니다.</b>"
+           data-en="We advertise what you poured in.<br><b>The unit is one prompt.</b>"></p>
+        <p data-ko="커밋 수로는 안 보이는 쪽입니다 — 같은 걸 열두 번 다시 시킨 밤, 결국 갈아엎은 브랜치, 이름도 안 붙은 리팩터링. 횟수와 글자 수로만 남습니다. 내용은 수집하지 않습니다."
+           data-en="The side commits don't show — the night you asked the same thing twelve times, the branch you threw away, the refactor nobody named. It survives as counts and characters. Never the content."></p>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> “갈아넣다”는 개발자가 자기 입으로 쓰는 말이라 <b>남이 나를 부르는 말</b>이 아니다 — 열정페이 지뢰를 통째로 피한다.
+    tagline 의 세 가지 예(열두 번 다시 시킨 밤 / 갈아엎은 브랜치 / 이름 없는 리팩터링)가 “안 보이는 노동”을 구체적으로 만든다.</p>
+  <p class="note risk"><b>리스크:</b> 자조 쪽으로 기운다. “갈아넣었다”는 <b>번아웃 서사</b>와 붙어 있어서, 잘못 읽히면 “그걸 자랑하라고?”가 된다.
+    그리고 영어 대응어가 마땅치 않다(“poured in”은 밋밋하다).</p>
+
+  <!-- ══════════════ C ══════════════ -->
+  <div class="vhead">
+    <span class="no">C</span><h2>대행사 전면 — 사이트가 배역을 맡는다</h2>
+    <span class="kw">세계관 확장 · 지면 이름까지 갈아끼움</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — 개발자 전문 광고대행</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /광고주/dododo <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend" data-ko="ocw · 광고대행" data-en="ocw · ad agency"></span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <p class="slogan"
+           data-ko="개발자 전문 광고대행.<br><b>취급 품목: 당신의 열정.</b>"
+           data-en="An ad agency for developers.<br><b>Sole inventory: your effort.</b>"></p>
+        <p data-ko="광고비는 안 받습니다. 대신 매일 친 프롬프트가 그대로 게재 실적이 됩니다. 아래는 이번 달 집행 내역입니다."
+           data-en="We don't invoice. Your prompts are the placement. Below is this month's report."></p>
+        <div class="invoice">
+          <div class="ttl" data-ko="게재 보고서 · 2026-08" data-en="placement report · 2026-08"></div>
+          <div class="irow"><span class="k" data-ko="리더보드 게재" data-en="leaderboard placement"></span><span class="v" data-ko="26일" data-en="26 days"></span></div>
+          <div class="irow"><span class="k" data-ko="프로필 · 공유 카드" data-en="profile + share card"></span><span class="v" data-ko="상시" data-en="always on"></span></div>
+          <div class="irow"><span class="k" data-ko="아침 브리핑 언급" data-en="mentions in briefings"></span><span class="v">4</span></div>
+          <div class="irow tot"><span class="k" data-ko="청구액" data-en="amount due"></span><span class="v" data-ko="₩0" data-en="$0"></span></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="광고주 <b>10</b>" data-en="clients <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 한 줄짜리 농담을 <b>세계관</b>으로 키운 안. 보드=게재 지면, 프로필=게재 보고서, 청구액 ₩0.
+    끝까지 정색하고 밀면 웃기고, 무엇보다 <b>기억에 남는다</b>. 픽셀 병정·계급 세계관과도 같은 성질(정색한 농담)이라 안 부딪힌다.</p>
+  <p class="note risk"><b>리스크:</b> 갈아야 할 문구가 사이트 전체로 번진다(legend·탭 이름·프로필 헤더·README). 되돌리기 비싸다.
+    그리고 <b>농담이 제품 설명을 가린다</b> — 처음 온 사람이 “이게 뭐 하는 서비스지?”에 도달하는 시간이 길어진다.
+    “청구액 ₩0” 은 광고 팔 생각이 없다는 선언이라 <b>나중에 수익화하면 자기모순</b>이 된다.</p>
+
+  <!-- ══════════════ D ══════════════ -->
+  <div class="vhead">
+    <span class="no">D</span><h2>문답 완성 — 지금 슬로건 밑에 답을 붙인다</h2>
+    <span class="kw">최소 변경 · 간판 유지</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="코드는 에이전트가 쓴다.<br>그럼 당신의 노력은 어디에 남지?<br><b>여기서 광고해드립니다.</b>"
+           data-en="Your agent writes the code.<br>So where does your work show up?<br><b>Right here. We'll run the ad.</b>"></p>
+        <p data-ko="프롬프트 횟수·글자 수·연속 일수로 환산해 보드와 명함에 겁니다. 내용은 수집하지 않습니다."
+           data-en="Converted into prompts, characters, and streak days, then posted on the board and your card. Never the content."></p>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> 지금 간판을 안 버리고 <b>세 번째 줄만 추가</b>하는 안. 질문 → 답 구조라 새 카피를 배우게 할 필요가 없고,
+    §21 의 위계(거울 → 명함)도 그대로 지킨다. 제일 안전하다.</p>
+  <p class="note risk"><b>리스크:</b> 세 줄이면 히어로가 길다(모바일에서 6줄까지 간다). 그리고 안전한 만큼 <b>심심하다</b> — A 의 “환산됩니다” 같은 한 방이 없다.</p>
+
+  <!-- ══════════════ E ══════════════ -->
+  <div class="vhead">
+    <span class="no">E</span><h2>영어 버전 — 능청을 영어에서 살리기</h2>
+    <span class="kw">A 의 영문 대안 · 한국어는 A 유지</span>
+  </div>
+  <div class="term">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="name">ocw — open-code-war (live)</span></div>
+    <div class="screen">
+      <div class="echo"><span class="sig">you@open-code-war</span>:~$ GET /leaderboard?type=all&amp;metric=prompts <span class="cursor"></span></div>
+      <section class="box banner">
+        <span class="legend">ocw · live</span>
+        <h2 class="big">OPEN CODE WAR</h2>
+        <div class="field" aria-hidden="true"><div class="grass"></div></div>
+        <p class="slogan"
+           data-ko="(영문 전용 안 — 한국어는 A 를 그대로 씁니다)<br><b>Your effort, itemized.</b>"
+           data-en="Your effort, itemized.<br><b>Billed to nobody. Posted for everybody.</b>"></p>
+        <p data-ko="영어권에서는 “passion”이 링크드인 톤으로 읽힙니다. 대신 회계 어휘(itemized·billed·posted)로 능청을 만듭니다 — 노력을 항목별로 쪼개 청구서처럼 내건다는 농담."
+           data-en="Prompts, characters, streak days — the part of the work that stopped showing up in commits. Never the content, only the amounts."></p>
+        <div class="conv">
+          <div class="crow"><span class="k">line item</span><span class="v">67 prompts · 18,400 chars</span></div>
+          <div class="crow"><span class="k">period</span><span class="v">34 days, uninterrupted</span></div>
+          <div class="crow foot"><span class="k">terms</span><span class="k">1 prompt = 1 prompt. No rounding.</span></div>
+        </div>
+        <div class="hi">
+          <span class="cmd"><span class="ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
+          <button class="copy" type="button">⧉</button>
+          <span class="agents" data-ko="Claude Code 기준 — Codex · OpenCode · pi ↓" data-en="for Claude Code — Codex · OpenCode · pi ↓"></span>
+        </div>
+        <div class="status">
+          <span><span class="dotlive pulse"></span>live</span>
+          <span data-ko="참가 <b>10</b>" data-en="joined <b>10</b>"></span>
+          <span>region <b>KR</b></span>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note"><b>왜:</b> “열정”의 능청은 한국어에서만 자연스럽다. 영어는 <b>회계 어휘</b>로 같은 농담을 만든다 —
+    itemized(항목별로 쪼갬) · billed to nobody(아무한테도 청구 안 함) · posted(게시/전기). 뜻은 같고 온도는 맞다.</p>
+  <p class="note"><b>주의:</b> 두 언어가 <b>다른 문장</b>이어도 된다(<code>i18n</code> 사전이 이미 분리돼 있다). 직역하려다 둘 다 어색해지는 게 최악.</p>
+
+  <!-- ══════════════ 비교 ══════════════ -->
+  <div class="vhead"><h2>한눈에</h2></div>
+  <table class="cmp">
+    <thead><tr><th>안</th><th>한 줄</th><th>강점</th><th>리스크</th><th>비용</th></tr></thead>
+    <tbody>
+      <tr><td class="n">A 환산 ★</td><td class="d">열정은 프롬프트 수로 환산됩니다</td><td class="d">능청이 제품 설명과 일치 · 열정페이 무장해제</td><td class="d">영문이 진지해짐(→E)</td><td class="d">카피 2키</td></tr>
+      <tr><td class="n">B 갈아넣은 것</td><td class="d">단위는 프롬프트입니다</td><td class="d">개발자 자기 어휘 · 지뢰 회피</td><td class="d">번아웃 서사로 기움</td><td class="d">카피 2키</td></tr>
+      <tr><td class="n">C 대행사</td><td class="d">취급 품목: 당신의 열정</td><td class="d">기억에 남음 · 세계관과 합</td><td class="d">사이트 전체로 번짐 · 농담이 설명을 가림</td><td class="d">전면 개편</td></tr>
+      <tr><td class="n">D 문답</td><td class="d">여기서 광고해드립니다</td><td class="d">제일 안전 · 간판 유지</td><td class="d">세 줄이라 길고 심심함</td><td class="d">한 줄 추가</td></tr>
+      <tr><td class="n">E 영문</td><td class="d">Your effort, itemized.</td><td class="d">영어에서 톤이 맞음</td><td class="d">한국어와 문장이 달라짐</td><td class="d">A 와 세트</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><b>추천:</b> <b>A(한국어) + E(영어)</b> 세트. 카피 2키만 바꾸면 되고, 열정페이·영업톤 두 지뢰를 “환산” 한 방으로 동시에 피한다.
+    <b>C 는 따로 떼어 나중에</b> — 재미는 제일 크지만 지금 히어로에 필요한 건 배역이 아니라 설명이다.</p>
+  <p class="note"><b>같이 갈아야 하는 곳:</b> <code>web/index.html</code> 의 <code>slogan</code>·<code>tagline</code>(en·ko) ·
+    <code>meta description</code>/<code>og:*</code> · <code>README</code> 첫 줄. C 를 고르면 legend·탭·프로필 헤더까지.</p>
+</div>
+
+<script>
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const cur = root.getAttribute('data-theme');
+    const sysDark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const now = cur || (sysDark ? 'dark' : 'light');
+    root.setAttribute('data-theme', now === 'dark' ? 'light' : 'dark');
+  });
+
+  let lang = 'ko';
+  const langBtn = document.getElementById('langBtn');
+  function paint() {
+    for (const el of document.querySelectorAll('[data-ko][data-en]')) {
+      el.innerHTML = el.getAttribute(lang === 'ko' ? 'data-ko' : 'data-en');
+    }
+    langBtn.textContent = lang === 'ko' ? '한국어 → EN' : 'EN → 한국어';
+  }
+  langBtn.addEventListener('click', () => { lang = lang === 'ko' ? 'en' : 'ko'; paint(); });
+  paint();
+
+  for (const g of document.querySelectorAll('.grass')) {
+    for (let i = 0; i < 120; i++) {
+      const cell = document.createElement('i');
+      const lv = [0, 1, 2, 0, 3, 1, 4, 2, 0, 1, 3, 0][i % 12];
+      if (lv) cell.className = 'g' + lv;
+      g.appendChild(cell);
+    }
+  }
+</script>
