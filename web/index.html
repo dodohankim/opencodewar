@@ -770,19 +770,12 @@
           </div>
           <div class="grass" id="grass"></div>
         </div>
-        <p class="slogan" data-i18n-html="slogan">Your agent writes the code.<br>So where does <b>your work</b> show up?</p>
-        <p data-i18n="tagline">A record of every day you work with a coding agent — prompts, characters, time per project. Never the content. Your record becomes your rank, your streak, your developer card. And if you want — your war.</p>
+        <p class="slogan" data-i18n-html="slogan">Nobody sees your effort anymore.<br>We <b>put it on a board</b>.</p>
+        <p data-i18n="tagline">How many times you asked, how much you wrote, how many days in a row — the part your commits stopped showing. Those numbers become your rank, your streak, your developer card. The prompt text and the code never leave your machine.</p>
         <div class="hero-install">
           <span class="hi-cmd"><span class="hi-ps1">❯</span> /plugin marketplace add dodohankim/opencodewar</span>
           <button class="cmd-copy" id="heroCopy" type="button" title="copy command" aria-label="copy command">⧉</button>
           <button class="hi-agents" id="heroAgents" type="button" data-i18n="hi_agents">for Claude Code — Codex · OpenCode · pi ↓</button>
-        </div>
-        <div class="status">
-          <span><span class="dotlive" id="liveDot" aria-hidden="true"></span><span id="liveText">Connecting…</span></span>
-          <span><span data-i18n="joined">joined</span> <b id="countChip">–</b></span>
-          <span>region <b id="regionChip">KR</b></span>
-          <span><span data-i18n="rank1">#1</span> <b id="champChip">–</b></span>
-          <span id="updChip"></span>
         </div>
       </section>
 
@@ -1079,10 +1072,8 @@
   const T = {
     en: {
       langBtn: '한국어',
-      slogan: 'Your agent writes the code.<br>So where does <b>your work</b> show up?',
-      tagline: 'A record of every day you work with a coding agent — prompts, characters, time per project. Never the content. Your record becomes your rank, your streak, your developer card. And if you want — your war.',
-      live_on: 'Live', live_off: 'Server unreachable',
-      joined: 'joined', rank1: '#1', updated: 'Updated',
+      slogan: 'Nobody sees your effort anymore.<br>We <b>put it on a board</b>.',
+      tagline: 'How many times you asked, how much you wrote, how many days in a row — the part your commits stopped showing. Those numbers become your rank, your streak, your developer card. The prompt text and the code never leave your machine.',
       me_ph: 'search nickname',
       rules1: '<b>Input = a prompt submit.</b> +1 each Enter; characters counted too.',
       rules2: '<b>No content collected.</b> Only the character count (a number) is sent.',
@@ -1130,7 +1121,6 @@
       about_link: 'About', contact_link: 'Contact', about_legend: 'what is this',
       about_p1: '<b>Open Code War</b> is the contribution graph for the agent era. A small plugin counts every prompt you submit to Claude Code, Codex, OpenCode or pi — the number of submits and their character count, never the text — and turns it into a rank, a streak, a developer card and a leaderboard.',
       about_p2: 'Privacy-first and open source: no prompt content, no code, no file paths, no stored IP. Verify it in the <a href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">repository</a>, delete everything with <code>/ocw delete</code>.',
-      every_5m: 'every 5m',
       p_active: 'in action today', p_idle: 'standing by', p_last: 'last active',
       rank_label: 'rank', rank_max: 'highest rank',
       rank_next: (need, next) => `<b>${need}</b> prompts to ${next}`,
@@ -1161,10 +1151,8 @@
     },
     ko: {
       langBtn: 'EN',
-      slogan: '코드는 에이전트가 쓴다.<br>그럼 <b>당신의 노력</b>은 어디에 남지?',
-      tagline: '커밋 잔디로는 안 보이는 매일을 기록합니다 — 프롬프트 횟수·글자 수·프로젝트별 시간. 내용은 절대 수집하지 않습니다. 기록은 계급·스트릭·개발자 명함이 되고, 원하면 전쟁에도 참전합니다.',
-      live_on: '집계 중', live_off: '서버 연결 실패',
-      joined: '참가', rank1: '1위', updated: '집계',
+      slogan: '아무도 안 보는 당신의 열정을<br><b>광고해드립니다.</b>',
+      tagline: '몇 번 시켰는지, 몇 글자를 썼는지, 며칠 연속인지 — 커밋에는 안 남는 쪽을 셉니다. 그 숫자가 계급과 스트릭이 되고, 보드와 개발자 명함에 걸립니다. 프롬프트 내용도 코드도 서버로 보내지 않습니다.',
       me_ph: '닉네임 검색',
       rules1: '<b>입력 = 프롬프트 제출.</b> 엔터마다 1점, 글자 수도 집계.',
       rules2: '<b>내용 미수집.</b> 글자 수(숫자)만 전송.',
@@ -1212,7 +1200,6 @@
       about_link: '소개', contact_link: '문의', about_legend: '이게 뭔가요',
       about_p1: '<b>Open Code War</b> 는 에이전트 시대의 잔디입니다. 작은 플러그인이 Claude Code·Codex·OpenCode·pi 에 보내는 프롬프트를 셉니다 — 제출 횟수와 글자 수만, 내용은 절대 아님 — 그리고 그걸 계급·스트릭·개발자 카드·리더보드로 만듭니다.',
       about_p2: '프라이버시 우선·오픈소스: 프롬프트 내용, 코드, 파일 경로, IP 저장 전부 없음. <a href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">저장소</a>에서 직접 확인하고, <code>/ocw delete</code> 로 전부 지울 수 있습니다.',
-      every_5m: '5분마다',
       p_active: '오늘 참전 중', p_idle: '대기 중', p_last: '마지막 참전',
       rank_label: '계급', rank_max: '최고 계급',
       rank_next: (need, next) => `${next}까지 <b>${need}</b> prompts`,
@@ -1250,7 +1237,6 @@
   let curCountry = null;     // 선택된 국가코드
   let curCity = null;        // 선택된 도시 라벨(원문)
   let zonesData = null;      // GET /zones 응답 캐시
-  let lastChampCountry = null; // 현재 보드 챔피언 국가(히어로 region 클릭 점프용)
 
   // 현재 스코프에 맞는 /leaderboard 쿼리스트링.
   function boardQuery() {
@@ -1309,11 +1295,6 @@
     applyLang();
   }
 
-  function kstClock(ms) {
-    const k = new Date(ms + new Date(ms).getTimezoneOffset() * 60000 + 9 * 3600000);
-    const p = (n) => String(n).padStart(2, '0');
-    return `KST ${p(k.getHours())}:${p(k.getMinutes())}:${p(k.getSeconds())}`;
-  }
   // epoch ms → KST 'YYYY-MM-DD'
   function fmtDate(ms) {
     const k = new Date(ms + new Date(ms).getTimezoneOffset() * 60000 + 9 * 3600000);
@@ -1339,11 +1320,7 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       render(data);
-      $('liveDot').classList.remove('off');
-      $('liveText').textContent = t('live_on');
     } catch (e) {
-      $('liveDot').classList.add('off');
-      $('liveText').textContent = t('live_off');
       $('board').innerHTML = `<div class="msg err">${t('error')}: ${API}<br>${t('error_hint')}</div>`;
       $('meBar').hidden = true;
     }
@@ -1423,20 +1400,7 @@
 
   function render(data) {
     const rows = data.ranking || [];
-    $('countChip').textContent = fmt(data.count);
     const champ = rows[0];
-    // 클릭 라우팅 키(ref): 등록 유저는 닉네임, 익명 유저는 공개 slug(public_id).
-    const champRef = champ ? (champ.registered ? champ.nickname : champ.public_id) : null;
-    if (champ && champRef) {
-      const cn = escapeHtml(champ.nickname);
-      $('champChip').innerHTML = `<span class="nm link" data-nick="${escapeHtml(champRef)}" role="button" tabindex="0">${cn}</span>`;
-    } else {
-      $('champChip').textContent = champ ? (champ.nickname || t('anon')) : '–';
-    }
-    lastChampCountry = champ && champ.country ? champ.country : null;
-    $('regionChip').textContent = champ && champ.country ? `${champ.country} ${flagOf(champ.country)}` : '–';
-    // 경과시간 대신 집계 주기를 고정 표기 — 백엔드 cron(*/5)·SNAPSHOT_TTL_MS와 맞춘 값.
-    $('updChip').textContent = data.builtAt ? `${t('updated')} ${kstClock(data.builtAt)} · ${t('every_5m')}` : '';
 
     if (!rows.length) {
       $('board').innerHTML = `<div class="msg">${t('empty')}</div>`;
@@ -1916,16 +1880,6 @@
   $('countrySel').addEventListener('change', (e) => { curCountry = e.target.value; populateCitySel(); load(); });
   $('citySel').addEventListener('change', (e) => { curCity = e.target.value; load(); });
 
-  // 홈 히어로의 region 국기를 클릭하면 그 국가 보드로 점프.
-  $('regionChip').style.cursor = 'pointer';
-  $('regionChip').addEventListener('click', () => {
-    if (!lastChampCountry) return;
-    curScope = 'country'; curCountry = lastChampCountry;
-    document.querySelectorAll('.scope').forEach((x) => x.setAttribute('aria-pressed', x.dataset.scope === 'country'));
-    if (zonesData) { populateCountrySel(); $('countrySel').value = curCountry; }
-    updateZonePick();
-    load();
-  });
   $('meInput').addEventListener('input', (e) => {
     myNick = e.target.value; localStorage.setItem('ocw_me', myNick); load();
   });
