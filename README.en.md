@@ -2,10 +2,10 @@
 
 # ⚔️ Open Code War
 
-**The contribution graph for the agent era — prompts are the new commits.**
+**Nobody sees your effort anymore. We put it on a board.**
 
-A record of every day you build with a coding agent: prompt count, characters, time per project (never the content).
-Your record becomes your rank, your streak, a shareable developer card — and, if you want, a leaderboard war.
+A record of every day you build with Claude Code, Codex, OpenCode or pi: times asked, characters written, days in a row (never the content).
+No money, no prompt text, no code — effort is the only thing we take.
 
 **English** · [한국어](README.md)
 

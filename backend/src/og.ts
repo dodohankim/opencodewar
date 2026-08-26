@@ -292,7 +292,7 @@ export async function handleProfilePage(
   // 유저별 OG 이미지(public_id 기준). public_id 가 없으면(구 데이터) 공통 og.png 유지.
   // ?v= 는 소셜 스크래퍼 캐시 버스팅 — og.png 갈아끼울 때 web/index.html 의 og:image 와 함께 올린다.
   const publicId = byId ? (seg as string) : row.public_id;
-  const imageUrl = publicId ? ogImageUrl(publicId) : `${SITE_ORIGIN}/og.png?v=2`;
+  const imageUrl = publicId ? ogImageUrl(publicId) : `${SITE_ORIGIN}/og.png?v=3`;
   const setContent = (value: string) => ({
     element(el: Element) {
       el.setAttribute('content', value);

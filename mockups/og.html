@@ -1,21 +1,26 @@
 <!doctype html>
-<!-- Open Code War OG 카드 소스 (1200×630) — '대치 포스터' (og-main.html 시안 3 확정본).
+<!-- Open Code War OG 카드 소스 (1200×630) — '잔디 위의 타건 병정'.
+     랜딩 히어로(web/index.html §21)와 같은 그림: 기록 히트맵이 땅, 그 위에 타건 병정.
      web/og.png 재생성:
      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
        --force-device-scale-factor=1 --window-size=1200,630 \
-       --screenshot=web/og.png file://.../mockups/og.html -->
+       --screenshot=web/og.png file://.../mockups/og.html
+     교체 후 ?v= 를 3곳 동시에 올릴 것 (index.html og:image·twitter:image + backend/src/og.ts 폴백) -->
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <style>
   :root {
     --bg:#0E0E0D; --fg:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
-    --ok:#6DA875; --pi:#AC85DC;
+    --ok:#6DA875; --pi:#AC85DC; --amber:#D9A441;
     --ag-codex:#7FA6E0; --ag-opencode:#D99A55;
     --skin:#E8C39E; --eye:#232320;
+    /* 잔디 4단계 — 랜딩 다크 토큰과 동일 값 */
+    --grass-0:rgba(109,168,117,0.12); --grass-1:rgba(109,168,117,0.30);
+    --grass-2:rgba(109,168,117,0.55); --grass-3:rgba(109,168,117,0.80); --grass-4:#6DA875;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; }
   html, body { width: 1200px; height: 630px; overflow: hidden; }
   body {
     background: var(--bg); color: var(--fg); font-family: var(--mono);
@@ -25,25 +30,22 @@
   /* ── 픽셀 병정 (랜딩 web/index.html 과 동일 스프라이트) ── */
   .sprite { display: block; width: 100%; height: 100%; }
   .px-s { fill: var(--skin); } .px-e { fill: var(--eye); } .px-r { fill: var(--fg); }
-  .army-claude .px-u { fill: var(--fg); }
-  .army-codex .px-u { fill: var(--ag-codex); }
-  .army-opencode .px-u { fill: var(--ag-opencode); }
-  .army-pi .px-u { fill: var(--pi); }
-  .flip .sprite { transform: scaleX(-1); }
+  .army-claude .px-u, .army-claude .px-f { fill: var(--fg); }
   .sd { position: absolute; }
 
   .lights { position: absolute; top: 44px; left: 60px; display: flex; gap: 11px; }
   .lights i { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--faint); display: block; }
 
-  .big { text-align: center; font-size: 106px; font-weight: 700; letter-spacing: .04em; line-height: 1; padding-top: 128px; }
-  .tag { text-align: center; color: var(--dim); font-size: 25px; line-height: 1.42; max-width: 980px; margin: 26px auto 0; }
+  .big { text-align: center; font-size: 106px; font-weight: 700; letter-spacing: .04em; line-height: 1; padding-top: 104px; }
+  .tag { text-align: center; color: var(--dim); font-size: 27px; line-height: 1.42; max-width: 1000px; margin: 26px auto 0; }
   .tag b { color: var(--fg); font-weight: 600; }
 
-  .field { position: absolute; inset: 0; }
-  .ground { position: absolute; left: 60px; right: 60px; bottom: 104px; border-bottom: 3px dotted var(--line); }
-  .tracer { position: absolute; width: 18px; height: 4px; }
-  .hit { position: absolute; font-size: 22px; color: var(--faint); }
-  .flash { position: absolute; width: 10px; height: 10px; background: var(--fg); }
+  /* ── 잔디 히트맵: 기록이 땅이 된다 ── */
+  .grass { position: absolute; left: 82px; top: 410px; display: grid;
+    grid-template-columns: repeat(40, 22px); gap: 4px; }
+  .grass i { display: block; width: 22px; height: 22px; border-radius: 3px; background: var(--grass-0); }
+  .grass i.g1 { background: var(--grass-1); } .grass i.g2 { background: var(--grass-2); }
+  .grass i.g3 { background: var(--grass-3); } .grass i.g4 { background: var(--grass-4); }
 
   .foot { position: absolute; left: 0; right: 0; bottom: 34px; text-align: center; }
   .foot .dom { font-size: 27px; font-weight: 600; letter-spacing: .02em; }
@@ -53,28 +55,23 @@
 <body>
   <div class="lights"><i></i><i></i><i></i></div>
   <div class="big">OPEN CODE WAR</div>
-  <div class="tag">Who types the most into their <b>coding agent</b>?<br/>Win the war — conquer the world with <b>your product</b>.</div>
+  <div class="tag">Nobody sees your effort anymore.<br/>We put it on <b>a board</b>.</div>
   <div class="field" id="field"></div>
   <div class="foot">
     <div class="dom">opencodewar.dev</div>
-    <div class="sub">one all-time board · no prompt content collected</div>
+    <div class="sub">prompts · characters · streak days — never the content</div>
   </div>
 
 <script>
-  // 16×16 스프라이트 맵 (랜딩과 동일. U=군복 H=헬멧 S=피부 E=눈 R=소총 B=군화)
+  // 16×16 스프라이트 맵 (랜딩과 동일. U=군복 H=헬멧 S=피부 E=눈 B=군화 M/K=키보드)
   const SPRITES = {
-    aim: [
-      '................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......','...SSSESS.......',
-      '...SSSSS........','..UUUUUU........','.UUUUUUUSRRRRRRR','.U..UUUUSRR.....','.U..UUUU........',
-      '....UUUU........','....UUUU........','....UU.UU.......','....UU.UU.......','....UU.UU.......','...BBB.BBB......',
-    ],
-    kneel: [
-      '................','................','................','...HHHHHH.......','..HHHHHHHH......',
-      '..HHHHHHHH......','...SSSESS.......','...SSSSS........','..UUUUUU........','.UUUUUUUSRRRRRRR',
-      '.U..UUUUSRR.....','....UUUU........','....UUUUUU......','....UU..UU......','....UU..UU......','...BBB..BBB.....',
+    typer2: [ // 후방 오퍼레이터 — 손 내림(타건)
+      '................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......',
+      '...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...',
+      '..UUUUU....MM...','..UUUUUSS..MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......',
     ],
   };
-  const CLS = { H: 'u', U: 'u', S: 's', E: 'e', R: 'r', B: 'r' };
+  const CLS = { H: 'u', U: 'u', S: 's', E: 'e', R: 'r', B: 'r', F: 'f', M: 'r', K: 'r' };
 
   function spriteSVG(name) {
     const map = SPRITES[name];
@@ -86,27 +83,23 @@
     }
     return `<svg class="sprite" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
   }
-  const sd = (army, sprite, style, flip) =>
-    `<span class="sd ${army}${flip ? ' flip' : ''}" style="${style}">${spriteSVG(sprite)}</span>`;
 
-  // 좌우 4군 대치 — 좌: claude 입사/codex 앉아쏴, 우: opencode 입사/pi 앉아쏴 (미러)
-  const S = 'width:132px;height:132px;bottom:106px;';
+  // 잔디 — 랜딩과 같은 결정적 패턴이되, 카드용으로 밀도를 올리고 오른쪽(최근)으로 짙어지게 한다.
+  // 1200×630 에서 30칸 원본 그대로 쓰면 빈 칸이 너무 커 "기록이 없는 판" 처럼 읽힌다.
+  let seed = 42, cells = '';
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const COLS = 40;
+  for (let i = 0; i < COLS * 4; i++) {
+    const col = i % COLS;
+    const v = rnd() * 0.55 + 0.9 * (col / COLS) - 0.12;
+    const lv = v > 0.9 ? 4 : v > 0.66 ? 3 : v > 0.44 ? 2 : v > 0.22 ? 1 : 0;
+    cells += `<i${lv ? ` class="g${lv}"` : ''}></i>`;
+  }
+
+  // 병정은 잔디 오른쪽 끝에 발을 딛고 선다(랜딩 히어로와 같은 배치).
   document.getElementById('field').innerHTML =
-    `<i class="ground"></i>` +
-    sd('army-claude', 'aim', S + 'left:84px;') +
-    sd('army-codex', 'kneel', S + 'left:236px;') +
-    sd('army-opencode', 'aim', S + 'right:84px;', true) +
-    sd('army-pi', 'kneel', S + 'right:236px;', true) +
-    `<i class="flash" style="left:217px;bottom:168px;"></i>
-     <i class="flash" style="left:369px;bottom:152px;"></i>
-     <i class="flash" style="right:217px;bottom:168px;"></i>
-     <i class="flash" style="right:369px;bottom:152px;"></i>
-     <i class="tracer" style="left:430px;bottom:170px;background:var(--fg);"></i>
-     <i class="tracer" style="left:562px;bottom:154px;background:var(--ag-codex);"></i>
-     <i class="tracer" style="right:430px;bottom:170px;background:var(--ag-opencode);"></i>
-     <i class="tracer" style="right:562px;bottom:154px;background:var(--pi);"></i>
-     <b class="hit" style="left:528px;bottom:212px;">+1</b>
-     <b class="hit" style="left:648px;bottom:232px;">+1</b>`;
+    `<div class="grass">${cells}</div>` +
+    `<span class="sd army-claude" style="width:120px;height:120px;left:946px;top:290px;">${spriteSVG('typer2')}</span>`;
 </script>
 </body>
 </html>
