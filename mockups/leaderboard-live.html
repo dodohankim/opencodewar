@@ -162,12 +162,13 @@
   .newpill { font-size:10.5px; font-weight:700; color:var(--rev-fg); background:var(--ok); border-radius:4px; padding:1px 6px; }
   .newpill.zero { background:transparent; color:var(--faint); font-weight:400; border:1px solid var(--line); }
   .ticker { font-size:12.5px; }
-  .trow { display:grid; grid-template-columns:74px 128px 46px 1fr 30px; gap:10px; align-items:center;
+  .trow { display:grid; grid-template-columns:74px 128px 118px 1fr 30px; gap:10px; align-items:center;
     padding:5px 6px; border-radius:4px; white-space:nowrap; }
   .trow .t { color:var(--faint); font-variant-numeric:tabular-nums; }
   .trow .n { color:var(--fg); font-weight:600; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
   .trow .n:hover { text-decoration:underline; text-underline-offset:2px; }
   .trow .d { color:var(--ok); font-weight:700; font-variant-numeric:tabular-nums; }
+  .trow .ch { color:var(--faint); font-weight:400; font-size:11.5px; margin-left:6px; }
   .trow .a { color:var(--dim); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; }
   .trow .a.codex { color:var(--ag-codex); }
   .trow .a.opencode { color:var(--ag-opencode); }
@@ -201,7 +202,7 @@
     .ship.strong .host, .ship.strong .arr { display:none; }
     .pod { gap:10px; padding:10px; }
     .pod .nums .pnum { font-size:19px; }
-    .trow { grid-template-columns:66px 1fr 46px; }
+    .trow { grid-template-columns:66px 1fr 108px; }
     .trow .a, .trow .c { display:none; }
     .lower { grid-template-columns:1fr; }
   }
@@ -471,7 +472,8 @@
     const el = document.createElement('div');
     el.className = 'trow' + (fresh ? ' fresh' : '');
     el.innerHTML = `<span class="t">${hhmmss(at)}</span><span class="n">${esc(nick)}</span>` +
-      `<span class="d">+${d}</span><span class="a ${ag === 'claude-code' ? '' : ag}">${ag}</span>` +
+      `<span class="d">+${d}<span class="ch">· ${(d * 137 + 41).toLocaleString('en-US')}자</span></span>` +
+      `<span class="a ${ag === 'claude-code' ? '' : ag}">${ag}</span>` +
       `<span class="c">${FLAG[nick] || ''}</span>`;
     return el;
   }

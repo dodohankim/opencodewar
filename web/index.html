@@ -454,11 +454,13 @@
   .newpill { font-size:10.5px; font-weight:700; color:var(--rev-fg); background:var(--ok); border-radius:4px; padding:1px 6px; }
   .newpill.zero { background:transparent; color:var(--faint); font-weight:400; border:1px solid var(--line); }
   .ticker { font-size:12.5px; }
-  .trow { display:grid; grid-template-columns:74px 128px 46px 1fr 30px; gap:10px; align-items:center;
+  .trow { display:grid; grid-template-columns:74px 128px 118px 1fr 30px; gap:10px; align-items:center;
     padding:5px 6px; border-radius:4px; white-space:nowrap; }
   .trow .t { color:var(--faint); font-variant-numeric:tabular-nums; }
   .trow .n { color:var(--fg); font-weight:600; overflow:hidden; text-overflow:ellipsis; }
   .trow .d { color:var(--ok); font-weight:700; font-variant-numeric:tabular-nums; }
+  /* 건수 옆의 문자수 — "+1" 이 1글자로 읽히지 않게, 규칙 01(문자수도 센다)을 지면에서도 보여준다 */
+  .trow .ch { color:var(--faint); font-weight:400; font-size:11.5px; margin-left:6px; }
   .trow .ag { color:var(--dim); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; }
   .trow .fl { color:var(--faint); font-size:11.5px; text-align:right; }
   .trow.fresh { animation:feedin .5s ease-out; }
@@ -471,7 +473,7 @@
     .lb-desc, .lbship.strong .shost, .lbship.strong .arr { display:none; }
     .lb-pod { gap:10px; padding:10px; }
     .lb-pod .lb-p { font-size:19px; }
-    .trow { grid-template-columns:64px 1fr 44px; }
+    .trow { grid-template-columns:64px 1fr 108px; }
     .trow .ag, .trow .fl { display:none; }
   }
   .pnum { color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums; }
@@ -1109,6 +1111,7 @@
       feed_wait: 'waiting', feed_none: 'nothing new', feed_new: (n) => `${n} new`,
       feed_last: (t) => `last ${t}`, feed_last_ago: (t, m) => `last ${t} · ${m}m ago`,
       feed_next: (s) => `next in ${s}s`, feed_batch: (t, n) => `${t} · ${n}`,
+      feed_chars: (n) => `${n}ch`,
       pj_sub: '🤿 submarine', secret_desc: 'this coder is quietly building something',
       sub_hint: (n) => `shown publicly as “secret #${n}”`,
       sel_note: 'showing this project only', sel_clear: '✕ clear',
@@ -1188,6 +1191,7 @@
       feed_wait: '대기 중', feed_none: '새 기록 없음', feed_new: (n) => `새 기록 ${n}건`,
       feed_last: (t) => `마지막 기록 ${t}`, feed_last_ago: (t, m) => `마지막 기록 ${t} · ${m}분 전`,
       feed_next: (s) => `다음 갱신 ${s}s`, feed_batch: (t, n) => `${t} 갱신 · ${n}건`,
+      feed_chars: (n) => `${n}자`,
       pj_sub: '🤿 잠수함', secret_desc: '이 코더는 무언가를 조용히 만들고 있다',
       sub_hint: (n) => `공개 페이지에는 “secret #${n}”로 표시됩니다`,
       sel_note: '이 프로젝트만 표시 중', sel_clear: '✕ 해제',
@@ -2071,7 +2075,7 @@
   let feedLastAt = 0;         // 마지막 이벤트 시각(ms)
   let feedRemain = FEED_PERIOD;
   let feedStarted = false;
-  const evKey = (e) => `${e.at}|${e.nickname}|${e.agent}|${e.prompts}`;
+  const evKey = (e) => `${e.at}|${e.nickname}|${e.agent}|${e.prompts}|${e.chars ?? 0}`;
   const hhmmss = (ms) => {
     const d = new Date(ms);
     const p = (n) => String(n).padStart(2, '0');
@@ -2089,7 +2093,8 @@
     el.innerHTML = `<span class="t">${hhmmss(e.at)}</span>` +
       (ref ? `<span class="n nm link" data-nick="${escapeHtml(ref)}" role="button" tabindex="0">${nm}</span>`
            : `<span class="n">${nm}</span>`) +
-      `<span class="d">+${fmt(e.prompts)}</span><span class="ag${cls}" style="color:${agColor(e.agent)}">${ag}</span>` +
+      `<span class="d">+${fmt(e.prompts)}<span class="ch">· ${t('feed_chars')(fmt(e.chars || 0))}</span></span>` +
+      `<span class="ag${cls}" style="color:${agColor(e.agent)}">${ag}</span>` +
       `<span class="fl">${e.country ? flagOf(e.country) : ''}</span>`;
     return el;
   }
