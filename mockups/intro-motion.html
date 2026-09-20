@@ -1,0 +1,479 @@
+<title>Open Code War 소개 모션</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  /* 단일 세계관(터미널 다크)으로 고정 — 사이트 og.png 와 같은 무대 */
+  :root{
+    --ground:#0E0E0D; --backdrop:#050504; --ink:#E7E7E3; --dim:#8C8C87; --faint:#5A5A56; --line:#2A2A26;
+    --ok:#6DA875; --amber:#D9A441; --err:#E0785C;
+    --g0:rgba(109,168,117,.12); --g1:rgba(109,168,117,.30); --g2:rgba(109,168,117,.55); --g3:rgba(109,168,117,.80); --g4:#6DA875;
+    --codex:#7FA6E0; --opencode:#D99A55; --pi:#AC85DC; --skin:#E8C39E; --eye:#232320;
+    --mono:"IBM Plex Mono","SF Mono","JetBrains Mono",Menlo,Consolas,"D2Coding",monospace;
+    --kr:"IBM Plex Sans KR","Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
+  }
+  html,body{background:var(--backdrop);color:var(--ink);margin:0;min-height:100%;}
+  body{font-family:var(--mono);font-size:14px;line-height:1.5;display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 16px 30px;box-sizing:border-box;}
+  .wrap{width:min(100%,calc((100vh - 150px) * 16 / 9));max-width:1280px;}
+  .viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:var(--ground);border:1px solid var(--line);border-radius:8px;}
+  #stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;}
+  .scene{position:absolute;inset:0;padding:72px 84px;box-sizing:border-box;opacity:0;visibility:hidden;transition:opacity .45s ease;}
+  .scene.on{opacity:1;visibility:visible;}
+  .scene.out{opacity:0;}
+  .stage-paused .anim, .stage-paused .anim *{animation-play-state:paused !important;}
+
+  /* 공통 등장 */
+  .r{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1);}
+  .r.show{opacity:1;transform:none;}
+  .kr{font-family:var(--kr);}
+  .eyebrow{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+  .cap{font-family:var(--kr);font-size:40px;font-weight:700;line-height:1.3;letter-spacing:-.01em;text-wrap:balance;}
+  .cap b{background:var(--ink);color:var(--ground);padding:0 12px;border-radius:4px;font-weight:700;}
+  .sub{font-family:var(--kr);font-size:22px;color:var(--dim);line-height:1.55;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+
+  /* 1 · 터미널 */
+  .term{position:absolute;inset:0;padding:64px 84px;box-sizing:border-box;}
+  .dots{display:flex;gap:9px;margin-bottom:34px;}
+  .dots i{width:13px;height:13px;border-radius:50%;border:2px solid var(--faint);}
+  .tl{font-size:28px;line-height:1.75;white-space:pre;color:var(--ink);}
+  .tl .ps{color:var(--ok);margin-right:14px;}
+  .tl .ent{color:var(--faint);margin-left:14px;}
+  .cur{display:inline-block;width:15px;height:30px;background:var(--ink);vertical-align:-4px;animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0}}
+  .s1-cap{position:absolute;right:84px;bottom:64px;text-align:right;}
+  .s1-cap .n{font-size:88px;font-weight:700;line-height:1;letter-spacing:-.03em;}
+  .s1-cap .t{font-family:var(--kr);font-size:26px;color:var(--dim);margin-top:10px;}
+  .lines{height:430px;overflow:hidden;position:relative;}
+  .lines .inner{position:absolute;left:0;right:0;bottom:0;}
+
+  /* 2 · 커밋 잔디 */
+  .gh{display:grid;grid-template-columns:repeat(53,1fr);gap:4px;width:900px;margin-top:38px;}
+  .gh i{aspect-ratio:1;border-radius:2px;background:rgba(231,231,227,.06);}
+  .gh i.k{background:rgba(231,231,227,.28);}
+  .gh-label{display:flex;justify-content:space-between;width:900px;font-size:15px;color:var(--faint);margin-top:12px;}
+  .s2-text{margin-top:58px;}
+  .s2-text .cap{font-size:44px;}
+  .s2-text .cap .fade{color:var(--faint);}
+
+  /* 3 · 헤드라인 */
+  .s3{display:flex;flex-direction:column;justify-content:center;}
+  .s3 .eyebrow{margin-bottom:26px;}
+  .s3 .cap{font-size:66px;line-height:1.28;}
+  .s3 .cap .hl{position:relative;display:inline-block;color:var(--ink);}
+  .s3 .cap .hl::before{content:"";position:absolute;left:-14px;right:-14px;top:2px;bottom:2px;background:var(--ink);border-radius:5px;transform:scaleX(0);transform-origin:left;transition:transform .55s cubic-bezier(.2,.8,.2,1);z-index:0;}
+  .s3 .cap .hl span{position:relative;z-index:1;transition:color .2s .3s;}
+  .s3 .cap .hl.go::before{transform:scaleX(1);}
+  .s3 .cap .hl.go span{color:var(--ground);}
+  .s3 .foot{margin-top:38px;font-size:17px;color:var(--faint);letter-spacing:.08em;}
+
+  /* 4 · 게재 항목 셋 */
+  .s4 .eyebrow{margin-bottom:54px;}
+  .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;border-top:1px solid var(--line);padding-top:38px;}
+  .col .lab{font-family:var(--kr);font-size:21px;color:var(--dim);margin-bottom:22px;}
+  .col .num{font-size:76px;font-weight:700;line-height:1;letter-spacing:-.03em;}
+  .col .unit{font-family:var(--kr);font-size:28px;color:var(--dim);margin-left:8px;font-weight:400;}
+  .col .num .fire{font-size:50px;vertical-align:6px;margin-right:6px;}
+  .col .note{font-family:var(--kr);font-size:17px;color:var(--faint);margin-top:22px;line-height:1.5;}
+  .s4 .sub{margin-top:64px;}
+
+  /* 5 · 프라이버시 */
+  .s5{display:flex;flex-direction:column;justify-content:center;}
+  .pl{font-size:30px;white-space:nowrap;position:relative;display:inline-block;align-self:flex-start;}
+  .pl .ps{color:var(--ok);margin-right:14px;}
+  .pl .words{display:inline-flex;gap:0;}
+  .pl .w{position:relative;display:inline-block;white-space:pre;}
+  .pl .w::after{content:"";position:absolute;left:0;top:4px;bottom:4px;width:0;background:var(--ink);transition:width .18s ease;}
+  .pl .w.red::after{width:100%;}
+  .pkt{margin-top:40px;font-size:24px;color:var(--dim);display:flex;align-items:center;gap:18px;}
+  .pkt .arrow{color:var(--faint);}
+  .pkt code{background:rgba(231,231,227,.06);border:1px solid var(--line);border-radius:6px;padding:8px 16px;color:var(--ink);font-family:var(--mono);}
+  .pkt code .k{color:var(--ok);}
+  .no{margin-top:64px;display:flex;gap:44px;font-family:var(--kr);font-size:28px;color:var(--dim);}
+  .no span{position:relative;}
+  .no span::after{content:"";position:absolute;left:-2px;right:-2px;top:52%;height:3px;background:var(--err);transform:scaleX(0);transform-origin:left;transition:transform .32s ease;}
+  .no span.x::after{transform:scaleX(1);}
+  .no span.x{color:var(--faint);}
+  .no span.tail{color:var(--ink);}
+  .no span.tail::after{display:none;}
+  .s5 .cap{margin-top:38px;font-size:56px;}
+
+  /* 6 · 잔디밭 */
+  .field-cap{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;}
+  .chips{display:flex;gap:14px;align-items:center;}
+  .chip{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:6px;padding:8px 14px;font-size:20px;font-family:var(--kr);color:var(--ink);background:rgba(231,231,227,.03);}
+  .chip .bars{display:inline-flex;gap:3px;}
+  .chip .bars i{width:5px;height:16px;background:var(--ok);border-radius:1px;}
+  .chip.pop{animation:pop .5s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes pop{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+  .stage6{position:relative;height:100px;}
+  .soldier{position:absolute;bottom:-4px;right:2%;width:104px;height:104px;}
+  .soldier .f{position:absolute;inset:0;}
+  .soldier .f2{opacity:0;}
+  .soldier.on .f1{animation:gait1 .34s linear infinite;}
+  .soldier.on .f2{animation:gait2 .34s linear infinite;}
+  @keyframes gait1{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes gait2{0%,49%{opacity:0}50%,100%{opacity:1}}
+  .tdots{position:absolute;top:-8px;left:24px;display:flex;gap:6px;}
+  .tdots b{width:8px;height:8px;background:var(--faint);opacity:.25;animation:tdot 1.15s steps(1) infinite;}
+  .tdots b:nth-child(2){animation-delay:.22s}.tdots b:nth-child(3){animation-delay:.44s}
+  @keyframes tdot{0%,24%{opacity:1}25%,100%{opacity:.25}}
+  .pflag{position:absolute;bottom:-2px;left:47.5%;width:30px;height:38px;opacity:0;transform:translateY(10px);transition:all .35s cubic-bezier(.2,1.2,.3,1);}
+  .pflag.show{opacity:1;transform:none;}
+  .pflag .px-f{fill:var(--ok);}
+  .grass{display:grid;grid-template-columns:repeat(30,1fr);gap:6px;}
+  .grass i{aspect-ratio:1;border-radius:3px;background:var(--g0);transition:background .3s ease,transform .3s ease;transform:scale(.6);}
+  .grass i.g{transform:none;}
+  .grass i.g1{background:var(--g1)}.grass i.g2{background:var(--g2)}.grass i.g3{background:var(--g3)}.grass i.g4{background:var(--g4)}
+  .brief{margin-top:40px;font-size:22px;color:var(--dim);border-top:1px solid var(--line);padding-top:24px;white-space:pre;}
+  .brief .pre{color:var(--faint);}
+  .brief .msg{color:var(--ink);}
+  .s6 .cap{margin-top:30px;font-size:40px;}
+
+  /* 스프라이트 */
+  .sprite{display:block;}
+  .px-s{fill:var(--skin)}.px-e{fill:var(--eye)}.px-r{fill:var(--ink)}.px-u,.px-f{fill:var(--ink)}
+  .army-codex .px-u,.army-codex .px-f{fill:var(--codex)}
+  .army-opencode .px-u,.army-opencode .px-f{fill:var(--opencode)}
+  .army-pi .px-u,.army-pi .px-f{fill:var(--pi)}
+
+  /* 7 · 리더보드 */
+  .s7 .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:26px;}
+  .s7 .tabs{display:flex;gap:22px;font-size:18px;color:var(--faint);}
+  .s7 .tabs .cur{background:none;width:auto;height:auto;animation:none;color:var(--ink);border-bottom:2px solid var(--ink);padding-bottom:2px;}
+  .rows{display:flex;flex-direction:column;gap:8px;}
+  .row{display:grid;grid-template-columns:54px 60px 1fr 220px 120px 80px;align-items:center;gap:18px;padding:12px 18px;border:1px solid var(--line);border-radius:6px;font-size:22px;opacity:0;transform:translateX(-26px);transition:opacity .4s ease,transform .5s cubic-bezier(.2,.8,.2,1);}
+  .row.show{opacity:1;transform:none;}
+  .row.top{background:rgba(231,231,227,.04);}
+  .row .rk{color:var(--dim);}
+  .row .av{width:40px;height:40px;}
+  .row .nm{font-weight:500;}
+  .row .nm small{color:var(--faint);font-weight:400;margin-left:12px;font-size:17px;}
+  .row .gauge{height:10px;background:rgba(231,231,227,.08);border-radius:2px;overflow:hidden;}
+  .row .gauge i{display:block;height:100%;background:var(--ok);width:0;transition:width .9s cubic-bezier(.2,.8,.2,1);}
+  .row.show .gauge i{width:var(--w);}
+  .row .pv{text-align:right;}
+  .row .d{color:var(--faint);text-align:right;font-size:19px;}
+  .row .d.up{color:var(--ok)}.row .d.dn{color:var(--err)}
+  .parade{position:absolute;left:0;right:0;bottom:118px;height:64px;overflow:hidden;opacity:0;transition:opacity .5s;}
+  .parade.show{opacity:1;}
+  .parade .ground{position:absolute;left:0;right:0;bottom:6px;height:2px;background:var(--line);}
+  .parade .track{position:absolute;bottom:6px;left:0;display:flex;gap:12px;transform:translateX(-620px);animation:march 9s linear infinite;}
+  @keyframes march{to{transform:translateX(1300px)}}
+  .marcher{width:56px;height:56px;position:relative;}
+  .marcher .f{position:absolute;inset:0;}
+  .marcher .f2{opacity:0;}
+  .marcher .f1{animation:gait1 .34s linear infinite;}
+  .marcher .f2{animation:gait2 .34s linear infinite;}
+  .ticker{position:absolute;left:84px;bottom:66px;font-size:18px;color:var(--dim);display:flex;align-items:center;gap:12px;}
+  .ticker .live{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(109,168,117,.5);animation:pulse 1.6s infinite;}
+  @keyframes pulse{70%{box-shadow:0 0 0 9px rgba(109,168,117,0)}100%{box-shadow:0 0 0 0 rgba(109,168,117,0)}}
+  .ticker b{color:var(--ink);font-weight:500;}
+
+  /* 8 · 설치 + 타이틀 */
+  .s8 .tl{font-size:26px;}
+  .s8 .ok{color:var(--ok);}
+  .title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .6s ease;}
+  .title.show{opacity:1;}
+  .title h1{font-size:112px;font-weight:700;letter-spacing:.06em;margin:0 0 14px;line-height:1;transform:translateY(10px);transition:transform .8s cubic-bezier(.2,.8,.2,1);}
+  .title.show h1{transform:none;}
+  .title .tag{font-family:var(--kr);font-size:30px;color:var(--dim);margin-bottom:54px;}
+  .title .tag b{color:var(--ink);font-weight:700;}
+  .title .strip{position:relative;width:1040px;}
+  .title .strip .soldier{width:74px;height:74px;right:60px;bottom:2px;}
+  .title .strip .tdots{top:-6px;left:17px;}
+  .title .strip .grass{gap:5px;grid-template-columns:repeat(36,1fr);}
+  .title .strip .grass i{transform:none;transition:none;}
+  .title .url{font-size:28px;font-weight:700;margin-top:38px;}
+  .title .foot{font-size:16px;color:var(--faint);letter-spacing:.06em;margin-top:8px;}
+
+  /* 플레이어 컨트롤 */
+  .ctl{width:min(100%,calc((100vh - 150px) * 16 / 9));max-width:1280px;display:flex;flex-direction:column;gap:10px;}
+  .bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;cursor:pointer;}
+  .bar i{display:block;height:100%;width:0;background:var(--ok);}
+  .ctl-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .btn{font-family:var(--mono);font-size:13px;color:var(--ink);background:none;border:1px solid var(--line);border-radius:5px;padding:6px 12px;cursor:pointer;min-width:40px;}
+  .btn:hover{background:rgba(231,231,227,.06);}
+  .btn:focus-visible{outline:2px solid var(--ok);outline-offset:2px;}
+  .time{color:var(--dim);font-variant-numeric:tabular-nums;font-size:13px;}
+  .scenes{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;}
+  .scenes button{font-family:var(--kr);font-size:12px;color:var(--faint);background:none;border:1px solid transparent;border-radius:4px;padding:4px 8px;cursor:pointer;}
+  .scenes button:hover{color:var(--ink);}
+  .scenes button.cur{color:var(--ink);border-color:var(--line);}
+  .scenes button:focus-visible{outline:2px solid var(--ok);}
+  .hint{font-family:var(--kr);font-size:12px;color:var(--faint);}
+  .hint kbd{font-family:var(--mono);border:1px solid var(--line);border-radius:3px;padding:0 5px;color:var(--dim);}
+  .big-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,5,4,.55);cursor:pointer;border:0;color:var(--ink);font-family:var(--kr);font-size:20px;gap:14px;z-index:5;}
+  .big-play[hidden]{display:none;}
+  .big-play .tri{width:0;height:0;border-left:26px solid var(--ink);border-top:16px solid transparent;border-bottom:16px solid transparent;}
+  @media (prefers-reduced-motion:reduce){ .anim,.anim *{animation:none !important;} }
+  /* 녹화 모드(?record=1): 무대만 1280×720 으로 꽉 채우고 컨트롤을 숨긴다 */
+  body.record{padding:0;gap:0;}
+  body.record .wrap{width:1280px;max-width:none;}
+  body.record .viewport{border:0;border-radius:0;}
+  body.record .ctl, body.record .big-play{display:none;}
+</style>
+
+<div class="wrap">
+  <div class="viewport">
+    <div id="stage" class="anim"></div>
+    <button class="big-play" id="bigPlay" type="button"><span class="tri"></span><span>재생 · 약 45초</span></button>
+  </div>
+</div>
+<div class="ctl">
+  <div class="bar" id="bar" title="장면 위치"><i id="barFill"></i></div>
+  <div class="ctl-row">
+    <button class="btn" id="play" type="button" aria-label="재생/일시정지">▶</button>
+    <button class="btn" id="replay" type="button" aria-label="처음부터">↺</button>
+    <span class="time"><span id="tNow">0:00</span> / <span id="tAll">0:00</span></span>
+    <div class="scenes" id="sceneNav"></div>
+  </div>
+  <div class="hint"><kbd>Space</kbd> 재생·정지 · <kbd>←</kbd><kbd>→</kbd> 장면 이동 · <kbd>R</kbd> 처음부터. 영상 파일이 필요하면 이 화면을 그대로 화면 녹화하면 됩니다.</div>
+</div>
+
+<script>
+/* ===== 픽셀 스프라이트 (사이트 index.html 과 동일한 맵) ===== */
+const SPRITES = {
+  typer1: ['................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......','...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...','..UUUUUSS..MM...','..UUUUU....MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......'],
+  typer2: ['................','................','...HHHHHH.......','..HHHHHHHH......','..HHHHHHHH......','...SSSESS.......','...SSSSS........','..UUUUUU........','..UUUUUU...MM...','..UUUUUU...MM...','..UUUUU....MM...','..UUUUUSS..MM...','...UUU..KKKKK...','...UUUUUU.......','...UUUUUUB......','..BBBBBBBB......'],
+  march1: ['.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......','...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........','....UUUU........','....UUUU........','...UU..UU.......','..UU....UU......','.UU......UU.....','BBB......BBB....'],
+  march2: ['.........R......','...HHHHHHR......','..HHHHHHHR......','..HHHHHHHR......','...SSSESSR......','...SSSSS.R......','..UUUUUUUR......','..UUUUUUSR......','..U.UUUU.R......','..U.UUUU........','....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU..UU......','...BBB..BBB.....'],
+  flag:   ['.........RFFFFFF','.........RFFFFFF','...HHHHHHRFFFFFF','..HHHHHHHRFFFF..','..HHHHHHHR......','...SSSESSR......','...SSSSS.R......','..UUUUUUSR......','..UUUUUUSR......','..U.UUUU.R......','....UUUU........','....UUUU........','....UUUU........','....UU.UU.......','....UU.UU.......','...BBB.BBB......'],
+  chartflag: ['.R......','.RFFFFFF','.RFFFFFF','.RFFFF..','.R......','.R......','.R......','.R......','.R......','.R......'],
+};
+const CLS = { H:'u',U:'u',S:'s',E:'e',R:'r',B:'r',F:'f',M:'r',K:'r' };
+function sprite(name){
+  const m = SPRITES[name]; let r='';
+  for(let y=0;y<m.length;y++) for(let x=0;x<m[0].length;x++){ const c=m[y][x]; if(c==='.') continue; r+=`<rect x="${x}" y="${y}" width="1" height="1" class="px-${CLS[c]}"/>`; }
+  return `<svg class="sprite" viewBox="0 0 ${m[0].length} ${m.length}" width="100%" height="100%" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+const typerHTML = () => `<span class="f f1">${sprite('typer1')}</span><span class="f f2">${sprite('typer2')}</span><i class="tdots"><b></b><b></b><b></b></i>`;
+const marcherHTML = (army) => `<span class="marcher ${army}"><span class="f f1">${sprite('march1')}</span><span class="f f2">${sprite('march2')}</span></span>`;
+function grassHTML(cols, rows, seed){
+  let s=seed, out='';
+  const rnd=()=> (s=(s*1103515245+12345)%2147483648)/2147483648;
+  for(let i=0;i<cols*rows;i++){ const v=rnd(); const lv = v<.22?0 : v<.5?1 : v<.75?2 : v<.92?3 : 4; out+=`<i class="g${lv}" data-lv="${lv}"></i>`; }
+  return out;
+}
+const esc = (t)=>t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+/* ===== 타임라인 유틸: 장면 빌더는 [ms, fn] 스텝 목록을 돌려준다 (일시정지·탐색 가능) ===== */
+function typeSteps(steps, at, el, text, cps){
+  const per = 1000/cps;
+  [...text].forEach((ch,i)=> steps.push([at+i*per, ()=>{ el.textContent += ch; }]));
+  return at + text.length*per;
+}
+function countSteps(steps, at, el, to, dur, fmt){
+  const n = 36;
+  for(let i=1;i<=n;i++){
+    const p = i/n, e = 1-Math.pow(1-p,3);
+    steps.push([at + dur*p, ()=>{ el.textContent = fmt(Math.round(to*e)); }]);
+  }
+}
+const show = (el)=>()=>el.classList.add('show');
+const fmtN = (n)=>n.toLocaleString('en-US');
+
+/* ===== 장면 ===== */
+const SCENES = [
+  { name:'입력', dur:5000, build(root){
+    root.innerHTML = `<div class="term">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="lines"><div class="inner" id="l1"></div></div>
+      <div class="s1-cap"><div class="n tabnum r" id="s1n">0</div><div class="t r" id="s1t">오늘 하루, 당신이 시킨 횟수입니다.</div></div>
+    </div>`;
+    const inner = root.querySelector('#l1'); const steps=[];
+    const first = document.createElement('div'); first.className='tl'; first.innerHTML=`<span class="ps">❯</span><span class="tx"></span><span class="cur"></span>`;
+    inner.appendChild(first);
+    let t = 400;
+    t = typeSteps(steps, t, first.querySelector('.tx'), '이 함수 리팩토링해줘', 22);
+    t += 260;
+    steps.push([t, ()=>{ first.querySelector('.cur').remove(); first.insertAdjacentHTML('beforeend','<span class="ent">⏎</span>'); }]);
+    const rest = ['테스트 깨진 거 고쳐줘','아니, 아래쪽 말고 위쪽','응','계속','커밋 메시지도 써줘','린트 에러 다 잡아','ok','PR 설명 초안 뽑아줘','그거 롤백하고 다시','좋아 그대로 가자','타입 에러 하나 남았어','이제 전부 테스트 돌려'];
+    const nEl = root.querySelector('#s1n');
+    let count = 1;
+    rest.forEach((tx,i)=>{
+      t += i<2 ? 380 : Math.max(70, 200 - i*18);
+      steps.push([t, ()=>{ const d=document.createElement('div'); d.className='tl'; d.innerHTML=`<span class="ps">❯</span>${esc(tx)}<span class="ent">⏎</span>`; inner.appendChild(d); count++; }]);
+    });
+    steps.push([t+250, ()=>{ nEl.classList.add('show'); }]);
+    countSteps(steps, t+250, nEl, 1204, 1200, fmtN);
+    steps.push([t+700, show(root.querySelector('#s1t'))]);
+    return steps;
+  }},
+  { name:'잔디', dur:4200, build(root){
+    let cells=''; let s=7; const rnd=()=> (s=(s*1103515245+12345)%2147483648)/2147483648;
+    for(let i=0;i<53*7;i++) cells += `<i class="${rnd()<.035?'k':''}"></i>`;
+    root.innerHTML = `<div class="eyebrow r" id="e">github · contributions</div>
+      <div class="gh r" id="g">${cells}</div>
+      <div class="gh-label r" id="gl"><span>지난 1년</span><span class="tabnum">12 contributions</span></div>
+      <div class="s2-text"><div class="cap r" id="c1">코드는 이제 에이전트가 씁니다.</div><div class="cap r" id="c2"><span class="fade">그래서</span> 커밋 잔디에 당신의 하루는 남지 않습니다.</div></div>`;
+    return [[100, show(root.querySelector('#e'))],[250, show(root.querySelector('#g'))],[400, show(root.querySelector('#gl'))],[1100, show(root.querySelector('#c1'))],[2400, show(root.querySelector('#c2'))]];
+  }},
+  { name:'광고', dur:4400, build(root){
+    root.className += ' s3';
+    root.innerHTML = `<div class="eyebrow r" id="e">open code war · 열정 광고 대행</div>
+      <div class="cap"><div class="r" id="h1">아무도 안 보는 당신의 열정을</div><div class="r" id="h2"><span class="hl" id="hl"><span>광고해드립니다.</span></span></div></div>
+      <div class="foot r" id="f">nobody sees your effort anymore. we put it on a board.</div>`;
+    return [[200, show(root.querySelector('#e'))],[500, show(root.querySelector('#h1'))],[1500, show(root.querySelector('#h2'))],[2100, ()=>root.querySelector('#hl').classList.add('go')],[3000, show(root.querySelector('#f'))]];
+  }},
+  { name:'항목', dur:6000, build(root){
+    root.className += ' s4';
+    root.innerHTML = `<div class="eyebrow r" id="e">게재 항목은 셋입니다</div>
+      <div class="cols">
+        <div class="col r" id="c1"><div class="lab">시킨 횟수</div><div class="num tabnum"><span id="n1">0</span><span class="unit">번</span></div><div class="note">엔터를 누를 때마다 1점입니다.</div></div>
+        <div class="col r" id="c2"><div class="lab">쓴 글자 수</div><div class="num tabnum"><span id="n2">0</span><span class="unit">자</span></div><div class="note">'응' 열 번과 긴 지시 한 번은 다르게 셉니다.</div></div>
+        <div class="col r" id="c3"><div class="lab">이어 온 날 수</div><div class="num tabnum"><span class="fire">🔥</span><span id="n3">0</span><span class="unit">일 연속</span></div><div class="note">하루 10번 이상, 500자 넘게 친 날만 이어집니다.</div></div>
+      </div>
+      <div class="sub r" id="s">이 숫자 셋이 전부입니다. 그리고 전부 당신 겁니다.</div>`;
+    const q=(id)=>root.querySelector(id); const steps=[[150, show(q('#e'))]];
+    steps.push([600, show(q('#c1'))]); countSteps(steps, 800, q('#n1'), 1204, 1200, fmtN);
+    steps.push([1200, show(q('#c2'))]); countSteps(steps, 1400, q('#n2'), 88412, 1400, fmtN);
+    steps.push([1800, show(q('#c3'))]); countSteps(steps, 2000, q('#n3'), 12, 1100, String);
+    steps.push([3900, show(q('#s'))]);
+    return steps;
+  }},
+  { name:'열정뿐', dur:7200, build(root){
+    root.className += ' s5';
+    const words = ['결제 모듈에서 ','카드번호 ','마스킹 처리 ','추가해줘'];
+    root.innerHTML = `<div class="pl"><span class="ps">❯</span><span class="words">${words.map(w=>`<span class="w">${esc(w)}</span>`).join('')}</span></div>
+      <div class="pkt r" id="pk"><span class="arrow">서버에 도착하는 건 이것뿐</span><code>POST /track { <span class="k">"chars"</span>: 26 }</code></div>
+      <div class="no"><span class="r" id="x1">광고비도</span><span class="r" id="x2">프롬프트 내용도</span><span class="r" id="x3">코드도</span><span class="r tail" id="x4">안 받습니다.</span></div>
+      <div class="cap r" id="c">받는 건 <b>열정뿐</b>입니다.</div>`;
+    const q=(id)=>root.querySelector(id); const ws=[...root.querySelectorAll('.w')];
+    const steps=[];
+    let t = 700;
+    ws.forEach((w,i)=> steps.push([t + i*150, ()=>w.classList.add('red')]));
+    t += 1000;
+    steps.push([t, show(q('#pk'))]);
+    t += 1200;
+    ['#x1','#x2','#x3'].forEach((id,i)=>{ steps.push([t+i*400, show(q(id))]); steps.push([t+i*400+380, ()=>q(id).classList.add('x')]); });
+    t += 1600;
+    steps.push([t, show(q('#x4'))]);
+    t += 900;
+    steps.push([t, show(q('#c'))]);
+    return steps;
+  }},
+  { name:'기록', dur:7600, build(root){
+    root.className += ' s6';
+    root.innerHTML = `<div class="field-cap">
+        <div class="eyebrow r" id="e">opencodewar.dev · 내 페이지</div>
+        <div class="chips">
+          <span class="chip r" id="rank"><span class="bars" id="bars"><i></i></span><span id="rankName">이병</span></span>
+          <span class="chip r" id="streak"><span>🔥 <span class="tabnum" id="sd">11</span>일 연속</span></span>
+        </div>
+      </div>
+      <div class="stage6"><span class="soldier anim" id="sol">${typerHTML()}</span><span class="pflag" id="pf">${sprite('chartflag')}</span></div>
+      <div class="grass" id="grass">${grassHTML(30,4,42)}</div>
+      <div class="brief r" id="br"><span class="pre">UserPromptSubmit says: </span><span class="msg" id="brmsg"></span></div>
+      <div class="cap r" id="c">겨루지 않아도 됩니다. 설치한 첫날부터 쌓입니다.</div>`;
+    const q=(id)=>root.querySelector(id); const steps=[[100, show(q('#e'))],[200, show(q('#rank'))],[300, show(q('#streak'))]];
+    steps.push([500, ()=>q('#sol').classList.add('on')]);
+    const cells=[...root.querySelectorAll('#grass i')];
+    // 왼쪽 위부터 열 단위로 자란다(달력이 넘어가듯)
+    cells.forEach((c,i)=>{ const col=i%30, row=Math.floor(i/30); steps.push([700 + col*70 + row*16, ()=>c.classList.add('g')]); });
+    steps.push([3000, show(q('#pf'))]);
+    steps.push([3300, ()=>{ q('#sd').textContent='12'; q('#streak').classList.add('pop'); }]);
+    steps.push([3900, ()=>{ q('#bars').innerHTML='<i></i><i></i>'; q('#rankName').textContent='일병'; q('#rank').classList.add('pop'); }]);
+    steps.push([4400, show(q('#br'))]);
+    typeSteps(steps, 4600, q('#brmsg'), '🎖 상병까지 47 프롬프트', 24);
+    steps.push([5700, show(q('#c'))]);
+    return steps;
+  }},
+  { name:'설치', dur:9000, build(root){
+    root.className += ' s8';
+    root.innerHTML = `<div class="term" id="tm">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="tl" id="c1"><span class="ps">❯</span><span class="tx"></span><span class="cur"></span></div>
+        <div class="tl r" id="c2"><span class="ps">❯</span><span class="tx"></span></div>
+        <div class="tl r ok" id="c3">✓ 설치 완료 — 다음 프롬프트부터 집계됩니다.</div>
+        <div class="tl r" id="c4" style="color:var(--dim)">이제 하던 대로 치면 됩니다.</div>
+      </div>
+      <div class="title" id="ti">
+        <h1>OPEN CODE WAR</h1>
+        <div class="tag">아무도 안 보는 당신의 열정을 <b>광고해드립니다.</b></div>
+        <div class="strip"><div class="stage6" style="height:74px"><span class="soldier anim on">${typerHTML()}</span></div><div class="grass">${grassHTML(36,3,42).replace(/<i class="g(\d)"[^>]*>/g,'<i class="g g$1">')}</div></div>
+        <div class="url">opencodewar.dev</div>
+        <div class="foot">prompts · characters · streak days — never the content</div>
+      </div>`;
+    const q=(id)=>root.querySelector(id); const steps=[];
+    let t = typeSteps(steps, 500, q('#c1 .tx'), '/plugin marketplace add dodohankim/opencodewar', 34);
+    steps.push([t+250, ()=>{ q('#c1 .cur').remove(); q('#c2').classList.add('show'); }]);
+    t = typeSteps(steps, t+500, q('#c2 .tx'), '/plugin install open-code-war@opencodewar', 34);
+    steps.push([t+400, show(q('#c3'))]);
+    steps.push([t+1100, show(q('#c4'))]);
+    steps.push([t+2400, ()=>{ q('#tm').style.transition='opacity .5s'; q('#tm').style.opacity='0'; }]);
+    steps.push([t+2800, show(q('#ti'))]);
+    return steps;
+  }},
+];
+
+/* ===== 플레이어 ===== */
+const stage = document.getElementById('stage');
+const viewport = stage.parentElement;
+const $ = (id)=>document.getElementById(id);
+const total = SCENES.reduce((a,s)=>a+s.dur,0);
+const sceneStart = SCENES.map((s,i)=>SCENES.slice(0,i).reduce((a,x)=>a+x.dur,0));
+const P = { idx:-1, playing:false, elapsed:0, t0:0, timers:[], steps:[], raf:0, sceneEl:null };
+const fmtT = (ms)=>{ const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+$('tAll').textContent = fmtT(total);
+
+function fit(){ const s = viewport.clientWidth/1280; stage.style.transform=`scale(${s})`; }
+new ResizeObserver(fit).observe(viewport); fit();
+
+function clearTimers(){ P.timers.forEach(clearTimeout); P.timers=[]; }
+function schedule(){
+  clearTimers();
+  P.steps.forEach(([at,fn])=>{ const d = at - P.elapsed; if(d>=0) P.timers.push(setTimeout(fn, d)); });
+  P.timers.push(setTimeout(()=>{ if(P.idx < SCENES.length-1) loadScene(P.idx+1, true); else stop(); }, SCENES[P.idx].dur - P.elapsed));
+}
+function loadScene(i, autoplay){
+  clearTimers(); cancelAnimationFrame(P.raf);
+  const old = P.sceneEl; if(old){ old.classList.add('out'); setTimeout(()=>old.remove(), 460); }
+  const el = document.createElement('div'); el.className='scene'; stage.appendChild(el);
+  P.sceneEl = el; P.idx=i; P.elapsed=0; P.steps = SCENES[i].build(el);
+  requestAnimationFrame(()=>el.classList.add('on'));
+  [...$('sceneNav').children].forEach((b,j)=>b.classList.toggle('cur', j===i));
+  if(autoplay || P.playing){ P.playing=true; P.t0=performance.now(); schedule(); tick(); setUI(); } else { setUI(); }
+}
+function tick(){
+  if(!P.playing) return;
+  P.elapsed = performance.now()-P.t0;
+  const g = sceneStart[P.idx] + Math.min(P.elapsed, SCENES[P.idx].dur);
+  $('barFill').style.width = (g/total*100)+'%'; $('tNow').textContent = fmtT(g);
+  P.raf = requestAnimationFrame(tick);
+}
+function play(){
+  if(P.idx<0 || (P.idx===SCENES.length-1 && P.elapsed>=SCENES[P.idx].dur)) { loadScene(0, true); return; }
+  P.playing=true; P.t0=performance.now()-P.elapsed; stage.classList.remove('stage-paused'); schedule(); tick(); setUI();
+}
+function pause(){ P.playing=false; clearTimers(); cancelAnimationFrame(P.raf); P.elapsed=performance.now()-P.t0; stage.classList.add('stage-paused'); setUI(); }
+function stop(){ P.playing=false; clearTimers(); cancelAnimationFrame(P.raf); P.elapsed=SCENES[P.idx].dur; $('barFill').style.width='100%'; $('tNow').textContent=fmtT(total); setUI(); window.__done = true; }
+function setUI(){ $('play').textContent = P.playing?'❚❚':'▶'; $('bigPlay').hidden = P.playing || (P.idx>=0 && P.idx<SCENES.length-1); }
+
+SCENES.forEach((s,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=`${i+1} ${s.name}`; b.addEventListener('click',()=>{ stage.classList.remove('stage-paused'); loadScene(i, true); }); $('sceneNav').appendChild(b); });
+$('play').addEventListener('click', ()=> P.playing?pause():play());
+$('bigPlay').addEventListener('click', ()=> play());
+$('replay').addEventListener('click', ()=>{ stage.classList.remove('stage-paused'); loadScene(0, true); });
+$('bar').addEventListener('click', (e)=>{ const p=(e.clientX-e.currentTarget.getBoundingClientRect().left)/e.currentTarget.clientWidth; const g=p*total; let i=sceneStart.findIndex((st,j)=> g>=st && g<st+SCENES[j].dur); if(i<0) i=SCENES.length-1; stage.classList.remove('stage-paused'); loadScene(i, true); });
+document.addEventListener('keydown', (e)=>{
+  if(e.target.tagName==='BUTTON' && e.key===' ') e.preventDefault();
+  if(e.key===' '){ e.preventDefault(); P.playing?pause():play(); }
+  else if(e.key==='ArrowRight'){ stage.classList.remove('stage-paused'); loadScene(Math.min(SCENES.length-1, Math.max(0,P.idx)+1), true); }
+  else if(e.key==='ArrowLeft'){ stage.classList.remove('stage-paused'); loadScene(Math.max(0, P.idx-1), true); }
+  else if(e.key==='r' || e.key==='R'){ stage.classList.remove('stage-paused'); loadScene(0, true); }
+});
+
+// 첫 화면: 마지막 장면의 타이틀 카드를 정지 상태로 보여준다(썸네일·재생 전 상태). 모션 축소 설정이면 그대로 둔다.
+(function initStill(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const el = document.createElement('div'); el.className='scene on'; stage.appendChild(el); P.sceneEl = el;
+  SCENES[SCENES.length-1].build(el);
+  el.querySelector('#tm').style.display='none'; el.querySelector('#ti').classList.add('show');
+  if(reduce){ $('bigPlay').querySelector('span:last-child').textContent='재생 (모션 축소 설정이 켜져 있습니다)'; }
+})();
+
+// 녹화 모드 — 폰트가 준비되면 자동 재생하고, 끝나면 window.__done 을 세운다
+if(new URLSearchParams(location.search).has('record')){
+  document.body.classList.add('record');
+  P.sceneEl.remove(); P.sceneEl = null;   // 재생 전 정지 화면(타이틀 카드)은 영상에 넣지 않는다
+  document.fonts.ready.then(()=>setTimeout(()=>{ window.__started = true; loadScene(0, true); }, 1500));
+}
+</script>
