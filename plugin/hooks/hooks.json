@@ -6,13 +6,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs --hook",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs\" --hook",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs --prefetch",
-            "timeout": 10,
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/brief.mjs\" --prefetch",
             "async": true
           }
         ]
@@ -20,12 +19,10 @@
     ],
     "UserPromptSubmit": [
       {
-        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/track.mjs",
-            "timeout": 10,
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/track.mjs\"",
             "async": true
           }
         ]

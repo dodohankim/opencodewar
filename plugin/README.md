@@ -34,7 +34,7 @@
 ```
 plugin/
 ├── .claude-plugin/plugin.json   # 매니페스트
-├── hooks/hooks.json             # UserPromptSubmit → track.mjs (async, 비차단)
+├── hooks/hooks.json             # UserPromptSubmit → track.mjs (async, 비차단) · 경로는 따옴표 필수(공백 경로)
 ├── commands/ocw.md              # /ocw 슬래시 커맨드
 └── scripts/
     ├── track.mjs                # 훅: 글자 수만 계산해 detached 전송(fire-and-forget)
