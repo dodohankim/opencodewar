@@ -9,5 +9,8 @@
   },
   "dependencies": {
     "puppeteer-core": "^23.11.1"
+  },
+  "engines": {
+    "node": "^22.23.4"
   }
 }
