@@ -14,12 +14,13 @@
 
 ### OpenCode
 
-`opencode.json` 의 `plugin` 배열에 추가한다. 시작 시 자동 설치된다.
+`opencode.json(c)` 의 `plugins` 배열에 추가한다. 시작 시 자동 설치된다.
+(OpenCode 2 부터 필드명은 `plugins` 다. OpenCode 1 도 이 패키지를 그대로 쓴다.)
 
-```json
+```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["open-code-war"]
+  "plugins": ["open-code-war"]
 }
 ```
 

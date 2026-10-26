@@ -1296,6 +1296,12 @@ npm 패키지(open-code-war)는 track.mjs·config.mjs 변경 포함 — 수동 �
   **픽셀 병정 시상대**(2-1-3 배치, 1위 기수 flag + 2·3위 march2, RANK_ARMY 군복색).
   공유용 **이미지** 카드는 여전히 비범위 — 렌더 서비스 템플릿 추가가 필요(§22.6).
 - **npm 0.2.0** — OpenCode·pi 브리핑에 교전 줄 반영분. 발행은 npm 로그인 필요(수동).
+- **npm 0.2.1 (2026-10-26)** — OpenCode 2 플러그인 API 대응. V2 는 V1 플러그인 함수를 실행하지 않아
+  `failed to load plugin … must export a default definition with an id and … setup` 으로 조용히
+  집계가 멈춰 있었다(2026-10-15 경부터). 어댑터가 `default { id, setup }`(V2, `session.hook("prompt")`)와
+  `OpenCodeWar`(V1, `chat.message`)를 함께 내보내 양쪽을 지원한다. 세션 작업 디렉토리를 함께 보내
+  프로젝트 귀속(§20)이 opencode 에서도 동작한다. V2 서버 플러그인에는 TUI 토스트 API 가 없어
+  opencode 브리핑 표시는 제외(prefetch 는 유지).
 
 ---
 

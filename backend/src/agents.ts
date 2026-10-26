@@ -274,7 +274,7 @@ Nobody sees your effort anymore. Open Code War puts it on a board — how many t
 - Claude Code: \`/plugin marketplace add dodohankim/opencodewar\` → \`/plugin install open-code-war@opencodewar\`
 - Codex: \`codex plugin marketplace add dodohankim/opencodewar\` → \`codex plugin add open-code-war@opencodewar\`
 - pi: \`pi install npm:open-code-war\`
-- OpenCode: add \`"open-code-war"\` to the \`plugin\` array in \`opencode.json\`
+- OpenCode: add \`"open-code-war"\` to the \`plugins\` array in \`opencode.json(c)\`
 
 ## Live data
 

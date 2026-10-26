@@ -18,7 +18,9 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 | 에이전트 | 훅 | 어댑터 | 설치 위치 |
 |---|---|---|---|
 | Claude Code | `UserPromptSubmit` | `plugin/hooks/hooks.json` | 플러그인 마켓플레이스 |
-| OpenCode | `chat.message` | `adapters/opencode/ocw-track.js` | npm (`open-code-war`) |
+| OpenCode 2 | `session.hook("prompt")` | `adapters/opencode/ocw-track.js` (`default.setup`) | npm (`open-code-war`) |
+| OpenCode 1.18.29+ | `chat.message` | 위 파일의 `default.server()` | npm (`open-code-war`) |
+| OpenCode 1 (그 이전) | `chat.message` | 위 파일의 `OpenCodeWar` export | npm (`open-code-war`) |
 | pi | `input` | `adapters/pi/ocw-track.ts` | `pi install npm:open-code-war` |
 
 ## 설치
@@ -29,8 +31,8 @@ Claude Code 외 다른 에이전트에서도 프롬프트를 집계하기 위한
 # pi
 pi install npm:open-code-war
 
-# OpenCode — opencode.json 의 plugin 배열에 추가(시작 시 자동 설치)
-#   { "plugin": ["open-code-war"] }
+# OpenCode — opencode.json(c) 의 plugins 배열에 추가(시작 시 자동 설치)
+#   { "plugins": ["open-code-war"] }
 ```
 
 설치 후 각 에이전트를 재시작하면 다음 프롬프트부터 집계된다.
@@ -56,10 +58,21 @@ Claude Code 의 `UserPromptSubmit` 과 최대한 같은 의미가 되도록 맞�
 
 - **OpenCode**: 서브에이전트 세션(`Session.parentID` 보유)에서 오는 메시지는 사용자가 친
   프롬프트가 아니므로 제외한다. 세션당 한 번만 조회하고 캐시한다.
+  프로젝트 귀속(`projectDir`)에는 세션의 작업 디렉토리(`Session.location.directory`)를 쓴다.
 - **pi**: `event.source` 가 `interactive`(직접 입력) 또는 `rpc`(API 호출)인 것만 센다.
   확장이 주입한 메시지(`extension`)는 제외한다.
 
 ## 알려진 사항
+
+- **OpenCode 2 는 V1 플러그인 API 를 실행하지 않는다.** 어댑터는 세 로더 모양을 함께 내보낸다 —
+  `default.setup`(2.x), `default.server()`(1.18.29+, V1 로더가 "default export an object with
+  `server()`"를 요구한다), `OpenCodeWar`(그 이전 1.x의 명명 export 스캔). 실제 바이너리로 2.1.4·
+  1.19.4 양쪽 로드/집계를 확인했다. 로드에 실패하면 TUI 에는 아무 표시가 없고 로그에만
+  `failed to load plugin` 이 남으므로(집계가 조용히 멈춘다), 집계가 이상하면
+  `~/.local/share/opencode/log/opencode.log` 를 먼저 확인한다.
+- **세션 브리핑 토스트는 OpenCode 2 에서 표시되지 않는다.** V2 서버 플러그인에는 TUI 알림
+  (구 `client.tui.showToast`) 경로가 없다. 브리핑 데이터 prefetch 는 계속 하므로 Claude Code·pi
+  쪽 브리핑 캐시는 정상 갱신된다.
 
 `opencode run "<프롬프트>"` 로 실행하면 OpenCode CLI 가 인자를 **따옴표째** 메시지 본문으로
 넘긴다. 그래서 헤드리스 실행에서는 글자 수가 실제 입력보다 2 늘어난다. TUI 로 직접 입력할 때는
