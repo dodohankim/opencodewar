@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickMainProject, prevDayFilter } from '../src/snapshot';
+import { NEW_USER_WINDOW_MS, isNewUser, pickMainProject, prevDayFilter } from '../src/snapshot';
 
 describe('pickMainProject', () => {
   it('main 표식이 붙은 프로젝트를 고른다(등록 순서와 무관)', () => {
@@ -68,5 +68,22 @@ describe('prevDayFilter (§7.4 순위 변동)', () => {
     expect(prevDayFilter('weekly', now)).toBeNull();
     expect(prevDayFilter('weekend', now)).toBeNull();
     expect(prevDayFilter('monthly', now)).toBeNull();
+  });
+});
+
+describe('isNewUser', () => {
+  const NOW = Date.UTC(2026, 10, 1, 12, 0, 0);
+  it('가입 후 7일 미만이면 신규', () => {
+    expect(isNewUser(NOW - 1000, NOW)).toBe(true);
+    expect(isNewUser(NOW - NEW_USER_WINDOW_MS + 1, NOW)).toBe(true);
+  });
+  it('정확히 7일이 지나면 신규가 아니다', () => {
+    expect(isNewUser(NOW - NEW_USER_WINDOW_MS, NOW)).toBe(false);
+    expect(isNewUser(NOW - 30 * 86400000, NOW)).toBe(false);
+  });
+  it('값이 없거나 이상하면 신규로 보지 않는다', () => {
+    expect(isNewUser(null, NOW)).toBe(false);
+    expect(isNewUser(undefined, NOW)).toBe(false);
+    expect(isNewUser(0, NOW)).toBe(false);
   });
 });

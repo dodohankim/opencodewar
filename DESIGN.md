@@ -232,6 +232,21 @@ GROUP BY user_id ORDER BY p DESC LIMIT :limit;
   웹은 `'delta' in row` 로 판단해 없는 보드에선 아무것도 그리지 않는다.
 - 스냅샷 스키마가 바뀌므로 `SNAPSHOT_KEY` 를 **v5** 로 올렸다.
 
+### 7.4.1 신규 가입자 NEW 뱃지 + 퍼레이드 후미 (2026-11-01)
+
+가입(`users.created_at`) 후 **7일**(`NEW_USER_WINDOW_MS`) 동안 NEW 뱃지를 단다.
+
+- 판정은 서버 한 곳(`isNewUser`, snapshot.ts)에서만 한다. 랭킹 항목은 `is_new`, 프로필 응답은
+  `isNew` 로 싣고 웹은 그대로 그린다(7일 상수를 웹에 복제하지 않는다).
+- 뱃지 위치: 리더보드 행(닉네임·YOU 다음), 프로필 헤더(닉네임 옆). 구역 보드에도 붙는다.
+- **`delta: null` 과 분리**: 예전엔 delta null 을 `NEW` 로 그렸는데 이는 "직전 창 top-N 에 없던 사람"이라
+  가입 시점과 무관했다. 이제 delta null 은 신규 가입자면 생략(NEW 뱃지가 대신함), 기존 유저면 수치 없는 `▲`.
+- **퍼레이드 후미**: 스냅샷에 `newcomers`(최근 7일 가입자, 가입 순, 최대 `NEWCOMER_LIMIT`=20)를 따로 싣고
+  글로벌 `/leaderboard` 응답에 붙인다. 점수·top-N 과 무관하게 users 에서 직접 뽑으므로 순위권 밖 신규도 빠지지 않는다.
+  대열은 TOTAL → DAILY → 호위 → **NEW(호박색 군복·깃발, 순위 없이 이름만)** 순이고, 가장 최근 가입자가 맨 끝이다.
+  톱3 이면서 신규인 사람은 앞 그룹과 NEW 그룹에 모두 선다(의도된 중복).
+- 스냅샷 스키마 변경으로 `SNAPSHOT_KEY` **v6**.
+
 ### 7.5 보드 렌더 — 톱3 카드 + 한 줄 (2026-08-26)
 
 표(`#`/`coder`/`shipping`/`prompts`/`chars`/`activity`/`cc` 7칸)를 버렸다. **정보가 없어서가 아니라

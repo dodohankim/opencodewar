@@ -191,6 +191,7 @@
   .army-codex    .px-u, .army-codex    .px-f { fill:var(--ag-codex); }
   .army-opencode .px-u, .army-opencode .px-f { fill:var(--ag-opencode); }
   .army-pi       .px-u, .army-pi       .px-f { fill:var(--ag-pi); }
+  .rookie        .px-u, .rookie        .px-f { fill:var(--amber); } /* 신규 가입자(7일) — NEW 뱃지와 같은 색 */
 
   /* 히어로 전장: 후방 타이퍼(입력) → 전열 사격(트레이서) → +1 */
   /* 히어로 잔디밭 — 기록 히트맵이 땅이 되고, 그 위에 타건 병정이 선다(DESIGN.md §21).
@@ -261,11 +262,12 @@
   .bearer.army-codex    .flag { background:var(--ag-codex); }
   .bearer.army-opencode .flag { background:var(--ag-opencode); }
   .bearer.army-pi       .flag { background:var(--ag-pi); }
+  .bearer.rookie        .flag { background:var(--amber); }
   /* 그룹 표지기(TOTAL/DAILY): 클릭 대상이 아닌 라벨 깃발 — 반전 없이 테두리로 구분 */
   .bearer.herald { cursor:default; }
   .bearer.herald .flag { background:var(--bg); color:var(--fg); border:1px solid var(--fg); height:15px; line-height:15px; letter-spacing:0.06em; }
   .bearer.herald .px-u { fill:var(--dim); } /* 중립 회색 군복 — 소속 없는 표지기(px-u 기본값은 검정) */
-  .march-track .troopgap { flex:none; width:76px; } /* TOTAL·DAILY 그룹 사이 간격 — 부대 둘로 읽히게 */
+  .march-track .troopgap { flex:none; width:76px; } /* 그룹(NEW·DAILY·TOTAL) 사이 간격 — 별개 부대로 읽히게 */
 
   /* 리더보드 톱3 랭크 병정 · 푸터 보초 */
   .mini { display:inline-block; width:20px; height:20px; vertical-align:-5px; margin-right:6px; }
@@ -408,13 +410,16 @@
   .lb-row.me .lb-nick { text-decoration:underline; text-underline-offset:3px; }
   .youtag { font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--rev-fg); background:var(--fg);
     border-radius:3px; padding:0 5px; flex:none; }
+  /* 신규 가입자 뱃지 — 가입 후 7일간(서버 is_new / isNew). 순위 변동(delta)과는 별개. */
+  .newtag { font-size:9.5px; font-weight:700; letter-spacing:.06em; color:var(--amber); border:1px solid var(--amber);
+    border-radius:3px; padding:0 4px; flex:none; line-height:1.35; white-space:nowrap; }
+  .p-head .newtag { align-self:center; font-size:11px; }
   /* 계급 배지(§16) — 이미 계산되는 값이라 보드에도 얹는다. 줄 하나로 사람이 읽히게. */
   .rkbadge { font-size:10px; color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:0 5px; white-space:nowrap; flex:none; }
   .rkbadge.hi { color:var(--amber); border-color:var(--amber); }
   /* 순위 변동(전일 대비, 스냅샷의 delta) */
   .delta { font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; flex:none; }
   .delta.up { color:var(--ok); } .delta.down { color:var(--err); } .delta.same { color:var(--faint); }
-  .delta.new { color:var(--amber); }
   /* main shipping — 파비콘(§26)은 원본이 제각각이라 같은 크기 타일 + 1px 테두리에 담는다 */
   .fav { width:17px; height:17px; border-radius:4px; border:1px solid var(--line); background:var(--bg); object-fit:contain; flex:none; }
   .fav.lg { width:32px; height:32px; border-radius:7px; }
@@ -879,6 +884,7 @@
           <div class="p-head">
             <span class="portrait" id="uPortrait" hidden aria-hidden="true"></span>
             <h2 class="p-nick" id="uNick">–</h2>
+            <span class="newtag" id="uNew" hidden>NEW</span>
             <span class="cc" id="uCountry"></span>
             <span class="rankchip" id="uRank" hidden></span>
             <span class="headbtns" id="headBtns">
@@ -1106,7 +1112,7 @@
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗', main_badge: 'MAIN',
       stack_project: 'projects', stack_agent: 'agents', pj_other: 'other',
-      ship_empty: 'your project here', you_tag: 'YOU', me_until: 'to', me_top: 'top of this board',
+      ship_empty: 'your project here', you_tag: 'YOU', new_tip: 'joined within the last 7 days', me_until: 'to', me_top: 'top of this board',
       feed_legend: 'live activity', feed_rate: 'live · every 60s', feed_idle: 'idle',
       feed_wait: 'waiting', feed_none: 'nothing new', feed_new: (n) => `${n} new`,
       feed_last: (t) => `last ${t}`, feed_last_ago: (t, m) => `last ${t} · ${m}m ago`,
@@ -1186,7 +1192,7 @@
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
       stack_project: '프로젝트', stack_agent: '에이전트', pj_other: '기타',
-      ship_empty: '여기에 내 프로젝트', you_tag: 'YOU', me_until: '까지', me_top: '이 판의 1위',
+      ship_empty: '여기에 내 프로젝트', you_tag: 'YOU', new_tip: '가입한 지 7일 이내', me_until: '까지', me_top: '이 판의 1위',
       feed_legend: '참전 기록', feed_rate: 'live · 60초마다', feed_idle: '조용함',
       feed_wait: '대기 중', feed_none: '새 기록 없음', feed_new: (n) => `새 기록 ${n}건`,
       feed_last: (t) => `마지막 기록 ${t}`, feed_last_ago: (t, m) => `마지막 기록 ${t} · ${m}분 전`,
@@ -1391,10 +1397,18 @@
     const i = rankOf(r.prompts || 0);
     return `<span class="rkbadge${i >= 3 ? ' hi' : ''}">${escapeHtml(LANG === 'ko' ? RANKS[i].ko : RANKS[i].en)}</span>`;
   }
-  /** 순위 변동(전일 대비). 스냅샷에 delta 가 없는 보드(구역 등)는 아무것도 안 그린다. */
+  /** 신규 가입자 뱃지(가입 7일 이내). 판정은 서버(is_new)가 한다 — 기준 상수를 한 곳에만 둔다. */
+  function newTag(r) {
+    return r && r.is_new ? `<span class="newtag" title="${escapeHtml(t('new_tip'))}">NEW</span>` : '';
+  }
+  /**
+   * 순위 변동(전일 대비). 스냅샷에 delta 가 없는 보드(구역 등)는 아무것도 안 그린다.
+   * delta null = 직전 창(top-N)에 없던 사람. 신규 가입자면 NEW 뱃지가 이미 붙으니 생략하고,
+   * 기존 유저가 순위권에 새로 들어온 경우만 수치 없는 ▲ 로 표시한다(NEW 뱃지와 의미가 섞이지 않게).
+   */
   function deltaChip(r) {
     if (!('delta' in r)) return '';
-    if (r.delta === null) return `<span class="delta new">NEW</span>`;
+    if (r.delta === null) return r.is_new ? '' : `<span class="delta up">▲</span>`;
     if (r.delta > 0) return `<span class="delta up">▲${r.delta}</span>`;
     if (r.delta < 0) return `<span class="delta down">▼${-r.delta}</span>`;
     return `<span class="delta same">–</span>`;
@@ -1435,7 +1449,7 @@
         <span class="lb-rk">${mini}#${r.rank}</span>
         ${iconTile(r.project, true)}
         <div class="lb-body">
-          <div class="lb-l1">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}</div>
+          <div class="lb-l1">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${newTag(r)}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}</div>
           <div class="lb-l2">${shipStrong(r.project)}</div>
           ${desc}
         </div>
@@ -1448,7 +1462,7 @@
       return `<div class="lb-row lb-cmp${isMe(r) ? ' me' : ''}" data-nick="${escapeHtml(r.registered ? r.nickname : (r.public_id || ''))}">
         <span class="lb-g" style="width:${gaugePct(v, max)}%"></span>
         <span class="lb-rk">${r.rank}</span>
-        <div class="lb-mid">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}${shipSmall(r.project)}</div>
+        <div class="lb-mid">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${newTag(r)}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}${shipSmall(r.project)}</div>
         <div class="lb-nums"><span class="lb-p">${fmt(v)}</span><span class="lb-c">${curMetric === 'prompts' ? fmtCompact(r.chars || 0) : fmt(r.prompts || 0)}</span></div>
       </div>`;
     }).join('');
@@ -1684,10 +1698,11 @@
   // 순위 → 군복색(에이전트 정보가 스냅샷에 없어 순위 기반 고정 배색).
   const RANK_ARMY = { 1: 'army-claude', 2: 'army-codex', 3: 'army-pi' };
 
-  // ── 우승 퍼레이드: TOTAL(전체 기간) 톱3가 선두, DAILY(UTC 오늘) 톱3가 뒤따른다 ──
+  // ── 우승 퍼레이드: TOTAL(전체 기간) 톱3가 선두, DAILY(UTC 오늘) 톱3가 뒤따르고,
+  //    최근 7일 신규 가입자(NEW)가 맨 뒤에서 따라온다 ──
   // 보드 탭·존 스코프와 무관하게 항상 전역 랭킹. 지표(prompts/chars)는 현재 선택을 따른다.
   let paradeKey = ''; // 같은 구성이면 재렌더하지 않는다(행진 애니메이션 리셋 방지)
-  let paradeCache = { metric: null, at: 0, all: [], daily: [] };
+  let paradeCache = { metric: null, at: 0, all: [], daily: [], fresh: [] };
   async function loadParade() {
     const stale = paradeCache.metric !== curMetric || Date.now() - paradeCache.at > 60000;
     if (stale) {
@@ -1697,17 +1712,20 @@
           .catch(() => null);
       const [a, d] = await Promise.all([get('all'), get('daily')]);
       if (!a && !d) return; // 둘 다 실패면 기존 퍼레이드 유지
-      paradeCache = { metric: curMetric, at: Date.now(), all: (a && a.ranking) || [], daily: (d && d.ranking) || [] };
+      // newcomers(최근 7일 가입자)는 보드·지표와 무관한 전역 목록 — 스냅샷 응답 어디에나 같이 실려 온다.
+      const fresh = (a && a.newcomers) || (d && d.newcomers) || [];
+      paradeCache = { metric: curMetric, at: Date.now(), all: (a && a.ranking) || [], daily: (d && d.ranking) || [], fresh };
     }
-    renderParade(paradeCache.all, paradeCache.daily);
+    renderParade(paradeCache.all, paradeCache.daily, paradeCache.fresh);
   }
-  function renderParade(allRows, dailyRows) {
+  function renderParade(allRows, dailyRows, freshRows) {
     const topAll = (allRows || []).slice(0, 3);
     const topDay = (dailyRows || []).slice(0, 3);
+    const fresh = freshRows || [];
     const box = $('paradeBox');
-    if (!topAll.length && !topDay.length) { box.hidden = true; paradeKey = ''; return; }
-    const gk = (rows) => rows.map((r) => `${r.rank}:${r.registered ? r.nickname : r.public_id}:${r.nickname || ''}`).join('|');
-    const key = `${curMetric}#${gk(topAll)}#${gk(topDay)}`;
+    if (!topAll.length && !topDay.length && !fresh.length) { box.hidden = true; paradeKey = ''; return; }
+    const gk = (rows) => rows.map((r) => `${r.rank || ''}:${r.registered ? r.nickname : r.public_id}:${r.nickname || ''}`).join('|');
+    const key = `${curMetric}#${gk(topAll)}#${gk(topDay)}#${gk(fresh)}`;
     if (key === paradeKey) { box.hidden = false; return; }
     paradeKey = key;
     const bearer = (r, i) => {
@@ -1718,18 +1736,31 @@
       if (!ref) return `<span class="bearer ${RANK_ARMY[r.rank] || ''}">${inner}</span>`;
       return `<a class="bearer ${RANK_ARMY[r.rank] || ''}" href="${escapeHtml(urlFor(ref))}" data-nick="${escapeHtml(ref)}" title="#${r.rank} ${escapeHtml(nick)}">${inner}</a>`;
     };
+    // 신규 가입자 기수: 순위 없이 이름만, 호박색 군복·깃발(.rookie).
+    const rookie = (r, i) => {
+      const ref = r.registered ? r.nickname : r.public_id;
+      const nick = r.nickname || t('anon');
+      const disp = nick.length > 16 ? nick.slice(0, 15) + '…' : nick;
+      const inner = `<i class="pole"></i><i class="flag">${escapeHtml(disp)}</i>${gaitFrames(i)}`;
+      if (!ref) return `<span class="bearer rookie">${inner}</span>`;
+      return `<a class="bearer rookie" href="${escapeHtml(urlFor(ref))}" data-nick="${escapeHtml(ref)}" title="NEW · ${escapeHtml(nick)}">${inner}</a>`;
+    };
     const escort = (a, i) => `<span class="marcher ${a}" aria-hidden="true">${gaitFrames(i)}</span>`;
     // 그룹 표지기(비클릭): 그룹 선두에서 TOTAL/DAILY 라벨 깃발을 든다.
     const herald = (label) => `<span class="bearer herald"><i class="pole"></i><i class="flag">${label}</i>${gaitFrames(0)}</span>`;
     // 행진 방향(→) 기준 표지기→1위→2위→3위 — DOM 은 후미부터라 [3위][2위][1위][표지기] 순.
-    const group = (rows, label) => (rows.length ? [...rows].reverse().map(bearer).join('') + herald(label) : '');
+    const group = (rows, label, mk = bearer) => (rows.length ? [...rows].reverse().map(mk).join('') + herald(label) : '');
     const track = $('marchTrack');
-    // 전체 대열(선두→후미): [TOTAL 표지기·톱3] → (간격) → [DAILY 표지기·톱3] → 후미 호위.
-    // 그룹 사이엔 스페이서를 넣어 별개 부대 둘이 행진하는 느낌을 준다.
+    const gap = '<i class="troopgap" aria-hidden="true"></i>';
+    // 전체 대열(선두→후미): [TOTAL 표지기·톱3] → (간격) → [DAILY 표지기·톱3] → 후미 호위 → (간격) → [NEW 표지기·신규].
+    // 그룹 사이엔 스페이서를 넣어 별개 부대가 행진하는 느낌을 준다.
+    // 신규는 서버가 가입 순(오래된 쪽부터)으로 주므로 가장 최근 가입자가 대열의 맨 끝이다.
     const groups = [group(topDay, 'DAILY·UTC'), group(topAll, 'TOTAL')].filter(Boolean);
+    const rookies = fresh.length ? group(fresh, 'NEW', rookie) + gap : '';
     track.innerHTML =
+      rookies +
       escort('army-pi', 0) + escort('army-opencode', 1) + escort('army-codex', 0) +
-      groups.join('<i class="troopgap" aria-hidden="true"></i>') + escort('army-opencode', 1);
+      groups.join(gap) + escort('army-opencode', 1);
     box.hidden = false;
     // 깃발 겹침은 CSS 흐름 배치가 보장한다(.bearer 폭 = 깃발 + 병사) — JS 폭 측정 없음.
     marchInit(track);
@@ -2211,6 +2242,7 @@
     $('uStats').innerHTML = '';
     $('uEmail').value = '';
     $('uJoined').textContent = '–';
+    $('uNew').hidden = true;
     $('uCountry').textContent = '';
     $('uTz').textContent = '';
     $('uMsg').hidden = false;
@@ -2247,6 +2279,7 @@
     $('uShips').innerHTML = '';
     $('uEmail').value = '';
     $('uJoined').textContent = '–';
+    $('uNew').hidden = true;
     $('uStats').innerHTML = '';
     $('uChartWrap').hidden = true;
     $('uMsg').hidden = false;
@@ -2400,6 +2433,8 @@
     renderProjects(data.projects);
     $('uEmail').value = data.email || '';
     $('uJoined').textContent = data.joinedAt ? fmtDate(data.joinedAt) : '–';
+    $('uNew').hidden = !data.isNew;
+    $('uNew').title = t('new_tip');
     // 상세 그래프·시간별은 이 유저의 로컬 TZ 기준 — 오해 없게 표기(리더보드는 UTC).
     $('uTz').textContent = data.timezone ? t('tz_note')(data.timezone) : '';
     $('uMsg').hidden = true;

@@ -38,6 +38,8 @@ export interface LeaderboardRow {
   country: string | null;
   /** users.projects 원본 JSON 문자열. 대표 프로젝트 1개만 뽑아 랭킹에 실는다. */
   projects: string | null;
+  /** users.created_at(가입 시각, UTC ms). 신규 가입자(NEW) 판정에 쓴다. */
+  created_at: number;
   prompts: number;
   chars: number;
 }
@@ -68,6 +70,18 @@ export interface RankEntry {
    * 'all'(전 기간)은 "어제까지 누적" 대비, 'daily' 는 어제 하루 대비. 나머지 보드는 undefined.
    */
   delta?: number | null;
+  /** 최근 NEW_USER_WINDOW_MS(7일) 안에 가입한 유저. 순위 변동의 null(직전 창 부재)과는 별개 개념. */
+  is_new: boolean;
+}
+
+/** 퍼레이드 후미에 서는 신규 가입자(최근 7일). 순위·점수와 무관하게 가입 순으로 싣는다. */
+export interface Newcomer {
+  nickname: string | null;
+  registered: boolean;
+  public_id: string | null;
+  country: string | null;
+  /** 가입 시각(UTC ms) */
+  joined_at: number;
 }
 
 export type Period = { day: string } | { from: string; to: string; days: string[] } | { all: true };
@@ -82,4 +96,6 @@ export interface BoardSnapshot {
 export interface Snapshot {
   builtAt: number;
   boards: Record<BoardType, BoardSnapshot>;
+  /** 최근 7일 가입자(가입 순, 오래된 쪽부터). v6 이전 스냅샷엔 없다. */
+  newcomers?: Newcomer[];
 }

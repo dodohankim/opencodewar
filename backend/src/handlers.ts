@@ -28,7 +28,7 @@ import {
   type Links,
 } from './validate';
 import { getSession } from './session';
-import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, dayFilter, getSnapshot, periodOf } from './snapshot';
+import { METRIC_COL, SNAPSHOT_KEY, computeZoneRanking, dayFilter, getSnapshot, isNewUser, periodOf } from './snapshot';
 import { buildBriefing } from './briefing';
 import { battleBriefOf } from './battle';
 import { displayNickname } from './nickname';
@@ -212,6 +212,8 @@ export async function handleLeaderboard(url: URL, env: Env, ctx?: ExecutionConte
     builtAt: snap.builtAt,
     count: ranking.length,
     ranking,
+    // 최근 7일 가입자(퍼레이드 후미용). 보드·지표와 무관한 전역 목록.
+    newcomers: snap.newcomers ?? [],
   });
 }
 
@@ -615,6 +617,7 @@ export async function handleRandom(env: Env): Promise<Response> {
       flag: countryFlag(user.country),
       city: user.city ?? null,
       joinedAt: Number(user.created_at) || null,
+      isNew: isNewUser(user.created_at, Date.now()), // 가입 7일 미만 → NEW 뱃지(리더보드와 같은 기준)
       prompts: Number(agg?.p) || 0,
       chars: Number(agg?.c) || 0,
     },
@@ -813,6 +816,7 @@ export async function handleUser(url: URL, env: Env, request: Request): Promise<
     city: user.city ?? null,
     timezone: tz, // 상세 페이지가 이 TZ 로컬로 렌더됨(웹에 표기)
     joinedAt: Number(user.created_at) || null,
+    isNew: isNewUser(user.created_at, Date.now()), // 가입 7일 미만 → NEW 뱃지(리더보드와 같은 기준)
     range: { from: graphDays[0], to: graphDays[graphDays.length - 1], days: graphDays.length },
     days: series,
     totals,

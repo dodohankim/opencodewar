@@ -9,6 +9,7 @@ import type {
   Env,
   LeaderboardRow,
   Metric,
+  Newcomer,
   Period,
   RankEntry,
   RankProject,
@@ -19,9 +20,21 @@ import { displayNickname } from './nickname';
 import { isValidUrl, parseProjects } from './validate';
 
 // v2: 'all'(전체 기간) 보드 추가 / v3: 랭킹 항목에 대표 프로젝트 추가
-// v4: 활동 0인 가입자도 랭킹에 포함 / v5: 순위 변동(delta) 추가 — 배포 즉시 재빌드 유도
-export const SNAPSHOT_KEY = 'lb:snapshot:v5';
+// v4: 활동 0인 가입자도 랭킹에 포함 / v5: 순위 변동(delta) 추가
+// v6: 신규 가입자 표식(is_new) + 퍼레이드용 newcomers — 배포 즉시 재빌드 유도
+export const SNAPSHOT_KEY = 'lb:snapshot:v6';
 const SNAPSHOT_LIMIT = 100;
+
+/** NEW 뱃지 유지 기간: 가입(users.created_at) 후 7일. */
+export const NEW_USER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/** 퍼레이드 후미에 세울 신규 가입자 최대 인원(대열이 끝없이 길어지지 않게). */
+export const NEWCOMER_LIMIT = 20;
+
+/** 가입 시각이 지금 기준 7일 미만인지. 값이 없거나 0 이면 신규로 보지 않는다. */
+export function isNewUser(createdAt: number | null | undefined, now: number): boolean {
+  const t = Number(createdAt);
+  return Number.isFinite(t) && t > 0 && now - t < NEW_USER_WINDOW_MS;
+}
 const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30분
 const BOARDS: BoardType[] = ['daily', 'weekly', 'weekend', 'monthly', 'all'];
 
@@ -87,7 +100,7 @@ export function pickMainProject(raw: string | null): RankProject | null {
  * D1 원시 행 → 공개 랭킹 항목. user_id 는 비밀키라 응답에 담지 않는다.
  * prevMap 이 있으면 순위 변동(delta)을 붙인다 — 직전 창에 없던 유저는 null(신규).
  */
-function toRankEntry(r: LeaderboardRow, i: number, prevMap?: Map<string, number>): RankEntry {
+function toRankEntry(r: LeaderboardRow, i: number, now: number, prevMap?: Map<string, number>): RankEntry {
   const entry: RankEntry = {
     rank: i + 1,
     nickname: displayNickname(r.nickname, r.user_id),
@@ -97,6 +110,7 @@ function toRankEntry(r: LeaderboardRow, i: number, prevMap?: Map<string, number>
     project: pickMainProject(r.projects ?? null),
     prompts: Number(r.prompts) || 0,
     chars: Number(r.chars) || 0,
+    is_new: isNewUser(r.created_at, now),
   };
   if (prevMap) {
     const prev = prevMap.get(r.user_id);
@@ -140,7 +154,7 @@ export async function computeRanking(
   const result = await env.DB.prepare(
     // 국가는 users 를 먼저 본다 — 유저가 직접 고칠 수 있는 값이라(프로필 편집) 여기가 정본이고,
     // 프로필 페이지(/user)도 users.country 를 보여준다. daily_stats 는 users 가 빌 때의 폴백.
-    `SELECT u.user_id, u.nickname, u.public_id, u.projects,
+    `SELECT u.user_id, u.nickname, u.public_id, u.projects, u.created_at,
             COALESCE(u.country, MAX(s.country)) AS country,
             COALESCE(SUM(s.prompts), 0) AS prompts, COALESCE(SUM(s.chars), 0) AS chars
      FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND ${dayCond}
@@ -151,7 +165,7 @@ export async function computeRanking(
     .bind(...dayBinds, limit)
     .all<LeaderboardRow>();
 
-  return result.results.map((r, i) => toRankEntry(r, i, prevMap));
+  return result.results.map((r, i) => toRankEntry(r, i, now, prevMap));
 }
 
 /**
@@ -204,7 +218,7 @@ export async function computeZoneRanking(
   // computeRanking 과 같은 이유로 users 에서 출발하고 기간 조건은 ON 에 둔다(활동 0인 가입자 포함).
   // 구역 필터(u.country / u.city)는 유저 속성이라 WHERE 에 남는다.
   const result = await env.DB.prepare(
-    `SELECT u.user_id, u.nickname, u.public_id, u.projects, u.country AS country,
+    `SELECT u.user_id, u.nickname, u.public_id, u.projects, u.created_at, u.country AS country,
             COALESCE(SUM(s.prompts), 0) AS prompts, COALESCE(SUM(s.chars), 0) AS chars
      FROM users u LEFT JOIN daily_stats s ON s.user_id = u.user_id AND ${dayCond}
      WHERE u.country = ? ${cityClause}
@@ -216,7 +230,29 @@ export async function computeZoneRanking(
     .all<LeaderboardRow>();
 
   // 구역 보드는 순위 변동을 계산하지 않는다(조합이 많고 저트래픽 — §7.4).
-  return result.results.map((r, i) => toRankEntry(r, i));
+  return result.results.map((r, i) => toRankEntry(r, i, now));
+}
+
+/**
+ * 최근 7일 가입자 — 퍼레이드 맨 뒤에 따로 세운다. 점수와 무관하게 가입 순(오래된 쪽부터).
+ * 보드 top-N 밖으로 밀린 신규도 빠지지 않게 랭킹과 별도로 users 에서 직접 뽑는다.
+ */
+export async function computeNewcomers(env: Env, now: number): Promise<Newcomer[]> {
+  const result = await env.DB.prepare(
+    `SELECT user_id, nickname, public_id, country, created_at
+     FROM users WHERE created_at > ?
+     ORDER BY created_at ASC, user_id ASC
+     LIMIT ?`,
+  )
+    .bind(now - NEW_USER_WINDOW_MS, NEWCOMER_LIMIT)
+    .all<{ user_id: string; nickname: string | null; public_id: string | null; country: string | null; created_at: number }>();
+  return result.results.map((r) => ({
+    nickname: displayNickname(r.nickname, r.user_id),
+    registered: r.nickname != null,
+    public_id: r.public_id ?? null,
+    country: r.country ?? null,
+    joined_at: Number(r.created_at),
+  }));
 }
 
 /** 전 보드/지표를 계산해 스냅샷 객체 생성 */
@@ -238,7 +274,8 @@ export async function buildSnapshot(env: Env): Promise<Snapshot> {
     ]);
     boards[type] = { period: periodOf(type, now), prompts, chars };
   }
-  return { builtAt: now, boards };
+  const newcomers = await computeNewcomers(env, now);
+  return { builtAt: now, boards, newcomers };
 }
 
 export async function putSnapshot(env: Env, snap: Snapshot): Promise<void> {

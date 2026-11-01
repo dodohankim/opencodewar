@@ -16,6 +16,7 @@ function entry(rank: number, publicId: string, country: string | null, prompts: 
     project: null,
     prompts,
     chars: prompts * 10,
+    is_new: false,
   };
 }
 
