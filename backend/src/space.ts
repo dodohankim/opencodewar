@@ -19,6 +19,7 @@ import {
   BARRACKS_CAP,
   BARRACKS_WIDTH,
   CHAT_KEEP,
+  CHAT_TTL_MS,
   MOVE_MIN_INTERVAL_MS,
   PLAZA_CAP,
   PLAZA_ID,
@@ -39,9 +40,11 @@ import {
   isDoorVisible,
   isPublicId,
   layoutDoors,
+  nextChatAlarm,
   normalizeAgentName,
   ownerStatus,
   pruneBeats,
+  pruneChat,
   roomKindOf,
   signTicket,
   verifyTicket,
@@ -371,7 +374,7 @@ export class SpaceRoom extends DurableObject<Env> {
     };
     server.serializeAttachment(a);
 
-    const chat = ((await this.ctx.storage.get('chat')) as ChatLine[] | undefined) ?? [];
+    const chat = pruneChat(((await this.ctx.storage.get('chat')) as ChatLine[] | undefined) ?? [], Date.now());
     server.send(
       JSON.stringify({
         t: 'hello',
@@ -435,6 +438,8 @@ export class SpaceRoom extends DurableObject<Env> {
       const chat = ((await this.ctx.storage.get('chat')) as ChatLine[] | undefined) ?? [];
       chat.push(line);
       await this.ctx.storage.put('chat', chat.slice(-CHAT_KEEP));
+      // 말이 하나라도 남아 있으면 alarm 이 걸려 있다. 비어 있던 방에 처음 말할 때만 새로 건다.
+      if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + CHAT_TTL_MS);
       this.broadcast({ t: 'said', line });
       return;
     }
@@ -455,6 +460,16 @@ export class SpaceRoom extends DurableObject<Env> {
     this.broadcast({ t: 'leave', id: a.id }, ws);
     const meta = await this.roomMeta();
     if (meta) await this.reportToPlaza(meta);
+  }
+
+  // ── 채팅 24시간 정리. DO 안 setInterval 은 hibernation 을 깨므로 alarm 으로 한다 (§27.5) ──
+  async alarm(): Promise<void> {
+    const chat = ((await this.ctx.storage.get('chat')) as ChatLine[] | undefined) ?? [];
+    const kept = pruneChat(chat, Date.now());
+    if (kept.length === 0) await this.ctx.storage.delete('chat');
+    else if (kept.length !== chat.length) await this.ctx.storage.put('chat', kept);
+    const next = nextChatAlarm(kept);
+    if (next !== null) await this.ctx.storage.setAlarm(next);
   }
 
   // ── 주인 하트비트 (막사 DO) ──

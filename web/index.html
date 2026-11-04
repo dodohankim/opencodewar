@@ -312,6 +312,10 @@
 
   /* 기간 탭(total/daily)이 지표 토글(prompts/chars) 위에 오도록 세로 배치 */
   .controls { display:flex; flex-direction:column; gap:10px; align-items:flex-start; margin-top:22px; }
+  .controlrow { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; width:100%; }
+  a.theme-toggle { text-decoration:none; }
+  a.spacelink { color:var(--dim); font-size:11px; text-decoration:none; white-space:nowrap; flex:none; }
+  a.spacelink:hover { color:var(--fg); text-decoration:underline; text-underline-offset:3px; }
   .tabs, .sorts { display:inline-flex; gap:6px; }
   .tab, .sort { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:6px 12px; border-radius:5px; cursor:pointer; white-space:nowrap; }
   .tab .k { color:var(--faint); font-size:11px; }
@@ -797,9 +801,12 @@
 
       <!-- 보드 기간: total(전체) · daily(UTC 하루). weekly·weekend·monthly 는 유저가 쌓이면 재도입. -->
       <div class="controls">
-        <div class="tabs" role="tablist" aria-label="board period">
-          <button class="tab" data-board="all" aria-selected="true">total</button>
-          <button class="tab" data-board="daily" aria-selected="false">daily</button>
+        <div class="controlrow">
+          <div class="tabs" role="tablist" aria-label="board period">
+            <button class="tab" data-board="all" aria-selected="true">total</button>
+            <button class="tab" data-board="daily" aria-selected="false">daily</button>
+          </div>
+          <a class="theme-toggle" href="/plaza" data-i18n="plaza_link">⛺ plaza</a>
         </div>
         <div class="sorts">
           <button class="sort" data-metric="prompts" aria-pressed="true">prompts</button>
@@ -889,6 +896,7 @@
             <span class="rankchip" id="uRank" hidden></span>
             <span class="headbtns" id="headBtns">
               <button class="theme-toggle editbtn" id="editBtn" type="button" hidden data-i18n="edit">✎ edit</button>
+              <a class="theme-toggle" id="spaceBtn" hidden data-i18n="space_visit">⛺ visit barracks</a>
               <button class="theme-toggle cardbtn" id="cardBtn" type="button" hidden data-i18n="card" aria-haspopup="dialog" aria-expanded="false">🖼 card</button>
               <button class="theme-toggle sharebtn" id="shareBtn" type="button" hidden data-i18n="share">⧉ share</button>
               <div class="cardpop" id="cardPop" role="dialog" aria-label="save card" hidden>
@@ -1112,7 +1120,7 @@
       user_notfound: 'User not found.', user_error: "Can't load this profile.",
       no_activity: 'No activity in the last 30 days.', visit: 'Visit ↗', main_badge: 'MAIN',
       stack_project: 'projects', stack_agent: 'agents', pj_other: 'other',
-      ship_empty: 'your project here', you_tag: 'YOU', new_tip: 'joined within the last 7 days', me_until: 'to', me_top: 'top of this board',
+      plaza_link: '⛺ plaza', space_visit: '⛺ visit barracks', ship_empty: 'your project here', you_tag: 'YOU', new_tip: 'joined within the last 7 days', me_until: 'to', me_top: 'top of this board',
       feed_legend: 'live activity', feed_rate: 'live · every 60s', feed_idle: 'idle',
       feed_wait: 'waiting', feed_none: 'nothing new', feed_new: (n) => `${n} new`,
       feed_last: (t) => `last ${t}`, feed_last_ago: (t, m) => `last ${t} · ${m}m ago`,
@@ -1192,7 +1200,7 @@
       user_notfound: '해당 유저를 찾을 수 없습니다.', user_error: '프로필을 불러올 수 없습니다.',
       no_activity: '최근 30일 활동이 없습니다.', visit: '방문 ↗', main_badge: '메인',
       stack_project: '프로젝트', stack_agent: '에이전트', pj_other: '기타',
-      ship_empty: '여기에 내 프로젝트', you_tag: 'YOU', new_tip: '가입한 지 7일 이내', me_until: '까지', me_top: '이 판의 1위',
+      plaza_link: '⛺ 광장', space_visit: '⛺ 막사 구경', ship_empty: '여기에 내 프로젝트', you_tag: 'YOU', new_tip: '가입한 지 7일 이내', me_until: '까지', me_top: '이 판의 1위',
       feed_legend: '참전 기록', feed_rate: 'live · 60초마다', feed_idle: '조용함',
       feed_wait: '대기 중', feed_none: '새 기록 없음', feed_new: (n) => `새 기록 ${n}건`,
       feed_last: (t) => `마지막 기록 ${t}`, feed_last_ago: (t, m) => `마지막 기록 ${t} · ${m}분 전`,
@@ -1439,6 +1447,11 @@
         : `<span class="nm lb-nick">${nm}</span>`;
     };
 
+    // 막사 구경(§27.10) — public_id 가 없는 구 데이터는 링크를 달지 않는다. 행 클릭(상세)과 겹치지 않게 위임에서 뺀다.
+    const spaceLink = (r, withText) => (r.public_id
+      ? `<a class="spacelink" href="/s/${escapeHtml(r.public_id)}" title="${escapeHtml(t('space_visit'))}" aria-label="${escapeHtml(t('space_visit'))}">${escapeHtml(withText ? t('space_visit') : '⛺')}</a>`
+      : '');
+
     const pods = rows.slice(0, 3).map((r) => {
       const v = r[curMetric] || 0;
       // 톱3 랭크 병정: 1위는 기수, 2·3위는 병정 (순위 기반 군복색 — RANK_ARMY)
@@ -1449,7 +1462,7 @@
         <span class="lb-rk">${mini}#${r.rank}</span>
         ${iconTile(r.project, true)}
         <div class="lb-body">
-          <div class="lb-l1">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${newTag(r)}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}</div>
+          <div class="lb-l1">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${newTag(r)}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}${spaceLink(r, true)}</div>
           <div class="lb-l2">${shipStrong(r.project)}</div>
           ${desc}
         </div>
@@ -1462,7 +1475,7 @@
       return `<div class="lb-row lb-cmp${isMe(r) ? ' me' : ''}" data-nick="${escapeHtml(r.registered ? r.nickname : (r.public_id || ''))}">
         <span class="lb-g" style="width:${gaugePct(v, max)}%"></span>
         <span class="lb-rk">${r.rank}</span>
-        <div class="lb-mid">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${newTag(r)}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}${shipSmall(r.project)}</div>
+        <div class="lb-mid">${nameCell(r)}${isMe(r) ? `<span class="youtag">${t('you_tag')}</span>` : ''}${newTag(r)}${rankBadge(r)}<span class="cc">${r.country ? flagOf(r.country) : ''}</span>${deltaChip(r)}${spaceLink(r, false)}${shipSmall(r.project)}</div>
         <div class="lb-nums"><span class="lb-p">${fmt(v)}</span><span class="lb-c">${curMetric === 'prompts' ? fmtCompact(r.chars || 0) : fmt(r.prompts || 0)}</span></div>
       </div>`;
     }).join('');
@@ -2415,6 +2428,8 @@
     $('shareBtn').hidden = false;
     // 카드 저장 버튼: 유저별 OG 이미지가 public_id 기준이라 slug 있는 유저에게만 노출(구 데이터는 없음).
     $('cardBtn').hidden = !data.publicId;
+    $('spaceBtn').hidden = !data.publicId;
+    if (data.publicId) $('spaceBtn').href = `/s/${data.publicId}`;
     $('uCountry').textContent = [
       data.country ? `${data.country} ${flagOf(data.country)}` : '',
       data.city || '',
@@ -2776,7 +2791,7 @@
   // 보드 행은 어디를 눌러도 상세로 — 단 shipping 링크(아웃바운드)는 그대로 통과시킨다.
   document.addEventListener('click', (e) => {
     if (!e.target.closest) return;
-    if (e.target.closest('a.lbship, .nm.link, .bearer')) return;
+    if (e.target.closest('a.lbship, a.spacelink, .nm.link, .bearer')) return;
     const row = e.target.closest('.lb-row[data-nick]');
     if (row && row.dataset.nick) navigateUser(row.dataset.nick);
   });

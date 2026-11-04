@@ -21,6 +21,7 @@ export const MAX_DOORS = 24;
 export const SPRITE_W = 8;
 
 export const CHAT_KEEP = 50;
+export const CHAT_TTL_MS = 24 * 60 * 60_000;
 export const CHAT_MAX_LEN = 200;
 export const SAY_MIN_INTERVAL_MS = 400;
 export const MOVE_MIN_INTERVAL_MS = 60;
@@ -112,6 +113,17 @@ export function hasRoomFor(
   if (kind === 'plaza') return others.length < PLAZA_CAP;
   if (isOwner) return true;
   return others.filter((m) => m.pid !== ownerPid).length < BARRACKS_CAP - 1;
+}
+
+/** 24시간 지난 채팅을 뺀다. alarm 이 늦어도 hello 에 오래된 말이 실리지 않게 읽을 때도 거른다. */
+export function pruneChat<T extends { at: number }>(chat: readonly T[], now: number): T[] {
+  return chat.filter((l) => now - l.at < CHAT_TTL_MS);
+}
+
+/** 다음 정리 시각 = 가장 오래된 말이 만료되는 때. 지울 말이 없으면 null(alarm 을 걸지 않는다). */
+export function nextChatAlarm(chat: readonly { at: number }[]): number | null {
+  if (chat.length === 0) return null;
+  return Math.min(...chat.map((l) => l.at)) + CHAT_TTL_MS;
 }
 
 export function clampX(v: unknown, width: number): number | null {

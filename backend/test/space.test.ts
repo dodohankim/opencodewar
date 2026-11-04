@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BARRACKS_WIDTH,
   CHAT_MAX_LEN,
+  CHAT_TTL_MS,
   PLAZA_CAP,
   DOOR_FIRST_X,
   DOOR_GAP,
@@ -15,8 +16,10 @@ import {
   hasRoomFor,
   isDoorVisible,
   layoutDoors,
+  nextChatAlarm,
   ownerStatus,
   pruneBeats,
+  pruneChat,
   roomKindOf,
   signTicket,
   verifyTicket,
@@ -50,6 +53,18 @@ describe('채팅 정리', () => {
   });
   it('길이 제한(코드포인트 기준)', () => {
     expect(Array.from(cleanChat('가'.repeat(500))!).length).toBe(CHAT_MAX_LEN);
+  });
+});
+
+describe('채팅 보존 (24시간)', () => {
+  const now = 10 * CHAT_TTL_MS;
+  const line = (age: number) => ({ pid: 'u-abcdef1234', nick: 'a', text: 'x', at: now - age });
+  it('24시간 지난 말만 지운다', () => {
+    expect(pruneChat([line(CHAT_TTL_MS), line(CHAT_TTL_MS - 1), line(0)], now)).toEqual([line(CHAT_TTL_MS - 1), line(0)]);
+  });
+  it('다음 alarm 은 가장 오래된 말이 만료될 때, 말이 없으면 걸지 않는다', () => {
+    expect(nextChatAlarm([line(1000), line(5000)])).toBe(now - 5000 + CHAT_TTL_MS);
+    expect(nextChatAlarm([])).toBeNull();
   });
 });
 
