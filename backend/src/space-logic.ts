@@ -278,6 +278,23 @@ export function pruneBeats(beats: Record<string, SessionBeat>, now: number): Rec
   return out;
 }
 
+// ── 공유 링크 미리보기 (§27.10) ──
+
+export interface SpaceInfo {
+  count: number;
+  online: boolean;
+  working: boolean;
+  locked: boolean;
+}
+
+/** "dohan의 막사 · 지금 3명 · 작업 중". 상태를 못 읽었으면 이름만, 잠긴 막사는 안의 사정을 말하지 않는다. */
+export function spaceOgTitle(nick: string, info: SpaceInfo | null): string {
+  const name = `${nick}의 막사`;
+  if (!info) return name;
+  if (info.locked) return `${name} · 잠김`;
+  return `${name} · 지금 ${info.count}명 · ${info.working ? '작업 중' : info.online ? '접속 중' : '외출 중'}`;
+}
+
 // ── 티켓: 터미널(mod) 사이드카가 WebSocket 을 열 때 쓰는 60초짜리 서명 토큰 ──
 // 비밀 userId 는 URL 에 싣지 않는다. 티켓 안에는 공개 정보(pid·nick·agent)와 만료만 있다.
 

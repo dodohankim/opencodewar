@@ -30,6 +30,7 @@ import {
   recordVisit,
   roomKindOf,
   signTicket,
+  spaceOgTitle,
   takeGuestQuota,
   verifyTicket,
   visitSummary,
@@ -199,6 +200,19 @@ describe('주인 상태 (세션별 하트비트)', () => {
     const beats = { a: { state: 'idle' as const, at: now - PRESENCE_FRESH_MS - 1 } };
     expect(ownerStatus(beats, now)).toEqual({ online: false, working: false });
     expect(pruneBeats(beats, now)).toEqual({});
+  });
+});
+
+describe('공유 미리보기 제목', () => {
+  const info = { count: 3, online: true, working: true, locked: false };
+  it('인원과 주인 상태', () => {
+    expect(spaceOgTitle('dohan', info)).toBe('dohan의 막사 · 지금 3명 · 작업 중');
+    expect(spaceOgTitle('dohan', { ...info, working: false })).toBe('dohan의 막사 · 지금 3명 · 접속 중');
+    expect(spaceOgTitle('dohan', { ...info, working: false, online: false, count: 0 })).toBe('dohan의 막사 · 지금 0명 · 외출 중');
+  });
+  it('잠긴 막사·상태를 못 읽은 경우', () => {
+    expect(spaceOgTitle('dohan', { ...info, locked: true })).toBe('dohan의 막사 · 잠김');
+    expect(spaceOgTitle('dohan', null)).toBe('dohan의 막사');
   });
 });
 

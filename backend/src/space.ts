@@ -18,6 +18,7 @@ import { isValidUserId } from './validate';
 import { displayNickname } from './nickname';
 import { newPublicId } from './publicid';
 import { rankIndexOf } from './briefing';
+import { ogImageUrl } from './og';
 import {
   BARRACKS_CAP,
   BARRACKS_WIDTH,
@@ -44,6 +45,7 @@ import {
   type Role,
   type RoomKind,
   type SessionBeat,
+  type SpaceInfo,
   type VisitLog,
   activeBan,
   clampX,
@@ -62,12 +64,14 @@ import {
   recordVisit,
   roomKindOf,
   signTicket,
+  spaceOgTitle,
   takeGuestQuota,
   verifyTicket,
   visitSummary,
 } from './space-logic';
 
 const SID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+const SITE_ORIGIN = 'https://opencodewar.dev';
 
 // ── 신원 조회 ──
 
@@ -221,9 +225,51 @@ export function spacePageRoom(pathname: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * 막사 공유 링크 미리보기(§27.10). 크롤러가 받는 HTML 의 메타만 그 막사의 지금 상태로 바꾼다 — handleBattlePage 패턴.
+ * 없는(삭제된) 막사는 광장으로 보낸다. 안 그러면 웹이 없는 방에 WebSocket 재접속을 계속 시도한다.
+ */
 export async function handleSpacePage(request: Request, url: URL, env: Env): Promise<Response> {
   const res = await env.ASSETS.fetch(new Request(new URL('/space.html', url).toString(), { headers: request.headers }));
-  const out = new Response(res.body, res);
+  const room = spacePageRoom(url.pathname);
+  if (!room || room === PLAZA_ID || res.status !== 200) {
+    const out = new Response(res.body, res);
+    out.headers.set('Cache-Control', 'no-cache');
+    return out;
+  }
+  const row = await env.DB.prepare('SELECT user_id, nickname FROM users WHERE public_id = ?')
+    .bind(room)
+    .first<{ user_id: string; nickname: string | null }>();
+  if (!row) return Response.redirect(new URL('/plaza', url).toString(), 302);
+
+  const info = (await roomStub(env, room)
+    .fetch('https://space/info')
+    .then((r) => r.json())
+    .catch(() => null)) as SpaceInfo | null;
+  const title = spaceOgTitle(displayNickname(row.nickname, row.user_id), info);
+  const desc = '코딩 에이전트를 돌리는 사람의 막사. 들어가서 구경하고 이야기해 보세요. Claude Code 에서는 /space';
+  const pageUrl = `${SITE_ORIGIN}/s/${room}`;
+  const setContent = (value: string) => ({
+    element(el: Element) {
+      el.setAttribute('content', value);
+    },
+  });
+  const rewritten = new HTMLRewriter()
+    .on('title', {
+      element(el) {
+        el.setInnerContent(title);
+      },
+    })
+    .on('meta[name="description"]', setContent(desc))
+    .on('meta[property="og:title"]', setContent(title))
+    .on('meta[property="og:description"]', setContent(desc))
+    .on('meta[property="og:url"]', setContent(pageUrl))
+    .on('meta[property="og:image"]', setContent(ogImageUrl(room)))
+    .on('meta[name="twitter:title"]', setContent(title))
+    .on('meta[name="twitter:description"]', setContent(desc))
+    .on('meta[name="twitter:image"]', setContent(ogImageUrl(room)))
+    .transform(res);
+  const out = new Response(rewritten.body, rewritten);
   out.headers.set('Cache-Control', 'no-cache');
   return out;
 }
@@ -721,7 +767,7 @@ export class SpaceRoom extends DurableObject<Env> {
       working: !!p?.working,
       online: !!p?.online,
       locked: (await this.read<boolean>('locked')) ?? false,
-    });
+    } satisfies SpaceInfo);
   }
 
   /** 계정 삭제(§27.9): 있던 사람을 내보내고 이 막사의 저장 내용을 전부 지운다. 광장의 문도 내린다. */
