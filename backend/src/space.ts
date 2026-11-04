@@ -33,6 +33,7 @@ import {
   PLAZA_ID,
   REPORT_REFRESH_MS,
   SAY_MIN_INTERVAL_MS,
+  VISIT_WINDOW_MS,
   SPECTATOR_CAP,
   type BanEntry,
   type ChatLine,
@@ -55,12 +56,13 @@ import {
   isDoorVisible,
   isPublicId,
   layoutDoors,
-  nextChatAlarm,
+  nextCleanupAlarm,
   normalizeAgentName,
   ownerStatus,
   pruneBans,
   pruneBeats,
   pruneChat,
+  pruneVisits,
   recordVisit,
   roomKindOf,
   signTicket,
@@ -101,10 +103,12 @@ function toIdentity(row: IdentityRow | null): Identity | null {
 async function identityByUserId(env: Env, userId: string, create: boolean): Promise<Identity | null> {
   const stmt = env.DB.prepare(`${IDENTITY_SQL} WHERE u.user_id = ?`).bind(userId);
   const found = await stmt.first<IdentityRow>();
-  if (found || !create) return toIdentity(found);
-  // 처음 보는 유저만 쓴다 — 하트비트마다 INSERT 를 시도하지 않는다
+  if (found?.public_id || !create) return toIdentity(found);
+  // 처음 보는 유저만 쓴다 — 하트비트마다 INSERT 를 시도하지 않는다.
+  // /register 로 닉네임만 정한 유저는 첫 프롬프트 전까지 public_id 가 없으므로 여기서 채운다.
   await env.DB.prepare(
-    'INSERT INTO users (user_id, public_id, created_at, last_seen_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO NOTHING',
+    `INSERT INTO users (user_id, public_id, created_at, last_seen_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET public_id = COALESCE(users.public_id, excluded.public_id)`,
   )
     .bind(userId, newPublicId(), Date.now(), Date.now())
     .run();
@@ -531,7 +535,11 @@ export class SpaceRoom extends DurableObject<Env> {
       if (isOwner) await this.ctx.storage.put('visitlog', { seenAt: now, visits: log?.visits ?? {} } satisfies VisitLog);
       else {
         const next = recordVisit(log, ident.pid, ident.nick, now);
-        if (next) await this.ctx.storage.put('visitlog', next);
+        if (next) {
+          await this.ctx.storage.put('visitlog', next);
+          // 이미 걸린 alarm 이 있으면 그 alarm 이 다음 시각을 다시 계산한다.
+          if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + VISIT_WINDOW_MS);
+        }
       }
     }
 
@@ -624,8 +632,9 @@ export class SpaceRoom extends DurableObject<Env> {
       const chat = (await this.read<ChatLine[]>('chat')) ?? [];
       chat.push(line);
       await this.ctx.storage.put('chat', chat.slice(-CHAT_KEEP));
-      // 말이 하나라도 남아 있으면 alarm 이 걸려 있다. 비어 있던 방에 처음 말할 때만 새로 건다.
-      if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + CHAT_TTL_MS);
+      // 방문 기록용 alarm(최대 7일 뒤)이 걸려 있을 수 있다. 채팅 만료보다 늦으면 앞당긴다.
+      const alarm = await this.ctx.storage.getAlarm();
+      if (alarm === null || alarm > now + CHAT_TTL_MS) await this.ctx.storage.setAlarm(now + CHAT_TTL_MS);
       this.broadcast({ t: 'said', line });
     }
   }
@@ -665,13 +674,21 @@ export class SpaceRoom extends DurableObject<Env> {
     if (meta) await this.reportToPlaza(meta);
   }
 
-  // ── 채팅 24시간 정리. DO 안 setInterval 은 hibernation 을 깨므로 alarm 으로 한다 (§27.5) ──
+  // ── 채팅 24시간 · 방문 기록 7일 정리. DO 안 setInterval 은 hibernation 을 깨므로 alarm 으로 한다 (§27.5) ──
   async alarm(): Promise<void> {
+    const now = Date.now();
     const chat = (await this.read<ChatLine[]>('chat')) ?? [];
-    const kept = pruneChat(chat, Date.now());
+    const kept = pruneChat(chat, now);
     if (kept.length === 0) await this.ctx.storage.delete('chat');
     else if (kept.length !== chat.length) await this.ctx.storage.put('chat', kept);
-    const next = nextChatAlarm(kept);
+    const log = await this.read<VisitLog>('visitlog');
+    const keptLog = pruneVisits(log, now);
+    if (log && keptLog && Object.keys(keptLog.visits).length !== Object.keys(log.visits).length)
+      await this.ctx.storage.put('visitlog', keptLog);
+    // 방명록 하루 제한 표도 방문자 ID 를 담는다. 날이 지나면 쓸모가 없으니 함께 지운다.
+    const quota = await this.read<GuestQuota>('guestquota');
+    if (quota && quota.day !== new Date(now).toISOString().slice(0, 10)) await this.ctx.storage.delete('guestquota');
+    const next = nextCleanupAlarm(kept, keptLog);
     if (next !== null) await this.ctx.storage.setAlarm(next);
   }
 

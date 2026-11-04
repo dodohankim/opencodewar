@@ -27,6 +27,8 @@ import {
   pruneBans,
   pruneBeats,
   pruneChat,
+  pruneVisits,
+  nextCleanupAlarm,
   recordVisit,
   roomKindOf,
   signTicket,
@@ -236,5 +238,28 @@ describe('티켓', () => {
     const payload = atob(t.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'));
     expect(payload).not.toContain('ocw_');
     expect(Object.keys(JSON.parse(payload)).sort()).toEqual(['a', 'e', 'n', 'p', 'r']);
+  });
+});
+
+describe('방문 기록 7일 정리', () => {
+  const now = 1_000_000_000_000;
+  const log = (ages: Record<string, number>) => ({
+    seenAt: 5,
+    visits: Object.fromEntries(Object.entries(ages).map(([pid, age]) => [pid, { nick: pid, at: now - age }])),
+  });
+
+  it('7일 지난 방문만 지우고 seenAt 은 유지한다', () => {
+    const kept = pruneVisits(log({ old: VISIT_WINDOW_MS, fresh: VISIT_WINDOW_MS - 1 }), now);
+    expect(Object.keys(kept!.visits)).toEqual(['fresh']);
+    expect(kept!.seenAt).toBe(5);
+    expect(pruneVisits(undefined, now)).toBeUndefined();
+  });
+
+  it('다음 alarm 은 채팅과 방문 기록 중 먼저 만료되는 시각이다', () => {
+    const visits = log({ a: 1000 });
+    expect(nextCleanupAlarm([], visits)).toBe(now - 1000 + VISIT_WINDOW_MS);
+    expect(nextCleanupAlarm([{ at: now }], visits)).toBe(now + CHAT_TTL_MS);
+    expect(nextCleanupAlarm([], undefined)).toBeNull();
+    expect(nextCleanupAlarm([], { seenAt: 0, visits: {} })).toBeNull();
   });
 });

@@ -158,6 +158,21 @@ export interface GuestQuota {
 }
 
 /** 오늘 이 방문자가 한 줄 더 남길 수 있나. 날이 바뀌면 전부 초기화되므로 표가 쌓이지 않는다. */
+/** 방문 기록 7일 정리. 방침에 적은 보관 기간이라, 다음 방문을 기다리지 않고 alarm 으로 지운다. */
+export function pruneVisits(log: VisitLog | undefined, now: number): VisitLog | undefined {
+  if (!log) return log;
+  return {
+    seenAt: log.seenAt,
+    visits: Object.fromEntries(Object.entries(log.visits).filter(([, v]) => now - v.at < VISIT_WINDOW_MS)),
+  };
+}
+/** 채팅·방문 기록 중 가장 먼저 만료되는 시각. 지울 게 없으면 null → 조용한 방은 깨어나지 않는다. */
+export function nextCleanupAlarm(chat: readonly { at: number }[], log: VisitLog | undefined): number | null {
+  const times = Object.values(log?.visits ?? {}).map((v) => v.at + VISIT_WINDOW_MS);
+  const chatAt = nextChatAlarm(chat);
+  if (chatAt !== null) times.push(chatAt);
+  return times.length ? Math.min(...times) : null;
+}
 export function takeGuestQuota(q: GuestQuota | undefined, pid: string, day: string): GuestQuota | null {
   const counts = q?.day === day ? q.counts : {};
   const used = counts[pid] ?? 0;
