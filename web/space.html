@@ -53,11 +53,14 @@
   .log .t { color:var(--faint); margin-right:8px; }
   .log .n { font-weight:600; margin-right:6px; }
   .log .sys { color:var(--dim); }
+  .log .gb { color:var(--amber); margin-right:6px; }
   form.chat { display:flex; gap:8px; margin-top:8px; }
   form.chat input { flex:1; font:inherit; font-size:14px; padding:9px 11px; border:1px solid var(--line); border-radius:6px; background:transparent; color:var(--fg); }
   form.chat input:focus { outline:none; border-color:var(--fg); }
   form.chat button { font:inherit; padding:9px 14px; border:1px solid var(--fg); border-radius:6px; background:var(--fg); color:var(--bg); cursor:pointer; }
   form.chat button:disabled, form.chat input:disabled { opacity:0.45; cursor:not-allowed; }
+  form.chat button.alt { background:transparent; color:var(--fg); border-color:var(--line); }
+  form.chat button.alt.on { border-color:var(--amber); color:var(--amber); }
   .notice { margin-top:10px; padding:10px 12px; border:1px dashed var(--line); border-radius:6px; color:var(--dim); font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .notice code { color:var(--fg); }
 </style>
@@ -90,6 +93,7 @@
       <div class="log" id="log" aria-live="polite"><div class="spacer"></div></div>
       <form class="chat" id="chatForm" autocomplete="off">
         <input id="chatInput" maxlength="200" placeholder="Enter 로 채팅 · Esc 로 다시 걷기" aria-label="채팅" />
+        <button type="button" class="alt" id="guestBtn" hidden>방명록</button>
         <button type="submit">보내기</button>
       </form>
       <div class="notice">
@@ -108,6 +112,8 @@
     type2: ['........', '..HHH...', '.HHHHH..', '..SSE...', '..SSS..M', '.UUUU..M', '.UUUUSSM', '.UUUUKKK', '..UUUU..', '.BBBBBB.'],
     door: ['..LLLL..', 'WWWWWWWW', 'WIIIIIIW', 'WIIIIIIW', 'WIIIIIIW', 'WIIIIOIW', 'WIIIIIIW', 'WIIIIIIW', 'WIIIIIIW', 'WWWWWWWW'],
   };
+  // 계급 이름(§16.1). 서버는 인덱스만 보낸다.
+  const RANK_NAMES = ['이병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '대위', '소령', '대령', '장군'];
   const SW = 8, SH = 10, EXIT_X = 2, REACH = 6, SPEED = 40; // px/s
   const PX = 5; // 화면 배율
   const TOP = 11; // 위 여백(px): 말풍선 + 문 이름표
@@ -129,19 +135,28 @@
     const m = /^\/s\/(u-[0-9a-z]{10})$/.exec(location.pathname);
     return m ? m[1] : 'plaza';
   };
-  let ws = null, gen = 0;
+  let ws = null, gen = 0, curRoom = 'plaza';
   let you = null, room = null;
   let members = new Map(); // id → { …, dx(표시 x) }
   const me = { x: 12, dir: 1, walkUntil: 0 };
   let bubbles = {};
   let returnTo = null;
+  let carryNote = null; // 입장이 거부돼 광장으로 돌아왔을 때 보여 줄 이유
+  let guestMode = false;
+  const END_TEXT = {
+    full: '방이 꽉 찼어요 (최대 인원)',
+    kicked: '주인이 내보냈어요. 잠시 뒤에 다시 들어올 수 있어요',
+    banned: '이 막사에는 들어갈 수 없어요',
+    closed: '이 막사는 잠겨 있어요',
+  };
   const keys = { left: false, right: false };
   let lastSent = 0, lastSentX = -1;
 
   function sys(text) { addLine(null, text); }
-  function addLine(nick, text, at) {
+  function addLine(nick, text, at, guest) {
     const d = document.createElement('div');
-    d.className = 'l' + (nick ? '' : ' sys');
+    d.className = 'l' + (nick ? '' : ' sys') + (guest ? ' guestline' : '');
+    if (guest) { const g = document.createElement('span'); g.className = 'gb'; g.textContent = '✎ 방명록'; d.append(g); }
     if (at) { const t = document.createElement('span'); t.className = 't'; t.textContent = new Date(at).toTimeString().slice(0, 5); d.append(t); }
     if (nick) { const n = document.createElement('span'); n.className = 'n'; n.textContent = nick; d.append(n); }
     d.append(document.createTextNode(nick ? text : '· ' + text));
@@ -152,6 +167,19 @@
   function clearLog() { logEl.replaceChildren(Object.assign(document.createElement('div'), { className: 'spacer' })); }
 
   const isMember = () => you?.role === 'member';
+  /** 방명록: 막사의 방문자이고 주인이 이 방에 없을 때 (§27.8) */
+  function canGuest() {
+    const o = room?.owner;
+    if (room?.kind !== 'barracks' || !o || !isMember() || you.pid === o.pid) return false;
+    return ![...members.values()].some((m) => m.pid === o.pid);
+  }
+  function setGuestMode(on) {
+    guestMode = on && canGuest();
+    $('guestBtn').classList.toggle('on', guestMode);
+    input.maxLength = guestMode ? 100 : 200;
+    if (isMember()) input.placeholder = guestMode ? '주인에게 남길 한 줄 (100자) · 하루 3번' : 'Enter 로 채팅 · Esc 로 다시 걷기';
+  }
+  const nameTag = (m) => short(m.nick, 8) + (RANK_NAMES[m.rank] ? '·' + RANK_NAMES[m.rank] : '');
 
   function setTitle() {
     const count = members.size + (isMember() ? 1 : 0);
@@ -160,7 +188,7 @@
     else if (room?.kind === 'barracks') {
       const o = room.owner;
       t = `${o?.nick ?? '?'}의 막사`;
-      s = `${count}/${room.cap}명 · ` + (o?.working ? '주인 작업 중 ⌨' : o?.online ? '주인 접속 중' : '주인 외출 중');
+      s = `${count}/${room.cap}명 · ` + (o?.working ? '주인 작업 중 ⌨' : o?.online ? '주인 접속 중' : '주인 외출 중') + (room.locked ? ' · 잠김🔒' : '');
     }
     $('title').textContent = t;
     $('status').textContent = s;
@@ -181,15 +209,16 @@
     const d = doorAt(me.x);
     const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     if (!isMember()) setHint(room.kind === 'plaza' ? '켜져 있는 막사들이에요. 로그인하면 걸어가서 들어갈 수 있어요.' : '구경 중');
-    else if (d?.kind === 'enter') setHint(`<b>e</b> 또는 <b>↑</b>: ${esc(d.door.nick)}의 막사로 들어가기`);
+    else if (d?.kind === 'enter') setHint(`<b>e</b> 또는 <b>↑</b>: ${esc(d.door.nick)}의 막사로 들어가기` + (d.door.locked ? ' (잠김🔒)' : ''));
     else if (d?.kind === 'exit') setHint('<b>e</b> 또는 <b>↑</b>: 광장으로 나가기');
     else if (room.kind === 'plaza') setHint(room.doors?.length ? '<b>a/d</b>·<b>←/→</b> 로 문 앞까지 걸어가서 <b>e</b> · <b>Enter</b> 채팅' : '지금 켜진 막사가 없어요. Claude Code 에서 /space 를 켜면 문이 생겨요.');
-    else setHint('<b>a/d</b>·<b>←/→</b> 이동 · 왼쪽 문에서 <b>e</b> 로 광장 · <b>Enter</b> 채팅');
+    else setHint('<b>a/d</b>·<b>←/→</b> 이동 · 왼쪽 문에서 <b>e</b> 로 광장 · <b>Enter</b> 채팅' + (canGuest() ? ' · <b>g</b> 방명록' : ''));
   }
 
   // ── 연결 ──
   function connect(target) {
     const my = ++gen;
+    curRoom = target;
     try { ws?.close(1000); } catch {}
     members = new Map(); bubbles = {}; you = null; room = null;
     $('status').textContent = '연결 중…';
@@ -206,7 +235,7 @@
     sock.onclose = (e) => {
       clearInterval(keep);
       if (my !== gen) return;
-      if (e.code === 4001 || e.code === 4000) return; // 꽉 참·다른 곳에서 접속 — 다시 붙지 않는다
+      if (e.code >= 4000 && e.code <= 4004) return; // 대체·정원·강퇴·차단·잠금 — 다시 붙지 않는다
       $('status').textContent = '연결이 끊겼어요 — 다시 연결 중…';
       setTimeout(() => my === gen && connect(target), 3000);
     };
@@ -221,6 +250,7 @@
         you = m.you; room = m.room;
         for (const x of m.members) members.set(x.id, { ...x, dx: x.x, walkUntil: 0 });
         clearLog();
+        for (const l of m.guest ?? []) addLine(l.nick, l.text, l.at, true);
         for (const l of m.chat) addLine(l.nick, l.text, l.at);
         sys((room.kind === 'plaza' ? '광장' : (room.owner?.nick ?? '?') + '의 막사') + '에 들어왔어요' + (isMember() ? '' : ' (구경 중)'));
         if (room.kind === 'barracks') me.x = EXIT_X + 10;
@@ -228,9 +258,12 @@
         else me.x = 12;
         returnTo = null;
         me.x = Math.max(0, Math.min(room.width - SW, me.x));
+        if (carryNote) sys(carryNote);
+        carryNote = null;
         $('loginNotice').hidden = isMember();
         input.disabled = !isMember();
         input.placeholder = isMember() ? 'Enter 로 채팅 · Esc 로 다시 걷기' : '로그인하면 이야기할 수 있어요';
+        setGuestMode(false);
         const path = room.kind === 'plaza' ? '/plaza' : '/s/' + room.id;
         if (location.pathname !== path) history.pushState(null, '', path);
         $('loginBtn').href = '/auth/login?next=' + encodeURIComponent(path);
@@ -248,15 +281,32 @@
         addLine(l.nick, l.text, l.at);
         break;
       }
+      case 'guest': addLine(m.line.nick, m.line.text, m.line.at, true); break;
+      case 'guest_clear': for (const el of logEl.querySelectorAll('.guestline')) el.remove(); break;
+      case 'locked': if (room) room.locked = m.locked; sys(m.locked ? '막사가 잠겼어요 (새로 들어올 수 없음)' : '막사가 열렸어요'); break;
       case 'owner': if (room) room.owner = m.owner; break;
       case 'doors': if (room?.kind === 'plaza') { room.doors = m.doors; room.width = m.width; } break;
       case 'error':
-        if (m.code === 'full') { sys('방이 꽉 찼어요 (최대 인원)'); $('status').textContent = '꽉 참'; }
-        else if (m.code === 'replaced') { sys('다른 곳(터미널·다른 탭)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요'); $('status').textContent = '다른 곳에서 접속 중'; }
+        if (END_TEXT[m.code]) {
+          // 막사에서 거부되거나 쫓겨나면 광장으로. 광장이 꽉 찼을 땐 갈 곳이 없으니 안내만.
+          const from = curRoom;
+          if (from !== 'plaza') {
+            carryNote = END_TEXT[m.code];
+            returnTo = from;
+            connect('plaza');
+            return;
+          }
+          sys(END_TEXT[m.code]);
+          $('status').textContent = '꽉 참';
+        } else if (m.code === 'replaced') { sys('다른 곳(터미널·다른 탭)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요'); $('status').textContent = '다른 곳에서 접속 중'; }
         else if (m.code === 'slow_down') sys('조금 천천히 말해 주세요');
+        else if (m.code === 'guest_limit') sys('이 막사 방명록은 하루 3번까지 쓸 수 있어요');
+        else if (m.code === 'guest_owner_here') sys('주인이 와 있어요. 방명록 대신 채팅으로 말해 보세요');
         break;
     }
     setTitle(); updateHint();
+    $('guestBtn').hidden = !canGuest();
+    if (guestMode && !canGuest()) setGuestMode(false);
   }
 
   function enter() {
@@ -271,7 +321,7 @@
   const typing = () => document.activeElement === input;
   addEventListener('keydown', (e) => {
     if (typing()) {
-      if (e.key === 'Escape') { input.blur(); stage.focus(); }
+      if (e.key === 'Escape') { input.blur(); setGuestMode(false); stage.focus(); }
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -279,7 +329,8 @@
     if (k === 'a' || e.key === 'ArrowLeft') { keys.left = true; e.preventDefault(); }
     else if (k === 'd' || e.key === 'ArrowRight') { keys.right = true; e.preventDefault(); }
     else if (k === 'e' || e.key === 'ArrowUp') { enter(); e.preventDefault(); }
-    else if (e.key === 'Enter' || k === 't') { if (isMember()) { input.focus(); e.preventDefault(); } }
+    else if (e.key === 'Enter' || k === 't') { if (isMember()) { setGuestMode(false); input.focus(); e.preventDefault(); } }
+    else if (k === 'g') { if (canGuest()) { setGuestMode(true); input.focus(); e.preventDefault(); } }
   });
   addEventListener('keyup', (e) => {
     const k = e.key.toLowerCase();
@@ -298,10 +349,19 @@
   $('chatForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text) { input.blur(); stage.focus(); return; }
-    send({ t: 'say', text });
-    input.value = ''; // 포커스는 그대로 — 계속 칠 수 있다
+    if (!text) { input.blur(); setGuestMode(false); stage.focus(); return; }
+    input.value = '';
+    if (guestMode) {
+      // 방명록은 한 줄 남기면 끝이라 바로 걷기로 돌아간다
+      send({ t: 'guest', text });
+      setGuestMode(false);
+      input.blur();
+      stage.focus();
+      return;
+    }
+    send({ t: 'say', text }); // 포커스는 그대로 — 계속 칠 수 있다
   });
+  $('guestBtn').addEventListener('click', () => { setGuestMode(!guestMode); if (guestMode) input.focus(); });
   addEventListener('popstate', () => connect(pageRoom()));
 
   // ── 그리기 ──
@@ -355,7 +415,7 @@
     if (room.kind === 'plaza') {
       for (const d of room.doors ?? []) {
         drawSprite(SPRITES.door, d.x, TOP, null, false, d.ownerOnline);
-        label(short(d.nick, 8) + ' ' + d.count + (d.ownerWorking ? '⌨' : ''), d.x + SW / 2, TOP - 1, true);
+        label(short(d.nick, 8) + ' ' + d.count + (d.ownerWorking ? '⌨' : '') + (d.locked ? '🔒' : ''), d.x + SW / 2, TOP - 1, true);
       }
     } else {
       drawSprite(SPRITES.door, EXIT_X, TOP, null, false, true);
@@ -365,20 +425,20 @@
       if (owner && !here) {
         if (owner.online) {
           drawSprite(SPRITES[owner.working ? (tick % 2 ? 'type1' : 'type2') : 'stand'], deskX, TOP, (ARMY[owner.agent] ?? ARMY['claude-code'])(), false);
-          label('★' + short(owner.nick, 8) + (owner.working ? '⌨' : ''), deskX + SW / 2, H - 1);
+          label('★' + nameTag(owner) + (owner.working ? '⌨' : ''), deskX + SW / 2, H - 1);
         } else label('외출 중', deskX + SW / 2, TOP + SH / 2, true);
       }
     }
 
     const ents = [...members.values()].map((m) => ({ ...m, x: m.dx, me: false }));
-    if (isMember()) ents.push({ id: 'me', pid: you.pid, nick: you.nick, agent: you.agent, x: me.x, dir: me.dir, walkUntil: me.walkUntil, state: 'idle', me: true });
+    if (isMember()) ents.push({ id: 'me', pid: you.pid, nick: you.nick, agent: you.agent, rank: you.rank, x: me.x, dir: me.dir, walkUntil: me.walkUntil, state: 'idle', me: true });
     for (const e of ents) {
       const isOwner = owner && e.pid === owner.pid;
       const working = e.state === 'working' || (isOwner && owner.working);
       const f = e.walkUntil > now ? (tick % 2 ? 'walk' : 'stand') : working ? (tick % 2 ? 'type1' : 'type2') : 'stand';
       drawSprite(SPRITES[f], Math.round(e.x), TOP, (ARMY[e.agent] ?? ARMY['claude-code'])(), e.dir < 0);
       const cx = Math.round(e.x) + SW / 2;
-      label((e.me ? '▸' : '') + (isOwner ? '★' : '') + short(e.nick, 8) + (working ? '⌨' : ''), cx, H - 1);
+      label((e.me ? '▸' : '') + (isOwner ? '★' : '') + nameTag(e) + (working ? '⌨' : ''), cx, H - 1);
       const b = bubbles[e.id];
       if (b && b.until > now) label('「' + short(b.text, 14) + '」', cx, TOP - 6);
     }

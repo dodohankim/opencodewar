@@ -3,6 +3,10 @@ import {
   BARRACKS_WIDTH,
   CHAT_MAX_LEN,
   CHAT_TTL_MS,
+  GUEST_DAILY_LIMIT,
+  KICK_BLOCK_MS,
+  VISIT_REWRITE_MS,
+  VISIT_WINDOW_MS,
   PLAZA_CAP,
   DOOR_FIRST_X,
   DOOR_GAP,
@@ -11,18 +15,24 @@ import {
   PRESENCE_FRESH_MS,
   TICKET_TTL_MS,
   WORKING_FRESH_MS,
+  activeBan,
   clampX,
   cleanChat,
+  findTarget,
   hasRoomFor,
   isDoorVisible,
   layoutDoors,
   nextChatAlarm,
   ownerStatus,
+  pruneBans,
   pruneBeats,
   pruneChat,
+  recordVisit,
   roomKindOf,
   signTicket,
+  takeGuestQuota,
   verifyTicket,
+  visitSummary,
 } from '../src/space-logic';
 
 const door = (pid: string, over: Partial<Parameters<typeof layoutDoors>[0][number]> = {}) => ({
@@ -32,6 +42,7 @@ const door = (pid: string, over: Partial<Parameters<typeof layoutDoors>[0][numbe
   count: 0,
   ownerOnline: true,
   ownerWorking: false,
+  locked: false,
   ...over,
 });
 
@@ -120,6 +131,59 @@ describe('광장 문 배치', () => {
   });
 });
 
+describe('방명록 한도', () => {
+  it('막사별 하루 3건, 날이 바뀌면 초기화', () => {
+    let q = takeGuestQuota(undefined, 'u-a', '2026-11-04')!;
+    for (let i = 1; i < GUEST_DAILY_LIMIT; i++) q = takeGuestQuota(q, 'u-a', '2026-11-04')!;
+    expect(takeGuestQuota(q, 'u-a', '2026-11-04')).toBeNull();
+    expect(takeGuestQuota(q, 'u-b', '2026-11-04')?.counts['u-b']).toBe(1); // 다른 방문자는 따로
+    expect(takeGuestQuota(q, 'u-a', '2026-11-05')).toEqual({ day: '2026-11-05', counts: { 'u-a': 1 } });
+  });
+  it('방명록은 100자로 자른다', () => {
+    expect(Array.from(cleanChat('가'.repeat(300), 100)!).length).toBe(100);
+  });
+});
+
+describe('방문 기록', () => {
+  const now = 100 * VISIT_WINDOW_MS;
+  it('같은 사람이 금방 다시 오면 쓰지 않는다', () => {
+    const log = recordVisit(undefined, 'u-a', 'a', now)!;
+    expect(recordVisit(log, 'u-a', 'a', now + 1000)).toBeNull();
+    expect(recordVisit(log, 'u-a', 'a', now + VISIT_REWRITE_MS)?.visits['u-a'].at).toBe(now + VISIT_REWRITE_MS);
+  });
+  it('주인이 들어온 뒤의 방문·방명록만 센다, 7일 지난 건 안 센다', () => {
+    const log = { seenAt: now - 1000, visits: { a: { nick: 'a', at: now - 2000 }, b: { nick: 'b', at: now - 500 } } };
+    expect(visitSummary(log, [{ at: now - 2000 }, { at: now - 100 }], now)).toEqual({ visitors: 1, guestbook: 1 });
+    const never = { seenAt: 0, visits: { old: { nick: 'o', at: now - VISIT_WINDOW_MS - 1 }, b: { nick: 'b', at: now - 1 } } };
+    expect(visitSummary(never, [], now)).toEqual({ visitors: 1, guestbook: 0 });
+    expect(visitSummary(undefined, [], now)).toEqual({ visitors: 0, guestbook: 0 });
+  });
+});
+
+describe('강퇴 · 차단', () => {
+  const now = 1_000_000;
+  it('강퇴는 잠시, 차단은 영구', () => {
+    const bans = { a: { nick: 'a', until: now + KICK_BLOCK_MS }, b: { nick: 'b', until: null }, c: { nick: 'c', until: now - 1 } };
+    expect(activeBan(bans, 'a', now)?.nick).toBe('a');
+    expect(activeBan(bans, 'b', now + 10 ** 12)?.nick).toBe('b');
+    expect(activeBan(bans, 'c', now)).toBeNull();
+    expect(activeBan(undefined, 'a', now)).toBeNull();
+    expect(Object.keys(pruneBans(bans, now))).toEqual(['a', 'b']);
+  });
+  it('닉네임(대소문자 무시)·public_id 로 찾고, 같은 닉이 둘이면 모호', () => {
+    const c = [
+      { pid: 'u-1', nick: 'Kim' },
+      { pid: 'u-2', nick: 'lee' },
+      { pid: 'u-3', nick: 'LEE' },
+      { pid: 'u-1', nick: 'Kim' },
+    ];
+    expect(findTarget('kim', c)).toEqual(c[0]);
+    expect(findTarget('u-2', c)).toEqual(c[1]);
+    expect(findTarget('lee', c)).toBe('ambiguous');
+    expect(findTarget('없음', c)).toBe('none');
+  });
+});
+
 describe('주인 상태 (세션별 하트비트)', () => {
   const now = 1_000_000_000;
   it('세션 하나라도 일하면 작업 중', () => {
@@ -139,7 +203,7 @@ describe('주인 상태 (세션별 하트비트)', () => {
 });
 
 describe('티켓', () => {
-  const id = { pid: 'u-abcdef1234', nick: 'dohan', agent: 'claude-code' as const };
+  const id = { pid: 'u-abcdef1234', nick: 'dohan', agent: 'claude-code' as const, rank: 3 };
   it('서명·검증 왕복', async () => {
     const t = await signTicket('secret', id, 1000);
     expect(await verifyTicket('secret', t, 1000 + TICKET_TTL_MS - 1)).toEqual(id);
@@ -157,6 +221,6 @@ describe('티켓', () => {
     const t = await signTicket('secret', id, 1000);
     const payload = atob(t.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'));
     expect(payload).not.toContain('ocw_');
-    expect(Object.keys(JSON.parse(payload)).sort()).toEqual(['a', 'e', 'n', 'p']);
+    expect(Object.keys(JSON.parse(payload)).sort()).toEqual(['a', 'e', 'n', 'p', 'r']);
   });
 });

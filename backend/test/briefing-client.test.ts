@@ -82,6 +82,24 @@ describe('briefingCandidates — key 는 숫자가 아니라 종류로 잡는다
   });
 });
 
+describe('briefingCandidates — 막사 (§27.8)', () => {
+  it('없는 동안 다녀간 사람·방명록 한 줄, 숫자가 늘면 다른 소식', () => {
+    const c = briefingCandidates(data({ space: { visitors: 3, guestbook: 2 } }), null, 'ko');
+    const line = c.find((x: any) => x.key === 'space:3:2');
+    expect(line.line).toBe('⛺ 막사에 3명 다녀감 · 방명록 2');
+  });
+  it('방명록이 없으면 그 부분은 뺀다, 영문 복수형', () => {
+    expect(briefingCandidates(data({ space: { visitors: 1, guestbook: 0 } }), null, 'ko')[0].line).toBe('⛺ 막사에 1명 다녀감');
+    expect(briefingCandidates(data({ space: { visitors: 1, guestbook: 0 } }), null, 'en')[0].line).toBe('⛺ 1 visitor in your barracks');
+    expect(briefingCandidates(data({ space: { visitors: 2, guestbook: 2 } }), null, 'en')[0].line).toBe('⛺ 2 visitors in your barracks · 2 guestbook notes');
+  });
+  it('우선순위: 스트릭 > 막사 > 계급 임박, 소식이 없으면 침묵', () => {
+    const d = data({ today: { prompts: 3, chars: 100, qualified: false }, space: { visitors: 1, guestbook: 0 } });
+    expect(briefingCandidates(d, null, 'ko').map((c: any) => c.key)).toEqual(['streak:11', 'space:1:0', 'rank:2']);
+    expect(briefingCandidates(data({ space: null }), null, 'ko').map((c: any) => c.key)).toEqual(['rank:2']);
+  });
+});
+
 describe('pickBriefing — 막힌 후보는 건너뛰고 다음 순위로', () => {
   it('1순위가 이미 본 얘기면 침묵하지 않고 다음 걸 띄운다', () => {
     const d = data({ today: { prompts: 3, chars: 100, qualified: false } }); // streak + rank 둘 다 후보

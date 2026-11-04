@@ -209,6 +209,18 @@ export function briefingCandidates(data, prevRank, lang, now = Date.now()) {
     });
   }
 
+  // 막사(§27.8) — 없는 동안 다녀간 사람·방명록. 숫자가 늘면 새 소식이므로 key 에 넣는다(하루 1회 가드는 유지).
+  // 주인이 막사에 들어가면 서버가 0 으로 돌려서 줄이 사라진다.
+  const space = data.space;
+  if (space && (space.visitors > 0 || space.guestbook > 0)) {
+    const v = space.visitors ?? 0;
+    const g = space.guestbook ?? 0;
+    const parts = ko
+      ? [`막사에 ${v}명 다녀감`, g > 0 ? `방명록 ${g}` : null]
+      : [`${v} visitor${v === 1 ? '' : 's'} in your barracks`, g > 0 ? `${g} guestbook note${g === 1 ? '' : 's'}` : null];
+    out.push({ key: `space:${v}:${g}`, line: `⛺ ${parts.filter(Boolean).join(' · ')}` });
+  }
+
   // 4순위 — 다음 계급 임박. 끝이 보이는 목표가 행동을 끌어낸다.
   // key 는 계급 인덱스 — 상병인 동안 계속 임박 상태라도 딱 한 번만 알린다.
   const rt = data.rankTitle ?? {};

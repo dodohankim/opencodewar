@@ -7,8 +7,8 @@
 // 통신 (§27.5): 서버 WebSocket 은 사이드카(link/link.mjs)가 잡는다.
 //   수신 = 사이드카 stdout 한 줄에 JSON 하나 → 이 모듈
 //   송신 = 이 모듈 → 127.0.0.1 사이드카 HTTP → WebSocket
-// 주인 작업 상태 (§27.7): 이 세션의 턴 시작·끝 + 2분 하트비트를 /space/status 로 보낸다.
-//   보내는 건 working/idle 값뿐 — 프롬프트·도구 내용은 보지 않는다.
+// 주인 작업 상태 (§27.7): 이 세션의 턴 시작·끝(3초 디바운스) + 2분 하트비트를 /space/status 로 보낸다.
+//   보내는 건 working/idle 값뿐 — 프롬프트·도구 내용은 보지 않는다. /space presence off 로 끈다.
 
 const PANE = 'ocw-space'
 const SW = 8 // 병정 폭(px)
@@ -19,6 +19,7 @@ const LOG_MAX = 60
 const BUBBLE_MS = 5000
 const MOVE_SEND_MS = 90 // 이동 전송 최소 간격
 const STATUS_BEAT_MS = 120_000
+const STATUS_DEBOUNCE_MS = 3000 // 짧은 턴은 서버에 알리지 않는다 (요청 한도)
 const DOOR_REACH = 6 // 문 앞 판정 거리(px)
 const EXIT_X = 2 // 막사 안 나가는 문 위치
 const DEFAULT_ENDPOINT = 'https://opencodewar.dev'
@@ -56,6 +57,14 @@ const OK = 0x4f8258
 // 군복색 = 주 에이전트 (웹 .army-* 와 같은 매핑)
 const ARMY = { 'claude-code': INK, codex: 0x3e6fb8, opencode: 0xb8742e, pi: 0x7c55b0 }
 const armyOf = (agent) => ARMY[agent] ?? INK
+
+// 계급 이름(§16.1). 임계값은 서버에만 있고 여기는 이름만 갖는다 — 인덱스로 매칭.
+const RANK_NAMES = ['이병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '대위', '소령', '대령', '장군']
+/** 이름표: `닉네임·계급` (§27.4). 계급을 모르면 닉네임만. */
+export function nameTag(m) {
+  const r = RANK_NAMES[m.rank]
+  return clip(m.nick, 8) + (r ? '·' + r : '')
+}
 
 function pixelColor(ch, army, flag, lit) {
   switch (ch) {
@@ -205,7 +214,7 @@ export function emptyRoom() {
 export const me = { x: 12, dir: 1, walkUntil: 0 }
 let view = emptyRoom()
 let isOpen = false
-let chatMode = false
+let inputMode = null // null(걷기) | 'chat' | 'guest'
 let openedAt = 0
 let tick = 0
 let isWorking = false // 이 세션의 Claude 가 턴 진행 중
@@ -217,6 +226,21 @@ let lastMoveSent = 0
 let moveTimer = null
 let sid = ''
 let pendingDoorReturn = null // 막사에서 광장으로 나올 때, 방금 나온 막사 문 앞에 세운다
+let carryNote = null // 입장이 거부돼 광장으로 돌아왔을 때 보여 줄 이유
+let interactive = false
+let presenceOff = false
+let wantStatus = 'idle'
+let sentStatus = null
+let statusTimer = null
+
+/** 서버가 연결을 끝내는 이유. replaced 를 뺀 나머지는 막사에서 받으면 광장으로 돌아간다. */
+const END_TEXT = {
+  full: '방이 꽉 찼어요 (최대 인원)',
+  replaced: '다른 곳(웹·다른 터미널)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요',
+  kicked: '주인이 내보냈어요. 잠시 뒤에 다시 들어올 수 있어요',
+  banned: '이 막사에는 들어갈 수 없어요',
+  closed: '이 막사는 잠겨 있어요',
+}
 
 function pushLog(entry) {
   view.log.push(entry)
@@ -234,6 +258,7 @@ export function applyServer(v, msg, now) {
       v.members = new Map()
       for (const m of msg.members ?? []) v.members.set(m.id, { ...m, walkUntil: 0 })
       v.log = []
+      for (const l of msg.guest ?? []) v.log.push({ at: l.at, nick: l.nick, text: l.text, kind: 'guest' })
       for (const l of msg.chat ?? []) v.log.push({ at: l.at, nick: l.nick, text: l.text, kind: 'chat' })
       const where = msg.room.kind === 'plaza' ? '광장' : (msg.room.owner?.nick ?? '?') + '의 막사'
       v.log.push({ at: now, nick: '', text: where + '에 들어왔습니다' + (msg.you.role === 'spectator' ? ' (관전)' : ''), kind: 'notice' })
@@ -244,6 +269,8 @@ export function applyServer(v, msg, now) {
       }
       pendingDoorReturn = null
       me.x = Math.max(0, Math.min(msg.room.width - SW, me.x))
+      if (carryNote) v.log.push({ at: now, nick: '', text: carryNote, kind: 'notice' })
+      carryNote = null
       return
     }
     case 'join':
@@ -274,6 +301,18 @@ export function applyServer(v, msg, now) {
       v.log.push({ at: l.at, nick: l.nick, text: l.text, kind: 'chat' })
       return
     }
+    case 'guest': {
+      const l = msg.line
+      v.log.push({ at: l.at, nick: l.nick, text: l.text, kind: 'guest' })
+      return
+    }
+    case 'guest_clear':
+      v.log = v.log.filter((l) => l.kind !== 'guest')
+      return
+    case 'locked':
+      if (v.room) v.room.locked = msg.locked
+      v.log.push({ at: now, nick: '', text: msg.locked ? '막사가 잠겼어요 (새로 들어올 수 없음)' : '막사가 열렸어요', kind: 'notice' })
+      return
     case 'owner':
       if (v.room) v.room.owner = msg.owner
       return
@@ -284,19 +323,26 @@ export function applyServer(v, msg, now) {
       }
       return
     case 'error': {
-      const text = {
-        full: '방이 꽉 찼어요 (최대 인원)',
-        replaced: '다른 곳(웹·다른 터미널)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요',
+      const text = END_TEXT[msg.code] ?? {
         slow_down: '조금 천천히 말해 주세요',
+        guest_limit: '이 막사 방명록은 하루 3번까지 쓸 수 있어요',
+        guest_owner_here: '주인이 와 있어요. 방명록 대신 채팅으로 말해 보세요',
       }[msg.code]
       if (text) v.log.push({ at: now, nick: '', text, kind: 'notice' })
-      if (msg.code === 'full' || msg.code === 'replaced') {
+      if (END_TEXT[msg.code]) {
         v.status = 'error'
         v.note = text
       }
       return
     }
   }
+}
+
+/** 방명록을 쓸 수 있나: 막사의 방문자이고 주인이 이 방에 없을 때 (§27.8) */
+export function canGuest(v) {
+  const owner = v.room?.owner
+  if (v.room?.kind !== 'barracks' || !owner || v.you?.role !== 'member' || v.you.pid === owner.pid) return false
+  return ![...v.members.values()].some((m) => m.pid === owner.pid)
 }
 
 /** 지금 서 있는 곳 앞의 문: 광장은 막사 문, 막사는 나가는 문 */
@@ -329,7 +375,7 @@ export function compose(v, viewCols, now, meWorking) {
   if (v.room?.kind === 'plaza') {
     for (const d of v.room.doors ?? []) {
       stamp(buf, SPRITES.door, d.x - cam, 0, { lit: d.ownerOnline })
-      const label = clip(d.nick, 8) + ' ' + d.count + (d.ownerWorking ? '⌨' : '')
+      const label = clip(d.nick, 8) + ' ' + d.count + (d.ownerWorking ? '⌨' : '') + (d.locked ? '🔒' : '')
       signs.push({ x: d.x - cam + SW / 2, text: label })
     }
   } else if (v.room?.kind === 'barracks') {
@@ -341,7 +387,7 @@ export function compose(v, viewCols, now, meWorking) {
     if (owner && !ownerHere) {
       if (owner.online) {
         stamp(buf, SPRITES[owner.working ? (tick % 4 < 2 ? 'type1' : 'type2') : 'stand'], deskX - cam, 0, { army: armyOf(owner.agent) })
-        names.push({ x: deskX - cam + SW / 2, text: '★' + clip(owner.nick, 8) + (owner.working ? '⌨' : '') })
+        names.push({ x: deskX - cam + SW / 2, text: '★' + nameTag(owner) + (owner.working ? '⌨' : '') })
       } else {
         signs.push({ x: deskX - cam + SW / 2, text: '외출 중' })
       }
@@ -349,7 +395,7 @@ export function compose(v, viewCols, now, meWorking) {
   }
 
   const ents = [...v.members.values()].map((m) => ({ ...m, isMe: false }))
-  if (v.you?.role === 'member') ents.push({ id: 'me', pid: v.you.pid, nick: v.you.nick, agent: v.you.agent, x: me.x, dir: me.dir, walkUntil: me.walkUntil, state: meWorking ? 'working' : 'idle', isMe: true })
+  if (v.you?.role === 'member') ents.push({ id: 'me', pid: v.you.pid, nick: v.you.nick, agent: v.you.agent, rank: v.you.rank, x: me.x, dir: me.dir, walkUntil: me.walkUntil, state: meWorking ? 'working' : 'idle', isMe: true })
   for (const e of ents) {
     const isOwner = owner && e.pid === owner.pid
     const working = e.state === 'working' || (isOwner && owner.working)
@@ -357,7 +403,7 @@ export function compose(v, viewCols, now, meWorking) {
     stamp(buf, SPRITES[frameOf(e, now, working)], sx, 0, { army: armyOf(e.agent), mirror: e.dir < 0 })
     const mid = sx + SW / 2
     if (mid < -SW || mid > cols + SW) continue
-    names.push({ x: mid, text: (e.isMe ? '▸' : '') + (isOwner ? '★' : '') + clip(e.nick, 8) + (working ? '⌨' : '') })
+    names.push({ x: mid, text: (e.isMe ? '▸' : '') + (isOwner ? '★' : '') + nameTag(e) + (working ? '⌨' : '') })
     const b = v.bubbles[e.id]
     if (b && b.until > now) bubbles.push({ x: mid, text: '「' + clip(b.text, 12) + '」' })
   }
@@ -389,6 +435,49 @@ function svgOf(sc) {
 
 // ── 설정 · 네트워크 ──
 
+const NO_CONFIG = 'Open Code War 플러그인 설정(~/.open-code-war/config.json)이 없어요. 먼저 플러그인을 설치하고 프롬프트를 한 번 보내 주세요.'
+
+const SPACE_USAGE = [
+  '/space — 광장 열기',
+  '/space home — 내 막사로 바로',
+  '/space kick <닉> — 내 막사에서 내보내기 (10분간 못 들어옴)',
+  '/space ban <닉> · unban <닉> · bans — 차단 · 해제 · 목록',
+  '/space open · close — 막사 열기 · 잠그기',
+  '/space guestbook clear — 방명록 비우기',
+  '/space presence on · off — 작업 상태 알리기 켜기 · 끄기',
+].join('\n')
+
+/** /space 뒤의 인자 해석 */
+export function parseSpaceArgs(raw) {
+  const [sub = '', ...rest] = String(raw ?? '').trim().split(/\s+/)
+  const arg = rest.join(' ')
+  if (sub === '') return { kind: 'plaza' }
+  if (sub === 'home') return { kind: 'home' }
+  if ((sub === 'kick' || sub === 'ban' || sub === 'unban') && arg) return { kind: 'admin', action: sub, target: arg }
+  if (sub === 'bans' || sub === 'open' || sub === 'close') return { kind: 'admin', action: sub, target: '' }
+  if (sub === 'guestbook' && arg === 'clear') return { kind: 'admin', action: 'guest_clear', target: '' }
+  if (sub === 'presence' && (arg === 'on' || arg === 'off')) return { kind: 'presence', on: arg === 'on' }
+  return { kind: 'usage' }
+}
+
+/** 서버 응답 → 사람이 읽을 한 줄 */
+export function adminReply(action, target, data) {
+  if (!data?.ok) {
+    const why = { not_found: `'${target}' 님을 찾지 못했어요. 지금 막사에 있거나 최근 다녀간 사람만 지정할 수 있어요.`, ambiguous: `'${target}' 닉네임이 여러 명이에요.`, not_self: '자기 자신은 내보낼 수 없어요.' }[data?.error]
+    return why ?? '처리하지 못했어요: ' + (data?.error ?? '알 수 없는 오류')
+  }
+  switch (action) {
+    case 'kick': return `${data.target} 님을 내보냈어요. 10분 동안 다시 들어올 수 없어요.`
+    case 'ban': return `${data.target} 님을 차단했어요.`
+    case 'unban': return `${data.target} 님의 차단을 풀었어요.`
+    case 'bans': return data.bans?.length ? '차단 목록: ' + data.bans.join(', ') : '차단한 사람이 없어요.'
+    case 'open': return '막사를 열었어요.'
+    case 'close': return '막사를 잠갔어요. 나 말고는 새로 들어올 수 없어요.'
+    case 'guest_clear': return '방명록을 비웠어요.'
+    default: return '처리했어요.'
+  }
+}
+
 async function loadConfig($) {
   try {
     const home = await $.env.get('HOME')
@@ -416,11 +505,22 @@ async function api($, path, body) {
   return { ok: r.ok, status: r.status, data }
 }
 
-async function reportStatus($, state) {
-  if (!cfg) return
+async function reportStatus($, state, extra = {}) {
+  if (!cfg || !interactive || (presenceOff && state !== 'offline')) return
+  sentStatus = state
   try {
-    await api($, '/space/status', { userId: cfg.userId, sid, state })
+    await api($, '/space/status', { userId: cfg.userId, sid, state, ...extra })
   } catch {}
+}
+
+/** 턴 상태 변화는 모아서 보낸다: 3초 안에 끝나는 턴은 요청을 만들지 않는다. */
+function setStatus($, state) {
+  wantStatus = state
+  if (statusTimer) return
+  statusTimer = $.clock.after(STATUS_DEBOUNCE_MS, () => {
+    statusTimer = null
+    if (wantStatus !== sentStatus) reportStatus($, wantStatus)
+  })
 }
 
 function send($, msg) {
@@ -467,7 +567,7 @@ async function connect($, room) {
   cfg = cfg ?? (await loadConfig($))
   if (!cfg) {
     view.status = 'error'
-    view.note = 'Open Code War 플러그인 설정(~/.open-code-war/config.json)이 없어요. 먼저 플러그인을 설치하고 프롬프트를 한 번 보내 주세요.'
+    view.note = NO_CONFIG
     redraw($)
     return
   }
@@ -525,6 +625,15 @@ async function connect($, room) {
         if (msg.t === '_closed') continue
         applyServer(view, msg, await $.clock.now())
         if (msg.t === 'hello' && link?.gen === my) for (const m of syncMessages(me.x, me.dir, isWorking)) send($, m)
+        if (msg.t === 'error' && END_TEXT[msg.code]) {
+          // 서버가 먼저 닫아도 close 가 안 올 수 있으니 직접 닫는다. 막사에서 쫓겨나거나 거부되면 광장으로.
+          closeLink($)
+          if (msg.code !== 'replaced' && room !== 'plaza') {
+            carryNote = END_TEXT[msg.code]
+            pendingDoorReturn = room
+            $.clock.after(0, () => connect($, 'plaza'))
+          }
+        }
         redraw($)
       }
     }
@@ -547,17 +656,20 @@ export function register(on) {
   on('session.start', async ($, e, next) => {
     sid = crypto.randomUUID().replace(/-/g, '')
     cfg = await loadConfig($)
+    interactive = e.isInteractive !== false // claude -p 같은 비대화 실행은 "접속 중"이 아니다
+    presenceOff = (await $.store.get('presence')) === 'off'
     me.x = 12
     $.clock.every(TICK_MS, () => {
       if (!isOpen) return
       tick += 1
       redraw($)
     })
-    // 주인 상태: 켜짐 알림 + 2분 하트비트 (광장 문 불빛·막사 책상의 주인)
-    await reportStatus($, 'idle')
+    // 주인 상태: 켜짐 알림 + 2분 하트비트 (광장 문 불빛·막사 책상의 주인).
+    // session.start 는 첫 프롬프트 전에 기다려지므로, 서버가 느려도 세션을 늦추지 않게 타이머로 뺀다.
+    $.clock.after(0, () => reportStatus($, 'idle', { full: true }))
     $.clock.every(STATUS_BEAT_MS, () => reportStatus($, isWorking ? 'working' : 'idle'))
     try {
-      await $.command.register({ name: 'space', description: '광장 열기 — 막사 문으로 걸어가 e 로 들어가기 (/space home = 내 막사)', argumentHint: '[home]', immediate: true })
+      await $.command.register({ name: 'space', description: '광장 열기 — 막사 문으로 걸어가 e 로 들어가기 (home · kick · ban · unban · open · close · guestbook clear · presence)', argumentHint: '[home | kick <닉> | ban <닉> | unban <닉> | open | close | guestbook clear | presence on|off]', immediate: true })
     } catch (err) {
       $.ui.log('명령 등록 실패: ' + String(err?.message ?? err))
     }
@@ -568,14 +680,14 @@ export function register(on) {
   on('turn.start', async ($, e, next) => {
     isWorking = true
     send($, { t: 'state', state: 'working' })
-    reportStatus($, 'working')
+    setStatus($, 'working')
     redraw($)
     return next(e)
   })
   on('turn.complete', async ($, e, next) => {
     isWorking = false
     send($, { t: 'state', state: 'idle' })
-    reportStatus($, 'idle')
+    setStatus($, 'idle')
     redraw($)
     return next(e)
   })
@@ -586,13 +698,31 @@ export function register(on) {
   })
 
   on('command.run', { command: 'space' }, async ($, e) => {
+    const parsed = parseSpaceArgs(e.args)
+    cfg = cfg ?? (await loadConfig($))
+    if (parsed.kind === 'usage') return { text: SPACE_USAGE }
+    if (parsed.kind === 'presence') {
+      presenceOff = !parsed.on
+      await $.store.set('presence', parsed.on ? 'on' : 'off')
+      await reportStatus($, parsed.on ? (isWorking ? 'working' : 'idle') : 'offline')
+      return { text: parsed.on ? '작업 상태를 다시 알립니다. 내 막사 문에 불이 켜져요.' : '작업 상태를 알리지 않습니다. 내 막사는 외출 중으로 보여요.' }
+    }
+    if (parsed.kind === 'admin') {
+      if (!cfg) return { text: NO_CONFIG }
+      let r
+      try {
+        r = await api($, '/space/admin', { userId: cfg.userId, action: parsed.action, target: parsed.target })
+      } catch (err) {
+        return { text: '서버에 연결할 수 없어요: ' + String(err?.message ?? err) }
+      }
+      return { text: adminReply(parsed.action, parsed.target, r.data) }
+    }
     isOpen = true
-    chatMode = false
+    inputMode = null
     openedAt = await $.clock.now()
     const r = await $.ui.open({ id: PANE, title: 'OCW 광장', focus: true, closeOnEscape: true, rows: 22 })
     if (r && r.isPlaced === false) $.ui.toast('패널 대기 중: ' + (r.reason ?? '터미널이 좁아요'))
-    cfg = cfg ?? (await loadConfig($))
-    let room = String(e.args ?? '').trim() === 'home' ? null : 'plaza'
+    let room = parsed.kind === 'home' ? null : 'plaza'
     if (room === null) {
       // 내 막사 = 내 public_id. 티켓을 한 번 받아 알아낸다.
       try {
@@ -610,7 +740,7 @@ export function register(on) {
   on('ui.close', async ($, e, next) => {
     if (e.id === PANE) {
       isOpen = false
-      chatMode = false
+      inputMode = null
       gen += 1 // 닫으면 방에서 나간다 (광장·막사 인원에서 빠짐)
       closeLink($)
       view = emptyRoom()
@@ -628,6 +758,7 @@ export function register(on) {
     const isMember = view.you?.role === 'member'
     const count = (room ? view.members.size : 0) + (isMember ? 1 : 0)
     const near = doorAt(view, me.x)
+    const guestOk = canGuest(view)
 
     const focusOn = (key) =>
       $.clock.after(60, async () => {
@@ -669,7 +800,7 @@ export function register(on) {
     if (room?.kind === 'plaza') title = `광장 · ${count}/${room.cap}`
     else if (room?.kind === 'barracks') {
       const o = room.owner
-      title = `${o?.nick ?? '?'}의 막사 · ${count}/${room.cap}` + (o ? (o.working ? ' · 주인 작업 중 ⌨' : o.online ? ' · 주인 접속 중' : ' · 주인 외출 중') : '')
+      title = `${o?.nick ?? '?'}의 막사 · ${count}/${room.cap}` + (o ? (o.working ? ' · 주인 작업 중 ⌨' : o.online ? ' · 주인 접속 중' : ' · 주인 외출 중') : '') + (room.locked ? ' · 잠김🔒' : '')
     }
     const header = Text({ bold: true, wrap: 'truncate-end', children: [clip(title, bodyCols - 2)] })
     const hint = Text({
@@ -681,11 +812,11 @@ export function register(on) {
             ? view.note
             : near
               ? near.kind === 'enter'
-                ? `e: ${near.door.nick}의 막사로 들어가기`
+                ? `e: ${near.door.nick}의 막사로 들어가기` + (near.door.locked ? ' (잠김🔒)' : '')
                 : 'e: 광장으로 나가기'
               : room?.kind === 'plaza'
                 ? (room.doors?.length ? 'a/d 로 문 앞까지 걸어가서 e' : '아직 켜진 막사가 없어요 · /space home 으로 내 막사') + ' · t 채팅 · Esc 닫기'
-                : 'a/d 이동 · 왼쪽 문에서 e 로 광장 · t 채팅 · Esc 닫기',
+                : 'a/d 이동 · 왼쪽 문에서 e 로 광장 · t 채팅' + (guestOk ? ' · g 방명록' : '') + ' · Esc 닫기',
           bodyCols,
         ),
       ],
@@ -712,7 +843,20 @@ export function register(on) {
           onPress: async () => {
             if ((await $.clock.now()) - openedAt < 500) return // /space 를 친 Enter 가 눌러버리는 것 방지
             if (!isMember) return
-            chatMode = true
+            inputMode = 'chat'
+            redraw($)
+            focusOn('chat')
+          },
+        }),
+        Button({
+          key: 'guest',
+          label: '방명록',
+          hotkey: 'g',
+          plain: true,
+          dimColor: !guestOk,
+          onPress: () => {
+            if (!guestOk) return
+            inputMode = 'guest'
             redraw($)
             focusOn('chat')
           },
@@ -722,19 +866,21 @@ export function register(on) {
 
     const chatInput = Input({
       key: 'chat',
-      label: chatMode ? '채팅' : '채팅(t)',
-      placeholder: !isMember ? '관전 중에는 말할 수 없어요' : chatMode ? '입력 후 Enter · 빈 Enter/Tab = 이동 모드' : 't 를 누르면 여기로',
+      label: inputMode === 'guest' ? '방명록' : inputMode === 'chat' ? '채팅' : '채팅(t)',
+      placeholder: !isMember ? '관전 중에는 말할 수 없어요' : inputMode === 'guest' ? '주인에게 남길 한 줄 (100자) 입력 후 Enter' : inputMode === 'chat' ? '입력 후 Enter · 빈 Enter/Tab = 이동 모드' : 't 를 누르면 여기로',
       value: '',
       submitLabel: '보내기',
       onSubmit: async (value) => {
         const text = String(value ?? '').trim().slice(0, 200)
-        if (!text || !isMember) {
-          chatMode = false
+        if (!text || !isMember || inputMode === 'guest') {
+          // 방명록은 한 줄 남기면 끝이라 바로 걷기로 돌아간다
+          if (text && isMember) send($, { t: 'guest', text })
+          inputMode = null
           redraw($)
           focusOn('right')
           return
         }
-        chatMode = true
+        inputMode = 'chat'
         send($, { t: 'say', text })
         redraw($)
         focusOn('chat')
@@ -752,7 +898,7 @@ export function register(on) {
         Text({
           dimColor: l.kind === 'notice',
           wrap: 'truncate-end',
-          children: [l.kind === 'notice' ? `· ${l.text}` : `${hhmm(l.at)} ${l.nick}: ${l.text}`],
+          children: [l.kind === 'notice' ? `· ${l.text}` : `${l.kind === 'guest' ? '✎ ' : ''}${hhmm(l.at)} ${l.nick}: ${l.text}`],
         }),
       ),
     ]

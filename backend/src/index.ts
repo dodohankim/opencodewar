@@ -45,7 +45,7 @@ import {
 } from './og';
 import { handleIcon, iconHostFromPath } from './icon';
 import { isValidNickname } from './validate';
-import { handleSpacePage, handleSpaceStatus, handleSpaceTicket, handleSpaceWs, spacePageRoom } from './space';
+import { handleSpaceAdmin, handleSpacePage, handleSpaceStatus, handleSpaceTicket, handleSpaceWs, spacePageRoom } from './space';
 import { handleAgentDocs, markdownForPage, notFound, wantsMarkdownPage, withVaryAccept } from './agents';
 
 /** 페이지·이미지 라우트는 GET/HEAD 둘 다 받는다 — HEAD 로 찔러보는 크롤러·링크체커가 404 를 받지 않도록. */
@@ -124,6 +124,9 @@ export default {
       }
       if (pathname === '/space/status' && request.method === 'POST') {
         return await handleSpaceStatus(request, env);
+      }
+      if (pathname === '/space/admin' && request.method === 'POST') {
+        return await handleSpaceAdmin(request, env);
       }
       if (spacePageRoom(pathname) !== null && isPageRead(request.method)) {
         return await handleSpacePage(request, url, env);

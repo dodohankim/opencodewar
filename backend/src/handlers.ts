@@ -434,6 +434,9 @@ export async function handleBriefing(url: URL, env: Env, ctx?: ExecutionContext)
   // 교전(§22.5) — 참가 중이면 종료 임박 교전 하나의 요약을 함께 내려준다(세션당 1회라 비용 무시 가능).
   const battle = await battleBriefOf(env, userId, now).catch(() => null);
 
+  // 막사(§27.8) — 주인이 없는 동안 다녀간 사람·방명록 수. DO 요청 1회, 세션당 1번이다. 실패하면 줄이 빠질 뿐.
+  const space = user.public_id ? await spaceBriefOf(env, user.public_id) : null;
+
   return json({
     ...buildBriefing({
       snapshot,
@@ -444,7 +447,20 @@ export async function handleBriefing(url: URL, env: Env, ctx?: ExecutionContext)
       now,
     }),
     battle,
+    space,
   });
+}
+
+async function spaceBriefOf(env: Env, publicId: string): Promise<{ visitors: number; guestbook: number } | null> {
+  try {
+    const res = await env.SPACE.get(env.SPACE.idFromName(publicId)).fetch('https://space/brief');
+    const v = (await res.json()) as { visitors?: number; guestbook?: number };
+    const visitors = Number(v.visitors) || 0;
+    const guestbook = Number(v.guestbook) || 0;
+    return visitors > 0 || guestbook > 0 ? { visitors, guestbook } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
