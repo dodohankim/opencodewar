@@ -290,22 +290,24 @@ Nobody sees your effort anymore. Open Code War puts it on a board — how many t
 /** /privacy 의 마크다운 판 — 핵심 요약 + 전문 링크(전문은 HTML 이 단일 원본). */
 export const PRIVACY_MD = `# Open Code War Privacy Policy (summary)
 
-Full text (English and Korean, effective 2026-08-10): ${SITE_ORIGIN}/privacy — this summary is for agents and is not a substitute for the full policy.
+Full text (English and Korean, effective 2026-11-11; the 2026-08-10 version applies until then): ${SITE_ORIGIN}/privacy — this summary is for agents and is not a substitute for the full policy.
 
 ## What is collected
 - Anonymous device id generated at install (random; not linked to a person unless Google is linked).
 - Usage counts: number of prompt submits and their character counts, the agent name, a timestamp.
 - Country (2-letter code) and IANA timezone derived by Cloudflare from the IP — the IP itself is not stored.
 - Optional: a project label you chose, a nickname, bio/role/company/links you enter, and — if you link Google — your Google account id and email (private by default).
+- Barracks and Plaza: chat and guestbook messages you send (public to anyone in that room), your public id, nickname and visit time when you enter someone else's Barracks, and owner kick/ban records.
+- Barracks session status: whether a Claude Code session is working or idle, with a random session id. On by default and public; \`/space presence off\` or \`/ocw disable\` stops it. Prompts, tool calls and file names are not sent.
 
 ## What is never collected
 Prompt content, code, file names or paths, IP addresses (transient only), real name, phone, postal address, anything from Google beyond id and email.
 
 ## Retention & deletion
-Kept while the record exists. \`/ocw delete\` in the agent or \`POST /delete\` erases everything immediately. Email ${PRIVACY_EMAIL} for requests that need a human.
+Kept while the record exists. Barracks and Plaza chat expires after 24 hours and visit records after 7 days; a guestbook keeps its latest 100 entries. \`/ocw delete all confirm\` in the agent or \`POST /delete\` erases your record and your own Barracks immediately. Messages left in other people's rooms are not reached by that: chat and visit records expire as above, and guestbook entries stay until pushed out or cleared by that owner. Email ${PRIVACY_EMAIL} for requests that need a human.
 
 ## Processors
-Cloudflare (Workers, D1, KV — hosting), Google (OAuth only when you link), a VPS rendering the developer-card image. No sale or sharing of personal data for advertising.
+Cloudflare (Workers, Durable Objects, D1, KV — hosting), Google (OAuth only when you link), a VPS rendering the developer-card image. No sale or sharing of personal data for advertising.
 
 ## Contact
 ${PRIVACY_EMAIL} · Korean users may also contact the Personal Information Infringement Report Center (privacy.kisa.or.kr, ☎118).

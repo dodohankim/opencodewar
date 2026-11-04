@@ -157,7 +157,9 @@
       <!-- ============ ENGLISH ============ -->
       <div id="en">
         <h1>Privacy Policy</h1>
-        <p class="updated">Effective: August 10, 2026 (replaces the July 31, 2026 version)</p>
+        <p class="updated">Effective: November 11, 2026 (replaces the August 10, 2026 version)</p>
+
+        <p class="lead"><b>Notice of change (posted November 4, 2026).</b> This version adds the Barracks and Plaza: chat, guestbook, visit records, and your coding-session status. It takes effect on November 11, 2026, and the August 10, 2026 version applies until then. The one exception: if you choose to enter the Barracks or Plaza and send a message before that date, the Barracks items below already apply to what you send.</p>
 
         <p class="lead"><b>The short version.</b> Open Code War ranks how much you type into your coding agent (Claude Code, Codex, OpenCode, pi). We collect the minimum needed to build the leaderboard and never see or store the <b>content</b> of your prompts — only counts. The whole codebase is open source, so you can verify exactly what happens.
           <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
@@ -171,6 +173,10 @@
           <li><b>Profile you choose to add</b> — nickname, bio, role, company, city, links, projects. Optional and <strong>public</strong>.</li>
           <li><b>Google account (optional)</b> — if you link one with <code>/ocw signup</code> or sign in on the web, we store your Google account ID and email address for account recovery and merging usage across devices. Your email is <strong>private by default</strong> — it appears on your public profile only if you opt in with <code>/ocw email public</code>. We receive only your account ID and email (OpenID <code>openid email</code> scopes) — nothing else, and we never see your password.</li>
           <li><b>Battles (optional)</b> — which battle rooms you create or join, and when.</li>
+          <li><b>Barracks messages</b> — chat and guestbook messages you send in the Plaza or a Barracks (up to 200 and 100 characters), stored with your nickname, public ID, and the time. Anyone in that room, including visitors who are not signed in, can read them.</li>
+          <li><b>Barracks session status</b> — while the Claude Code plugin runs, whether your session is <code>working</code> or <code>idle</code>, a random session ID, and the time of the last report. Your nickname, public ID, agent, and rank are stored with it to show your Barracks door in the Plaza. It is <strong>on by default and public</strong>; turn it off with <code>/space presence off</code>. <code>/ocw disable</code> also stops it. Only that state is sent: never prompts, tool calls, or file names.</li>
+          <li><b>Barracks visit records</b> — when you enter someone else's Barracks while signed in or from the terminal, your public ID, nickname, and the time. The owner sees a visitor count and can act on nicknames with <code>/space kick</code> or <code>/space ban</code>. Spectators who are not signed in are not recorded.</li>
+          <li><b>Barracks moderation records</b> — the public ID and nickname of anyone an owner has kicked (10 minutes) or banned, and whether a Barracks is locked.</li>
           <li><b>Website visits</b> — via <b>k-datafast</b>, an analytics tool built and operated by the operator themselves (no third-party analytics company): a random visitor ID (cookie + localStorage), pages viewed, referral source (external referrer, UTM and ad-click parameters), browser and OS type (from User-Agent), and country/region/city estimated from your IP (the IP itself is not stored). We also use <b>Cloudflare Web Analytics</b>, which is cookieless.</li>
         </ul>
 
@@ -192,6 +198,11 @@
           <li>Share-card (OG image) cache — about <b>30 minutes</b>.</li>
           <li>Analytics visitor-ID cookie — up to <b>2 years</b> (deletable in your browser anytime).</li>
           <li>Raw per-prompt events (count, character count, timestamp) — kept until account deletion; they are needed to re-draw your profile graphs.</li>
+          <li>Barracks and Plaza chat — <b>24 hours</b> (the last 50 lines at most).</li>
+          <li>Barracks guestbook — the latest <b>100 entries</b> per Barracks, until pushed out, cleared by the owner, or the owner's account is deleted.</li>
+          <li>Barracks visit records — <b>7 days</b> (the latest 200 visitors per Barracks).</li>
+          <li>Barracks session status — shown as offline about <b>5 minutes</b> after the last report. The last report stays stored until the next one replaces it or you delete your account.</li>
+          <li>Barracks moderation records — kept until the owner lifts the ban or the owner's account is deleted.</li>
         </ul>
         <p>There are no payment features, so no data is retained under statutory bookkeeping obligations.</p>
 
@@ -199,12 +210,14 @@
         <ul>
           <li><b>Erase everything</b> — <code>/ocw delete all confirm</code> — immediately deletes your events, statistics, profile, and Google link from the database, and removes you from the leaderboard.</li>
           <li><b>Clear profile only</b> — <code>/ocw delete</code> — removes bio, role, company, links, and projects; nickname and usage stay.</li>
-          <li>After full deletion, the only residuals are your web session record (auto-expires within 30 days; treated as logged-out immediately) and the share-card cache (within ~30 minutes).</li>
+          <li><b>Your Barracks</b> — full deletion also erases your Barracks: its chat, guestbook, visit records, moderation records, and your door in the Plaza.</li>
+          <li><b>Clear your guestbook</b> — <code>/space guestbook clear</code> erases the guestbook of your own Barracks.</li>
+          <li>After full deletion, the residuals are your web session record (auto-expires within 30 days; treated as logged-out immediately), the share-card cache (within ~30 minutes), and <b>what you left in other people's Barracks and the Plaza</b>: chat (within 24 hours), visit records (within 7 days), guestbook entries, which stay until pushed out or cleared by that owner, and any kick or ban record that owner holds. We keep no index of rooms you visited, so full deletion cannot reach them. To have guestbook entries removed sooner, email <a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> with the Barracks address.</li>
           <li>Infrastructure backups (Cloudflare D1 Time Travel) may hold a restore copy for up to <b>7 days</b>, after which it expires automatically.</li>
         </ul>
 
         <h2><span class="n">05</span> Public information</h2>
-        <p>Your nickname, bio, role, company, city, links, projects, and usage stats appear publicly on the leaderboard and profile pages. Don't add anything you don't want to be public. Outbound links you add are marked <code>rel="nofollow"</code>. Your linked email is <strong>not</strong> public unless you explicitly enable <code>/ocw email public</code>.</p>
+        <p>Your nickname, bio, role, company, city, links, projects, and usage stats appear publicly on the leaderboard and profile pages. Don't add anything you don't want to be public. Outbound links you add are marked <code>rel="nofollow"</code>. Your linked email is <strong>not</strong> public unless you explicitly enable <code>/ocw email public</code>. Barracks chat and guestbook messages, your rank, and whether your session is working or idle are also public to anyone who opens the Plaza or your Barracks. Don't write anything in them you don't want others to read.</p>
 
         <h2><span class="n">06</span> No third-party sharing</h2>
         <p>We do not provide your personal data to third parties. We do not sell data and we do not run ads.</p>
@@ -212,7 +225,7 @@
         <h2><span class="n">07</span> Processors &amp; international data transfers</h2>
         <p class="tight">The service is operated from <strong>South Korea</strong> and your data is processed on the following infrastructure, which means it is stored and processed outside your own country:</p>
         <ul>
-          <li><b>Cloudflare, Inc.</b> (USA / global network) — hosts the entire service (Workers, D1 database, KV, R2, Email Routing). All items in Section 01. Kept until you delete (backups up to 7 days). Contact: privacyquestions@cloudflare.com.</li>
+          <li><b>Cloudflare, Inc.</b> (USA / global network) — hosts the entire service (Workers, Durable Objects, D1 database, KV, R2, Email Routing). All items in Section 01. Kept until you delete (backups up to 7 days). Contact: privacyquestions@cloudflare.com.</li>
           <li><b>Operator's own server</b> in Dallas, Texas, USA (a Hivelocity, Inc. data center; operated directly by the operator) — renders share-card images from public profile data only, and runs the k-datafast analytics backend. k-datafast is the operator's own software; its data is not shared with any other organization.</li>
           <li><b>Google LLC</b> (USA) — processes sign-in when you choose to link Google; we receive only your account ID and email. Google's own privacy policy applies to Google's processing.</li>
         </ul>
@@ -229,6 +242,7 @@
           <li>Correct — <code>/ocw</code> profile commands or web profile editing.</li>
           <li>Stop collection — <code>/ocw disable</code> (takes effect immediately).</li>
           <li>Hide your email — <code>/ocw email private</code> (this is the default).</li>
+          <li>Stop showing your session status — <code>/space presence off</code> (<code>on</code> resumes it).</li>
           <li>Delete — Section 04.</li>
           <li>If you can't use the CLI, email <a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a>. Identity check: if you linked Google, your request must come from that linked email address. If you are anonymous, you must present the secret ID from <code>~/.open-code-war/config.json</code> — we hold nothing else that could identify you, so <strong>an anonymous user who lost that ID cannot be individually verified or deleted</strong>; <code>/ocw disable</code> still stops all future collection.</li>
         </ul>
@@ -268,14 +282,16 @@
         <p>In South Korea you may also contact the Personal Information Infringement Report Center (privacy.kisa.or.kr, ☎118) or the Personal Information Dispute Mediation Committee (kopico.go.kr, ☎1833-6972).</p>
 
         <h2><span class="n">14</span> Changes</h2>
-        <p>This policy takes effect on August 10, 2026. Changes will be announced on this page at least 7 days before they take effect. Previous versions are available in the
+        <p>This policy takes effect on November 11, 2026. Changes will be announced on this page at least 7 days before they take effect. Previous versions are available in the
           <a class="link" href="https://github.com/dodohankim/opencodewar/commits/main/web/privacy.html?ref=opencodewar" target="_blank" rel="noopener">Git history ↗</a>.</p>
       </div>
 
       <!-- ============ 한국어 ============ -->
       <div id="ko" hidden>
         <h1>개인정보처리방침</h1>
-        <p class="updated">시행일: 2026년 8월 10일 (2026년 7월 31일 판을 대체)</p>
+        <p class="updated">시행일: 2026년 11월 11일 (2026년 8월 10일 판을 대체)</p>
+
+        <p class="lead"><b>변경 공지 (2026년 11월 4일 게시).</b> 이번 판에는 막사와 광장 기능에서 다루는 채팅, 방명록, 방문 기록, 코딩 세션 상태가 추가되었습니다. 이 판은 2026년 11월 11일부터 시행되며, 그 전까지는 2026년 8월 10일 판이 적용됩니다. 다만 시행일 전이라도 막사나 광장에 직접 들어가 메시지를 보내면, 보낸 내용에는 아래의 막사 관련 항목이 바로 적용됩니다.</p>
 
         <p class="lead"><b>요약.</b> Open Code War는 코딩 에이전트(클로드 코드·코덱스·오픈코드·파이)에 얼마나 많이 입력하는지로 순위를 매기는 리더보드입니다. 리더보드에 필요한 최소한만 수집하며, 프롬프트의 <b>내용</b>은 절대 보거나 저장하지 않습니다 — 오직 개수만 셉니다. 전체 코드가 오픈소스라 무엇이 일어나는지 직접 검증할 수 있습니다.
           <br /><a class="link repo" href="https://github.com/dodohankim/opencodewar?ref=opencodewar" target="_blank" rel="noopener">github.com/dodohankim/opencodewar ↗</a></p>
@@ -289,6 +305,10 @@
           <li><b>직접 추가하는 프로필</b> — 닉네임·자기소개·직함·회사·도시·링크·프로젝트. 선택 사항이며 <strong>공개</strong>됩니다.</li>
           <li><b>Google 계정 (선택)</b> — <code>/ocw signup</code> 또는 웹 로그인으로 연동하면 계정 복구와 여러 기기 사용량 합산을 위해 Google 계정 ID와 이메일 주소를 저장합니다. 이메일은 <strong>기본 비공개</strong>이며, <code>/ocw email public</code> 으로 직접 켠 경우에만 공개 프로필에 표시됩니다. 계정 ID와 이메일(OpenID <code>openid email</code> 범위)만 받으며, 비밀번호는 절대 볼 수 없습니다.</li>
           <li><b>교전 참가 기록 (선택)</b> — 어떤 교전 방을 만들고 참가했는지, 참가 시각.</li>
+          <li><b>막사 메시지</b> — 광장이나 막사에서 보낸 채팅과 방명록(각각 최대 200자, 100자). 닉네임·공개 ID·시각과 함께 저장되며, 로그인하지 않은 방문자를 포함해 그 방에 들어온 누구나 읽을 수 있습니다.</li>
+          <li><b>막사 세션 상태</b> — Claude Code 플러그인이 실행되는 동안 세션이 <code>working</code>(작업 중)인지 <code>idle</code>(대기 중)인지, 무작위 세션 ID, 마지막 보고 시각. 광장에 막사 문을 표시하기 위해 닉네임·공개 ID·에이전트·계급을 함께 저장합니다. <strong>기본으로 켜져 있고 공개</strong>되며, <code>/space presence off</code> 로 끌 수 있습니다. <code>/ocw disable</code> 을 실행해도 중단됩니다. 전송하는 값은 이 상태뿐이며, 프롬프트·도구 호출·파일 이름은 보내지 않습니다.</li>
+          <li><b>막사 방문 기록</b> — 로그인했거나 터미널에서 다른 사람의 막사에 들어가면 공개 ID·닉네임·시각을 저장합니다. 막사 주인은 방문자 수를 볼 수 있고, 닉네임으로 <code>/space kick</code>·<code>/space ban</code> 을 실행할 수 있습니다. 로그인하지 않은 관전자는 기록하지 않습니다.</li>
+          <li><b>막사 관리 기록</b> — 주인이 강퇴(10분)하거나 차단한 사람의 공개 ID·닉네임, 막사 잠금 여부.</li>
           <li><b>웹사이트 방문 기록</b> — 운영자가 직접 개발·운영하는 분석 도구 <b>k-datafast</b>로 수집합니다(외부 분석 업체 아님): 무작위 방문자 ID(쿠키+localStorage), 조회한 페이지 경로, 유입 경로(외부 리퍼러·UTM·광고 클릭 파라미터), 브라우저·OS 종류(User-Agent), IP로부터 추정한 국가·지역·도시(IP 자체는 저장하지 않음). 쿠키 없는 <b>Cloudflare Web Analytics</b>도 함께 사용합니다.</li>
         </ul>
 
@@ -310,6 +330,11 @@
           <li>공유 이미지(OG 카드) 캐시 — 약 <b>30분</b>.</li>
           <li>웹 분석 방문자 ID 쿠키 — 최대 <b>2년</b>(브라우저에서 언제든 삭제 가능).</li>
           <li>원시 이벤트 기록(건별 개수·글자 수·시각) — 프로필 그래프 재집계에 필요해 계정 삭제 전까지 보관합니다.</li>
+          <li>막사·광장 채팅 — <b>24시간</b>(최대 최근 50줄).</li>
+          <li>막사 방명록 — 막사마다 최근 <b>100건</b>. 새 글에 밀려나거나, 주인이 비우거나, 주인 계정이 삭제될 때까지 보관합니다.</li>
+          <li>막사 방문 기록 — <b>7일</b>(막사마다 최근 200명).</li>
+          <li>막사 세션 상태 — 마지막 보고 후 약 <b>5분</b>이 지나면 오프라인으로 표시합니다. 마지막 보고 기록은 다음 보고로 덮어쓰거나 계정을 삭제할 때까지 저장됩니다.</li>
+          <li>막사 관리 기록 — 주인이 차단을 해제하거나 주인 계정이 삭제될 때까지 보관합니다.</li>
         </ul>
         <p>결제 기능이 없으므로 법령상 별도 보존 의무가 있는 정보는 없습니다.</p>
 
@@ -317,12 +342,14 @@
         <ul>
           <li><b>완전 삭제</b> — <code>/ocw delete all confirm</code> — 이벤트·통계·프로필·Google 연동을 데이터베이스에서 즉시 삭제하고 리더보드에서도 제거합니다.</li>
           <li><b>프로필만 비우기</b> — <code>/ocw delete</code> — 자기소개·직함·회사·링크·프로젝트를 지웁니다. 닉네임과 사용량은 유지됩니다.</li>
-          <li>완전 삭제 후 남는 것은 웹 세션 기록(30일 내 자동 만료, 즉시 로그아웃 처리)과 공유 이미지 캐시(약 30분 내 만료)뿐입니다.</li>
+          <li><b>내 막사</b> — 완전 삭제하면 내 막사의 채팅·방명록·방문 기록·관리 기록과 광장의 문도 함께 삭제합니다.</li>
+          <li><b>방명록 비우기</b> — <code>/space guestbook clear</code> 로 내 막사의 방명록을 지웁니다.</li>
+          <li>완전 삭제 후에도 남는 것은 웹 세션 기록(30일 내 자동 만료, 즉시 로그아웃 처리), 공유 이미지 캐시(약 30분 내 만료), 그리고 <b>다른 사람의 막사와 광장에 남긴 기록</b>입니다. 채팅은 24시간 안에, 방문 기록은 7일 안에 사라지고, 방명록은 새 글에 밀려나거나 그 막사 주인이 비울 때까지 남습니다. 그 주인이 가진 강퇴·차단 기록도 남습니다. 서비스는 방문한 방의 목록을 따로 보관하지 않기 때문에 완전 삭제로 이 기록까지 지울 수는 없습니다. 방명록을 더 빨리 지우려면 해당 막사 주소를 적어 <a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> 로 요청하세요.</li>
           <li>인프라 자동 백업(Cloudflare D1 Time Travel)에 최대 <b>7일간</b> 복원용 사본이 남을 수 있으며 기간 경과 시 자동 소멸합니다.</li>
         </ul>
 
         <h2><span class="n">05</span> 공개되는 정보</h2>
-        <p>닉네임·자기소개·직함·회사·도시·링크·프로젝트·사용량 통계는 리더보드와 프로필 페이지에 공개됩니다. 공개되면 안 되는 정보는 넣지 마세요. 추가한 외부 링크에는 <code>rel="nofollow"</code>가 붙습니다. 연동한 이메일은 <code>/ocw email public</code> 을 직접 켜지 않는 한 <strong>공개되지 않습니다</strong>.</p>
+        <p>닉네임·자기소개·직함·회사·도시·링크·프로젝트·사용량 통계는 리더보드와 프로필 페이지에 공개됩니다. 공개되면 안 되는 정보는 넣지 마세요. 추가한 외부 링크에는 <code>rel="nofollow"</code>가 붙습니다. 연동한 이메일은 <code>/ocw email public</code> 을 직접 켜지 않는 한 <strong>공개되지 않습니다</strong>. 막사 채팅과 방명록, 계급, 세션의 작업·대기 상태도 광장이나 내 막사를 여는 누구에게나 공개됩니다. 다른 사람이 읽으면 안 되는 내용은 쓰지 마세요.</p>
 
         <h2><span class="n">06</span> 제3자 제공</h2>
         <p>이용자의 개인정보를 제3자에게 제공하지 않습니다. 데이터를 판매하지 않으며 광고도 없습니다.</p>
@@ -330,7 +357,7 @@
         <h2><span class="n">07</span> 처리 위탁 및 국외 이전</h2>
         <p class="tight">서비스는 <strong>대한민국</strong>에서 운영되며, 데이터는 아래 인프라에서 저장·처리됩니다 — 즉 이용자 본국 밖으로 이전될 수 있습니다:</p>
         <ul>
-          <li><b>Cloudflare, Inc.</b> (미국/글로벌 네트워크) — 서비스 전체 호스팅(Workers·D1·KV·R2·Email Routing). 01항의 전 항목이 이전되며 이용자 삭제 시까지 보관(백업 최대 7일). 연락처: privacyquestions@cloudflare.com.</li>
+          <li><b>Cloudflare, Inc.</b> (미국/글로벌 네트워크) — 서비스 전체 호스팅(Workers·Durable Objects·D1·KV·R2·Email Routing). 01항의 전 항목이 이전되며 이용자 삭제 시까지 보관(백업 최대 7일). 연락처: privacyquestions@cloudflare.com.</li>
           <li><b>운영자 자체 서버</b> (미국 텍사스 댈러스, Hivelocity, Inc. 데이터센터 — 운영은 운영자 본인) — 공개 프로필 정보만으로 공유 이미지를 렌더링하고, k-datafast 분석 서버를 구동합니다. k-datafast는 운영자의 자체 소프트웨어로, 수집 정보는 다른 어떤 조직과도 공유되지 않습니다.</li>
           <li><b>Google LLC</b> (미국) — Google 연동을 선택한 경우 인증을 처리하며, 서비스는 계정 ID·이메일만 받습니다. Google의 처리에는 Google 개인정보처리방침이 적용됩니다.</li>
         </ul>
@@ -347,6 +374,7 @@
           <li>정정 — <code>/ocw</code> 프로필 명령 또는 웹 프로필 편집.</li>
           <li>수집 중지 — <code>/ocw disable</code> (즉시 적용).</li>
           <li>이메일 숨기기 — <code>/ocw email private</code> (기본값입니다).</li>
+          <li>세션 상태 표시 중지 — <code>/space presence off</code> (<code>on</code> 으로 다시 켭니다).</li>
           <li>삭제 — 04항.</li>
           <li>CLI를 쓸 수 없는 경우 <a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> 로 요청하세요. 본인 확인: Google 연동자는 연동된 바로 그 이메일에서 발신한 요청만 인정합니다. 익명 이용자는 <code>~/.open-code-war/config.json</code> 의 비밀 ID를 제시해야 합니다 — 서비스는 익명 이용자를 식별할 다른 정보를 일절 보유하지 않으므로, <strong>비밀 ID를 잃은 익명 이용자는 본인 확인이 불가능해 개별 삭제 처리를 할 수 없습니다</strong>. 이 경우에도 <code>/ocw disable</code> 로 이후 수집은 중단됩니다.</li>
         </ul>
@@ -386,7 +414,7 @@
         <p>기타 신고·상담: 개인정보침해신고센터(privacy.kisa.or.kr, ☎118) · 개인정보분쟁조정위원회(kopico.go.kr, ☎1833-6972) · 대검찰청(spo.go.kr, ☎1301) · 경찰청(ecrm.police.go.kr, ☎182)</p>
 
         <h2><span class="n">14</span> 방침의 변경</h2>
-        <p>이 방침은 2026년 8월 10일부터 적용됩니다. 내용이 바뀌는 경우 시행 7일 전부터 이 페이지에 공지하며, 이전 버전은
+        <p>이 방침은 2026년 11월 11일부터 적용됩니다. 내용이 바뀌는 경우 시행 7일 전부터 이 페이지에 공지하며, 이전 버전은
           <a class="link" href="https://github.com/dodohankim/opencodewar/commits/main/web/privacy.html?ref=opencodewar" target="_blank" rel="noopener">Git 변경 이력 ↗</a>에서 확인할 수 있습니다.</p>
       </div>
 
