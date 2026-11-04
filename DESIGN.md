@@ -1715,3 +1715,37 @@ SpaceRoom (DO, SQLite)
 - 닉네임: `~/.open-code-war/config.json` 의 `nickname` 만 읽는다(`userId` 미사용).
 - 검증: `claude plugin validate` 통과, `claude plugin test` 3건 통과(터미널 Raster·데스크톱 Svg 렌더, 이동·채팅 입력) — Claude Code 2.1.318.
 
+### 27.16 P1 구현 — 실제 서버 · 광장 · 웹 (2026-11-04)
+
+**가짜 방문자 제거.** 화면에 보이는 사람은 전부 실제 접속자다(터미널 mod + 웹).
+
+**흐름(게더타운식)**: `/space`(터미널) · `/plaza`(웹)로 열면 **광장**에 선다. 광장에는 *주인이 Claude Code 를 켜 두었거나
+누가 들어가 있는* 막사 문이 줄지어 있고(문 위 등불 = 주인 접속, 이름표 `닉 인원⌨`), 문 앞에서 `e` → 그 막사.
+막사 왼쪽 끝 문에서 `e` → 광장(방금 나온 문 앞). `/space home`·`/s/<public_id>` 는 막사로 바로.
+
+**서버** (`backend/src/space.ts`, 순수 로직 `space-logic.ts`)
+- `SpaceRoom` DO 하나가 광장·막사 둘 다 맡는다(이름 = `plaza` | 주인 `public_id`). WebSocket Hibernation,
+  keepalive `ping`→`pong` 은 런타임 자동응답(DO 안 깨움). 막사 → 광장 DO 로 인원·주인 상태를 보고(`/report`),
+  광장은 그 목록으로 문을 배치해 `doors` 로 뿌린다(작업 중 > 인원 > 접속 순, 최대 24개).
+- 정원: 막사 10(주인 자리 예약 → 방문자 9), 광장 30, 관전자 50. 같은 유저가 다시 들어오면 이전 연결을 닫는다(`replaced`).
+- 신원: 터미널 = `POST /space/ticket {userId}` → 60초 HMAC 티켓(`SPACE_SECRET`, 안에는 pid·nick·agent 만) → `?t=`.
+  웹 = 기존 세션 쿠키(같은 오리진 WS 업그레이드에 실린다). 둘 다 없으면 관전자(말·이동 불가).
+- **닉네임 규칙 변경**: 자동 닉네임(SlyFox42 등)도 입장 가능 — 닉네임 필수(§27.9)는 진입 장벽이라 뺐다. 이름은 항상 표시된다.
+- 주인 상태: `POST /space/status {userId, sid, state}` — 세션별 하트비트(시작·턴 시작/끝·2분마다·종료 시 offline).
+  하나라도 working(3분 신선도)이면 작업 중, 하트비트 5분 끊기면 오프라인.
+- 채팅: 방마다 최근 50건을 DO 스토리지에(24h 정리는 남은 일). 400ms 레이트리밋, 200자, 제어·방향 문자 제거.
+- D1 은 신원 조회 읽기만(쓰기는 ticket/status 의 `ensureUser` 뿐). KV 미사용.
+- `wrangler.jsonc`: DO 바인딩 `SPACE` + migration `v1-space`(new_sqlite_classes). 운영 배포 전 `wrangler secret put SPACE_SECRET`.
+
+**터미널 mod** (`mods/space`): 사이드카 `link/link.mjs` 가 WS 를 잡고 stdout 으로 수신, 송신은 mod → `127.0.0.1:<임의 포트>`
+(임의 토큰) → WS. §27.5 의 stdin 1회 제약을 이걸로 풀었다(B안 확정). Node 22+ 필요(전역 WebSocket).
+
+**웹** (`web/space.html`, 라우트 `/plaza`·`/s/<pid>`): 같은 8×10 스프라이트를 캔버스에. `a/d`·`←/→` 걷기(꾹 누르기),
+`e`·`↑` 들어가기, `Enter` 채팅(보내도 포커스 유지)·`Esc` 걷기. 비로그인은 관전 + 로그인 버튼(`/auth/login?next=`).
+
+**로컬 실행**: `backend/` 에서 `npm run dev:local`(--local-upstream 으로 https 리다이렉트 회피) →
+웹 `http://127.0.0.1:8787/plaza`, 터미널 `OCW_API_URL=http://127.0.0.1:8787 claude --plugin-dir ./mods/space`.
+
+**남은 일**: 채팅 24h 정리(alarm), 방명록(§27.8), 브리핑 줄, 보드·프로필의 "막사 구경" 링크, OG 미리보기, 계급 이름표,
+기존 `plugin/` 에 mod 합치기(§27.11), 운영 배포.
+

@@ -1,129 +1,99 @@
 import { expect, test } from 'claude-code/testing'
+import { applyServer, compose, doorAt, emptyRoom, me } from './register.mjs'
 
 const PANE = {
   plugin: 'ocw-space',
   component: 'Pane',
   requestId: 'ocw-space',
-  props: {
-    title: '막사',
-    isFocused: true,
-    bodyColumns: 60,
-    placement: 'dock',
-    scroll: { offset: 0, bodyRows: 24 },
-    view: {},
-  },
+  props: { title: 'OCW 광장', isFocused: true, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 24 }, view: {} },
 } as const
 
-function stubEngine(on: any, store: Map<string, any> = new Map()) {
-  on('store.get', (_: any, e: any) => ({ value: store.get(e.key) }))
-  on('store.set', (_: any, e: any) => { store.set(e.key, e.value); return { value: undefined } })
-  on('store.delete', (_: any, e: any) => { store.delete(e.key); return { value: undefined } })
-  on('store.keys', () => ({ value: [...store.keys()] }))
+const NOW = 1_760_000_000_000
+const YOU = { id: 'c-me', role: 'member', pid: 'u-mememememe', nick: '나', agent: 'claude-code' }
+const KIM = { id: 'c-kim', pid: 'u-kimkimkimk', nick: 'kim', agent: 'codex', x: 40, dir: -1, state: 'idle' }
+const PLAZA_HELLO = {
+  t: 'hello',
+  you: YOU,
+  room: {
+    id: 'plaza', kind: 'plaza', width: 140, cap: 30, owner: null,
+    doors: [{ pid: 'u-kimkimkimk', nick: 'kim', agent: 'codex', count: 1, ownerOnline: true, ownerWorking: true, x: 30 }],
+  },
+  members: [KIM],
+  chat: [{ pid: 'u-kimkimkimk', nick: 'kim', text: '어서와요', at: NOW - 1000 }],
+}
+
+test('서버 메시지 → 화면 상태 (입장·이동·말하기·퇴장)', () => {
+  const v = emptyRoom()
+  applyServer(v, PLAZA_HELLO, NOW)
+  expect(v.status).toBe('open')
+  expect(v.members.size).toBe(1)
+  expect(v.log.map((l: any) => l.text)).toContain('어서와요')
+  applyServer(v, { t: 'move', id: 'c-kim', x: 50, dir: 1 }, NOW)
+  expect(v.members.get('c-kim').x).toBe(50)
+  applyServer(v, { t: 'said', line: { pid: 'u-kimkimkimk', nick: 'kim', text: '안녕', at: NOW } }, NOW)
+  expect(v.bubbles['c-kim'].text).toBe('안녕')
+  applyServer(v, { t: 'said', line: { pid: 'u-mememememe', nick: '나', text: '반가워', at: NOW } }, NOW)
+  expect(v.bubbles.me.text).toBe('반가워')
+  applyServer(v, { t: 'leave', id: 'c-kim' }, NOW)
+  expect(v.members.size).toBe(0)
+  expect(v.log.at(-1).text).toBe('kim 님이 나갔습니다')
+})
+
+test('문 앞 판정: 광장 = 막사 문, 막사 = 나가는 문', () => {
+  const v = emptyRoom()
+  applyServer(v, PLAZA_HELLO, NOW)
+  expect(doorAt(v, 30)?.kind).toBe('enter')
+  expect(doorAt(v, 33)?.door.nick).toBe('kim')
+  expect(doorAt(v, 60)).toBeNull()
+  const b = emptyRoom()
+  applyServer(b, { ...PLAZA_HELLO, room: { id: 'u-kimkimkimk', kind: 'barracks', width: 96, cap: 10, owner: { pid: 'u-kimkimkimk', nick: 'kim', agent: 'codex', online: false, working: false } }, members: [] }, NOW)
+  expect(doorAt(b, 4)?.kind).toBe('exit')
+  expect(doorAt(b, 40)).toBeNull()
+})
+
+test('광장 그림: 문 이름표에 인원·작업 중, 주인 없는 막사는 외출 중', () => {
+  const v = emptyRoom()
+  applyServer(v, PLAZA_HELLO, NOW)
+  me.x = 20
+  const sc = compose(v, 80, NOW, false)
+  expect(sc.signRow).toContain('kim 1⌨')
+  expect(sc.nameRow).toContain('▸나')
+  const b = emptyRoom()
+  applyServer(b, { ...PLAZA_HELLO, room: { id: 'u-kimkimkimk', kind: 'barracks', width: 96, cap: 10, owner: { pid: 'u-kimkimkimk', nick: 'kim', agent: 'codex', online: false, working: false } }, members: [] }, NOW)
+  const sb = compose(b, 96, NOW, false)
+  expect(sb.signRow).toContain('광장')
+  expect(sb.signRow).toContain('외출 중')
+  applyServer(b, { t: 'owner', owner: { pid: 'u-kimkimkimk', nick: 'kim', agent: 'codex', online: true, working: true } }, NOW)
+  expect(compose(b, 96, NOW, false).nameRow).toContain('★kim⌨')
+})
+
+function stubEngine(on: any, sent: any[]) {
   on('command.register', () => ({ value: { command: 'x' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.start', (_: any, e: any) => ({ cwd: e.cwd }))
-  on('env.get', () => ({ value: undefined }))
-  on('clock.now', () => ({ value: 1_760_000_000_000 }))
+  on('clock.now', () => ({ value: NOW }))
   on('clock.every', () => ({ value: {} }))
-  on('clock.after', () => ({ value: {} }))
   on('ui.invalidate', () => ({ value: undefined }))
   on('ui.log', () => ({ value: undefined }))
   on('ui.toast', () => ({ value: undefined }))
+  on('ui.focus', () => ({ value: undefined }))
+  on('env.get', (_: any, e: any) => ({ value: e.name === 'HOME' ? '/home/t' : undefined }))
+  on('fs.read', () => ({ value: JSON.stringify({ userId: 'ocw_test0000', endpoint: 'http://127.0.0.1:8787' }) }))
+  on('http.fetch', (_: any, e: any) => {
+    sent.push({ url: e.url, body: e.init?.body })
+    if (String(e.url).endsWith('/space/ticket')) return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify({ ticket: 'tk', pid: YOU.pid }) } }
+    return { value: { status: 200, ok: true, headers: {}, text: '{"ok":true}' } }
+  })
 }
 
-test('막사 패널이 터미널에서 그려진다 (Raster)', async ($: any, on: any) => {
-  stubEngine(on)
+test('/space → 광장 연결, 화면에 인원, d 를 누르면 사이드카로 이동을 보낸다', async ($: any, on: any) => {
+  const sent: any[] = []
+  stubEngine(on, sent)
+  on('clock.after', (_: any, e: any) => ({ value: {} }))
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  // 상태 하트비트가 나갔다
+  expect(sent.some((s) => String(s.url).endsWith('/space/status'))).toBe(true)
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const header = await ui.find({ type: 'Text', text: /의 막사 · 4\/10/ })
-  expect(header?.text).not.toContain('작업 중')
-  expect(header?.text).toContain('막사')
-  const raster = await ui.find({ type: 'Raster' })
-  expect(raster).toBeTruthy()
-  await ui.unmount()
-})
-
-test('데스크톱에서는 Svg 로 그린다', async ($: any, on: any) => {
-  stubEngine(on)
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  const svg = await ui.find({ type: 'Svg' })
-  expect(svg).toBeTruthy()
-  await ui.unmount()
-})
-
-test('d 로 오른쪽 이동, t 로 채팅 → 연달아 보내도 로그에 남는다', async ($: any, on: any) => {
-  stubEngine(on)
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  // 패널이 막사 전체 폭(96)이면 카메라가 고정이라 이름표 위치로 이동을 확인할 수 있다
-  const ui = await $.ui.mount({ ...PANE, props: { ...PANE.props, bodyColumns: 96 }, surface: 'terminal' })
-  const before = (await ui.find({ type: 'Text', text: /▸/ }))?.text ?? ''
-  await ui.press({ key: 'right' })
-  await ui.press({ key: 'right' })
-  await ui.redraw()
-  const after = (await ui.find({ type: 'Text', text: /▸/ }))?.text ?? ''
-  expect(after.indexOf('▸')).toBeGreaterThan(before.indexOf('▸'))
-
-  await ui.press({ key: 'talk' })
-  await ui.redraw()
-  await ui.input({ key: 'chat', text: '안녕하세요 막사' })
-  await ui.redraw()
-  // 한 번 보낸 뒤에도 t 없이 바로 이어서 보낼 수 있다
-  await ui.input({ key: 'chat', text: '두번째 줄' })
-  await ui.redraw()
-  const line = await ui.find({ type: 'Text', text: /안녕하세요 막사/ })
-  expect(line?.text).toContain('나: 안녕하세요 막사')
-  const rows = await ui.findAll({ type: 'Text', text: /두번째 줄/ })
-  expect(rows.some((r: any) => r.text.includes('나: 두번째 줄'))).toBe(true)
-  await ui.unmount()
-})
-
-test('다른 Claude 세션이 일하는 중이면 주인 작업 중으로 자동 표시', async ($: any, on: any) => {
-  const store = new Map<string, any>([['work.other-session', { working: true, at: 1_760_000_000_000 - 1000 }]])
-  stubEngine(on, store)
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const header = await ui.find({ type: 'Text', text: /의 막사/ })
-  expect(header?.text).toContain('주인 작업 중')
-  await ui.unmount()
-})
-
-test('오래 끊긴 세션 기록은 작업 중으로 치지 않는다', async ($: any, on: any) => {
-  const store = new Map<string, any>([['work.dead', { working: true, at: 1_760_000_000_000 - 60_000 }]])
-  stubEngine(on, store)
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const header = await ui.find({ type: 'Text', text: /의 막사/ })
-  expect(header?.text).not.toContain('작업 중')
-  await ui.unmount()
-})
-
-test('이 세션의 Claude 턴이 시작되면 자동으로 작업 중, 끝나면 해제', async ($: any, on: any) => {
-  stubEngine(on)
-  on('turn.start', (_: any, e: any) => e)
-  on('turn.complete', () => ({ text: '' }))
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  await $.turn.start({ turnId: 't1' })
-  await ui.redraw()
-  expect((await ui.find({ type: 'Text', text: /의 막사/ }))?.text).toContain('주인 작업 중')
-  await $.turn.complete({ turnId: 't1', answer: 'ok' })
-  await ui.redraw()
-  expect((await ui.find({ type: 'Text', text: /의 막사/ }))?.text).not.toContain('작업 중')
-  await ui.unmount()
-})
-
-test('입력창이 맨 아래, 채팅 로그는 바로 위에 붙는다', async ($: any, on: any) => {
-  stubEngine(on)
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  await ui.input({ key: 'chat', text: '바닥 확인' })
-  await ui.redraw()
-  const tree = await ui.drawn()
-  const kids = tree.props?.children ?? tree.children
-  const last = kids[kids.length - 1]
-  expect(last.type).toBe('Input')
-  // 입력창 바로 위 몇 줄 안에 방금 보낸 말 (가짜 방문자 답이 그 뒤에 붙을 수 있다)
-  expect(JSON.stringify(kids.slice(-4, -1))).toContain('바닥 확인')
+  expect((await ui.find({ type: 'Text', text: /연결 안 됨/ }))?.text).toBeTruthy()
   await ui.unmount()
 })

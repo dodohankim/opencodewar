@@ -24,6 +24,10 @@ export interface Env {
   GOOGLE_CLIENT_ID?: string;
   /** Google OAuth 클라이언트 secret. wrangler secret 으로 주입. */
   GOOGLE_CLIENT_SECRET?: string;
+  /** 막사(§27) — 방 1개 = SpaceRoom Durable Object 1개 ('plaza' 또는 주인 public_id). */
+  SPACE: DurableObjectNamespace;
+  /** 막사 WS 티켓 서명 키. wrangler secret 으로 주입. 없으면 isolate 마다 랜덤(로컬 dev 전용). */
+  SPACE_SECRET?: string;
 }
 
 // 'all' = 전체 기간(all-time). daily·weekly·weekend·monthly 는 유지하되(CLI /me 등), 웹 리더보드는 현재 all 만 노출.

@@ -6,6 +6,7 @@
   "description": "Open Code War backend — Cloudflare Worker + D1 (M1 skeleton)",
   "scripts": {
     "dev": "wrangler dev --test-scheduled",
+    "dev:local": "wrangler dev --test-scheduled --ip 127.0.0.1 --port 8787 --local-upstream 127.0.0.1:8787",
     "deploy": "wrangler deploy",
     "types": "wrangler types",
     "typecheck": "tsc --noEmit",

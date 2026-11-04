@@ -53,6 +53,11 @@
       "simple": { "limit": 60, "period": 60 }
     }
   ],
+  // 막사(§27): 방 1개 = Durable Object 1개 (SQLite 백엔드 — 무료 플랜은 SQLite DO 만 가능).
+  "durable_objects": {
+    "bindings": [{ "name": "SPACE", "class_name": "SpaceRoom" }]
+  },
+  "migrations": [{ "tag": "v1-space", "new_sqlite_classes": ["SpaceRoom"] }],
   "d1_databases": [
     {
       "binding": "DB",

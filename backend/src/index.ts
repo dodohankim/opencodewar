@@ -45,6 +45,7 @@ import {
 } from './og';
 import { handleIcon, iconHostFromPath } from './icon';
 import { isValidNickname } from './validate';
+import { handleSpacePage, handleSpaceStatus, handleSpaceTicket, handleSpaceWs, spacePageRoom } from './space';
 import { handleAgentDocs, markdownForPage, notFound, wantsMarkdownPage, withVaryAccept } from './agents';
 
 /** 페이지·이미지 라우트는 GET/HEAD 둘 다 받는다 — HEAD 로 찔러보는 크롤러·링크체커가 404 를 받지 않도록. */
@@ -113,6 +114,19 @@ export default {
       const pathNick = nicknameFromPath(pathname);
       if (pathNick !== null && isPageRead(request.method)) {
         return await handleProfilePage(request, url, env, pathNick);
+      }
+      // 막사(§27) — 광장·막사 WebSocket, 터미널 티켓, 주인 작업 상태, 웹 화면
+      if (pathname === '/space/ws') {
+        return await handleSpaceWs(request, url, env);
+      }
+      if (pathname === '/space/ticket' && request.method === 'POST') {
+        return await handleSpaceTicket(request, env);
+      }
+      if (pathname === '/space/status' && request.method === 'POST') {
+        return await handleSpaceStatus(request, env);
+      }
+      if (spacePageRoom(pathname) !== null && isPageRead(request.method)) {
+        return await handleSpacePage(request, url, env);
       }
       if (pathname === '/health') {
         return json({ ok: true, service: 'open-code-war-api', ts: Date.now() });
@@ -238,3 +252,5 @@ export default {
     );
   },
 } satisfies ExportedHandler<Env>;
+
+export { SpaceRoom } from './space';
