@@ -1827,3 +1827,5 @@ SpaceRoom (DO, SQLite)
 **`public_id` 없는 유저**: `/register` 는 `public_id` 없이 행을 만들고 `/track` 은 기존 행의 값을 채우지 않는다. 그래서 이런 유저는 `/space/ticket` 이 404 였다(운영 16명 중 2명, 11-04 기준). 티켓 발급 때 채운다.
 
 **운영 배포 결과 (11-04)**: `SPACE_SECRET` 등록, `v1-space` 포함 Worker 배포(버전 `00447776`, 직전 `c03465fe`). `OCW_API_URL` 없이 `claude --plugin-dir ./plugin` → `/space` 로 운영 광장 입장, Esc 뒤 사이드카 소멸을 확인했다. 관전자 WebSocket 응답에 비밀 `userId` 가 없음도 확인했다. 
+
+**실제 설치본 확인 (11-04)**: `main` 푸시 후 로그인 상태에서 `claude plugin update` + 재시작(`--plugin-dir` 없음). `/space` 로 운영 광장 입장, 내 막사 입장, Esc 뒤 사이드카 소멸, 프롬프트 1건의 `/track` 집계(86→87, 글자 수 +18)를 확인했다. §27.17 에 미뤄 둔 로그인 상태의 롤아웃 플래그 문제는 없었다.
