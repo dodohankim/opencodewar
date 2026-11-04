@@ -1,0 +1,8 @@
+{
+  "name": "ocw-space",
+  "version": "0.0.1",
+  "description": "Open Code War 막사(Space) P0 로컬 프로토타입 — 패널 속 픽셀 병정, 좌우 이동, 채팅, 가짜 방문자. 서버 통신 없음.",
+  "author": { "name": "Open Code War" },
+  "homepage": "https://opencodewar.dev",
+  "license": "BUSL-1.1"
+}
