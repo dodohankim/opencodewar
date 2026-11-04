@@ -35,6 +35,7 @@ import {
   type SessionBeat,
   clampX,
   cleanChat,
+  hasRoomFor,
   isDoorVisible,
   isPublicId,
   layoutDoors,
@@ -332,6 +333,9 @@ export class SpaceRoom extends DurableObject<Env> {
       for (const ws of this.ctx.getWebSockets('member')) {
         const a = ws.deserializeAttachment() as Attachment | null;
         if (a?.pid === ident.pid) {
+          // 저쪽이 닫기 응답을 안 해도 인원에서 바로 빠지도록 여기서 정리한다(onGone 은 이제 할 일이 없다)
+          ws.serializeAttachment(null);
+          this.broadcast({ t: 'leave', id: a.id }, ws);
           try {
             ws.send(JSON.stringify({ t: 'error', code: 'replaced' } satisfies Outgoing));
             ws.close(4000, 'replaced');
@@ -342,11 +346,10 @@ export class SpaceRoom extends DurableObject<Env> {
 
     const others = this.members().filter((m) => m.pid !== ident?.pid);
     const isOwner = !!(ident && meta.owner && ident.pid === meta.owner.pid);
-    const cap = kind === 'plaza' ? PLAZA_CAP : isOwner ? BARRACKS_CAP : BARRACKS_CAP - 1; // 주인 자리 예약
     const spectators = this.ctx.getWebSockets('spectator').length;
 
     this.ctx.acceptWebSocket(server, [role]);
-    if ((role === 'member' && others.length >= cap) || (role === 'spectator' && spectators >= SPECTATOR_CAP)) {
+    if ((role === 'member' && !hasRoomFor(kind, isOwner, others, meta.owner?.pid ?? null)) || (role === 'spectator' && spectators >= SPECTATOR_CAP)) {
       server.send(JSON.stringify({ t: 'error', code: 'full' } satisfies Outgoing));
       server.close(4001, 'full');
       return new Response(null, { status: 101, webSocket: client });

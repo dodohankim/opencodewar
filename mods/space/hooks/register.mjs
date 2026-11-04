@@ -431,13 +431,23 @@ function send($, msg) {
     .catch(() => {})
 }
 
-async function closeLink($) {
-  const l = link
-  link = null
-  if (!l) return
+async function closeSidecar($, l) {
   try {
     await $.http.fetch(`http://127.0.0.1:${l.port}/close`, { method: 'POST', headers: { 'x-link-token': l.token }, body: '' })
   } catch {}
+}
+
+async function closeLink($) {
+  const l = link
+  link = null
+  if (l) await closeSidecar($, l)
+}
+
+/** 입장 직후 서버에 알려 줄 내 상태. 서버의 시작 위치는 임의값이라 내 x 를 보내야 남들 화면과 맞는다. */
+export function syncMessages(x, dir, working) {
+  const out = [{ t: 'move', x, dir }]
+  if (working) out.push({ t: 'state', state: 'working' })
+  return out
 }
 
 function redraw($) {
@@ -484,7 +494,6 @@ async function connect($, room) {
     while (true) {
       const r = await it.next()
       if (r.done) break
-      if (my !== gen) continue // 이미 다른 방으로 옮김 — 출력은 버리고 끝나길 기다린다
       if (r.value.stream !== 'stdout') continue
       buffer += r.value.text
       let nl
@@ -498,9 +507,15 @@ async function connect($, room) {
         } catch {
           continue
         }
+        // 이미 다른 방으로 옮겼거나 닫았다. 출력은 버리되, 포트를 알기 전에 떠났으면 여기서 닫아 줘야
+        // 사이드카가 그 방에 유령으로 남지 않는다.
+        if (my !== gen) {
+          if (msg.t === '_link') closeSidecar($, { port: msg.port, token: msg.token })
+          continue
+        }
         if (msg.t === '_link') {
           link = { gen: my, port: msg.port, token: msg.token }
-          if (isWorking) send($, { t: 'state', state: 'working' })
+          if (view.status === 'open') for (const m of syncMessages(me.x, me.dir, isWorking)) send($, m)
           continue
         }
         if (msg.t === '_error') {
@@ -509,6 +524,7 @@ async function connect($, room) {
         }
         if (msg.t === '_closed') continue
         applyServer(view, msg, await $.clock.now())
+        if (msg.t === 'hello' && link?.gen === my) for (const m of syncMessages(me.x, me.dir, isWorking)) send($, m)
         redraw($)
       }
     }

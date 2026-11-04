@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { applyServer, compose, doorAt, emptyRoom, me } from './register.mjs'
+import { applyServer, compose, doorAt, emptyRoom, me, syncMessages } from './register.mjs'
 
 const PANE = {
   plugin: 'ocw-space',
@@ -67,6 +67,11 @@ test('광장 그림: 문 이름표에 인원·작업 중, 주인 없는 막사�
   expect(compose(b, 96, NOW, false).nameRow).toContain('★kim⌨')
 })
 
+test('입장 직후 내 위치를 보낸다 — 서버의 시작 위치는 임의값', () => {
+  expect(syncMessages(30, -1, false)).toEqual([{ t: 'move', x: 30, dir: -1 }])
+  expect(syncMessages(30, 1, true)).toEqual([{ t: 'move', x: 30, dir: 1 }, { t: 'state', state: 'working' }])
+})
+
 function stubEngine(on: any, sent: any[]) {
   on('command.register', () => ({ value: { command: 'x' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
@@ -86,7 +91,7 @@ function stubEngine(on: any, sent: any[]) {
   })
 }
 
-test('/space → 광장 연결, 화면에 인원, d 를 누르면 사이드카로 이동을 보낸다', async ($: any, on: any) => {
+test('세션 시작 시 상태 하트비트를 보내고, 연결 전 패널을 그린다', async ($: any, on: any) => {
   const sent: any[] = []
   stubEngine(on, sent)
   on('clock.after', (_: any, e: any) => ({ value: {} }))

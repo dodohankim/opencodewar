@@ -99,6 +99,21 @@ export function cleanChat(v: unknown): string | null {
   return Array.from(s).slice(0, CHAT_MAX_LEN).join('');
 }
 
+/**
+ * 입장 가능 여부. others = 나를 뺀 지금 인원.
+ * 막사는 주인 자리를 항상 비워 둔다: 주인은 언제나 들어오고, 방문자는 주인을 뺀 인원이 BARRACKS_CAP-1 미만일 때만.
+ */
+export function hasRoomFor(
+  kind: RoomKind,
+  isOwner: boolean,
+  others: readonly { pid: string }[],
+  ownerPid: string | null,
+): boolean {
+  if (kind === 'plaza') return others.length < PLAZA_CAP;
+  if (isOwner) return true;
+  return others.filter((m) => m.pid !== ownerPid).length < BARRACKS_CAP - 1;
+}
+
 export function clampX(v: unknown, width: number): number | null {
   if (typeof v !== 'number' || !Number.isFinite(v)) return null;
   return Math.max(0, Math.min(width - SPRITE_W, Math.round(v)));

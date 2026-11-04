@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BARRACKS_WIDTH,
   CHAT_MAX_LEN,
+  PLAZA_CAP,
   DOOR_FIRST_X,
   DOOR_GAP,
   MAX_DOORS,
@@ -11,6 +12,7 @@ import {
   WORKING_FRESH_MS,
   clampX,
   cleanChat,
+  hasRoomFor,
   isDoorVisible,
   layoutDoors,
   ownerStatus,
@@ -57,6 +59,25 @@ describe('좌표', () => {
     expect(clampX(9999, BARRACKS_WIDTH)).toBe(BARRACKS_WIDTH - 8);
     expect(clampX(NaN, BARRACKS_WIDTH)).toBeNull();
     expect(clampX('3', BARRACKS_WIDTH)).toBeNull();
+  });
+});
+
+describe('정원', () => {
+  const owner = 'u-owner00000';
+  const visitors = (n: number) => Array.from({ length: n }, (_, i) => ({ pid: 'u-' + String(i).padStart(10, '0') }));
+  it('주인이 있어도 없어도 방문자는 9명까지', () => {
+    expect(hasRoomFor('barracks', false, visitors(8), owner)).toBe(true);
+    expect(hasRoomFor('barracks', false, visitors(9), owner)).toBe(false);
+    // 주인 + 방문자 8 = 9명이면 한 자리가 남는다
+    expect(hasRoomFor('barracks', false, [...visitors(8), { pid: owner }], owner)).toBe(true);
+    expect(hasRoomFor('barracks', false, [...visitors(9), { pid: owner }], owner)).toBe(false);
+  });
+  it('주인은 방문자 9명이 차 있어도 들어온다', () => {
+    expect(hasRoomFor('barracks', true, visitors(9), owner)).toBe(true);
+  });
+  it('광장은 인원만 본다', () => {
+    expect(hasRoomFor('plaza', false, visitors(PLAZA_CAP - 1), null)).toBe(true);
+    expect(hasRoomFor('plaza', false, visitors(PLAZA_CAP), null)).toBe(false);
   });
 });
 
