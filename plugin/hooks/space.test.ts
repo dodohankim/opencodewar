@@ -1,8 +1,8 @@
 import { expect, test } from 'claude-code/testing'
-import { adminReply, applyServer, canGuest, compose, doorAt, emptyRoom, me, nameTag, parseSpaceArgs, syncMessages } from './register.mjs'
+import { adminReply, applyServer, canGuest, compose, doorAt, emptyRoom, me, nameTag, parseSpaceArgs, syncMessages } from './space.mjs'
 
 const PANE = {
-  plugin: 'ocw-space',
+  plugin: 'open-code-war',
   component: 'Pane',
   requestId: 'ocw-space',
   props: { title: 'OCW 광장', isFocused: true, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 24 }, view: {} },

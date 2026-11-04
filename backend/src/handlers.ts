@@ -572,6 +572,9 @@ export async function handleDelete(request: Request, env: Env): Promise<Response
     return json({ error: 'invalid_userId' }, 400);
   }
   const userId = body.userId;
+  const pidRow = await env.DB.prepare('SELECT public_id FROM users WHERE user_id = ?')
+    .bind(userId)
+    .first<{ public_id: string | null }>();
 
   await env.DB.batch([
     env.DB.prepare('DELETE FROM events WHERE user_id = ?').bind(userId),
@@ -582,6 +585,13 @@ export async function handleDelete(request: Request, env: Env): Promise<Response
 
   // 리더보드에서 즉시 사라지도록 스냅샷을 무효화(다음 조회 시 재빌드).
   await env.KV.delete(SNAPSHOT_KEY);
+
+  // 막사(§27.9)도 함께 지운다: 채팅·방명록·방문 기록·차단 목록. 실패해도 계정 삭제 자체는 끝난 것으로 둔다.
+  if (pidRow?.public_id) {
+    await env.SPACE.get(env.SPACE.idFromName(pidRow.public_id))
+      .fetch('https://space/wipe', { method: 'POST' })
+      .catch((err) => console.error(JSON.stringify({ level: 'warn', msg: 'space_wipe_failed', err: String(err) })));
+  }
 
   return json({ ok: true, deleted: true });
 }

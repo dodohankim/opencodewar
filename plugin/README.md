@@ -34,7 +34,9 @@
 ```
 plugin/
 ├── .claude-plugin/plugin.json   # 매니페스트
-├── hooks/hooks.json             # UserPromptSubmit → track.mjs (async, 비차단) · 경로는 따옴표 필수(공백 경로)
+├── hooks/hooks.json             # UserPromptSubmit → track.mjs (async, 비차단) · 경로는 따옴표 필수(공백 경로) · modules → space.mjs
+├── hooks/space.mjs              # 막사 mod — /space (Claude Code 2.1.287+, SPACE.md)
+├── link/link.mjs                # 막사 사이드카: WebSocket 중계 (Node 22+, 방에 있는 동안만)
 ├── commands/ocw.md              # /ocw 슬래시 커맨드
 └── scripts/
     ├── track.mjs                # 훅: 글자 수만 계산해 detached 전송(fire-and-forget)

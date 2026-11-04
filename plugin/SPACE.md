@@ -1,23 +1,19 @@
-# ocw-space — 막사 (Claude Code mod)
+# 막사 — Claude Code mod (`hooks/space.mjs`)
 
-Open Code War 막사(`DESIGN.md §27`)의 터미널 클라이언트입니다. `/space` 를 열면 **광장**에 섭니다.
+Open Code War 막사(`DESIGN.md §27`)의 터미널 클라이언트입니다. 이 플러그인에 함께 들어 있습니다. `/space` 를 열면 **광장**에 섭니다.
 광장에는 지금 Claude Code 를 켜 두었거나 누가 들어가 있는 사람들의 **막사 문**이 줄지어 있고,
 문 앞까지 걸어가서 `e` 를 누르면 그 막사로 들어갑니다. 같은 방에 있는 사람들은 터미널이든 웹(`/plaza`)이든
 실시간으로 보이고, 채팅은 그 방 사람들끼리 합니다.
 
-> 요구사항: Claude Code **v2.1.287 이상**(터미널 `claude` 또는 Claude Desktop 의 Code 탭), **Node 22 이상**,
-> Open Code War 플러그인 설정(`~/.open-code-war/config.json`).
+> 요구사항: Claude Code **v2.1.287 이상**(터미널 `claude` 또는 Claude Desktop 의 Code 탭), **Node 22 이상**.
+> 더 낮은 버전의 Claude Code 는 이 mod 를 무시하고 기존 집계 훅만 돌립니다(2.1.100·2.1.200·2.1.286 에서 확인).
 
-## 실행
-
-```bash
-claude --plugin-dir ./mods/space
-```
+## 개발 중 실행
 
 로컬 백엔드에 붙이려면(`backend/` 에서 `npm run dev:local`):
 
 ```bash
-OCW_API_URL=http://127.0.0.1:8787 claude --plugin-dir ./mods/space
+OCW_API_URL=http://127.0.0.1:8787 claude --plugin-dir ./plugin
 ```
 
 | 명령 | 하는 일 |
@@ -44,7 +40,7 @@ OCW_API_URL=http://127.0.0.1:8787 claude --plugin-dir ./mods/space
 ## 주인 작업 상태 (자동)
 
 mod 가 로드된 Claude Code 세션은 켜질 때, 턴이 시작·끝날 때(3초 디바운스), 그리고 2분마다 `/space/status` 로
-`working` / `idle` 값만 보냅니다. 세션이 여러 개면 하나라도 일하는 중일 때 "작업 중". `/space presence off` 로 끕니다.
+`working` / `idle` 값만 보냅니다. 세션이 여러 개면 하나라도 일하는 중일 때 "작업 중". `/space presence off` 로 끕니다. `/ocw disable`(수집 끔) 상태거나 `claude -p` 같은 비대화 실행이면 보내지 않습니다.
 
 - 광장: 켜진 막사의 문 위 등불이 켜지고, 이름표에 `⌨`
 - 내 막사: 내가 안 들어가 있어도 책상에 앉아 타이핑 중인 모습. Claude Code 를 다 끄면 "외출 중"
@@ -56,10 +52,10 @@ mod 가 로드된 Claude Code 세션은 켜질 때, 턴이 시작·끝날 때(3�
   127.0.0.1 임의 포트(임의 토큰)로 이 mod 의 송신을 받습니다. Claude Code 가 끝나면 같이 끝납니다.
 - 보내기: 막사 안 이동·채팅·방명록, 그리고 작업 상태값. **프롬프트·도구 내용은 보지도 보내지도 않습니다.**
 
-`claude plugin validate ./mods/space` 로 훅·호출 목록을 직접 확인할 수 있습니다.
+`claude plugin validate ./plugin` 로 훅·호출 목록을 직접 확인할 수 있습니다.
 
 ## 테스트
 
 ```bash
-claude plugin test ./mods/space
+claude plugin test ./plugin
 ```

@@ -40,3 +40,6 @@ Thumbs.db
 
 # Private / internal docs (not for public repo)
 private/
+
+# Claude Code 가 --plugin-dir 로 불러올 때 쓰는 타입 설정 (.claude-plugin/types 와 짝, 배포에 불필요)
+plugin/tsconfig.json

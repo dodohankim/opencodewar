@@ -300,6 +300,7 @@ export class SpaceRoom extends DurableObject<Env> {
     if (path === '/admin' && request.method === 'POST') return this.onAdmin(await request.json());
     if (path === '/brief') return this.onBrief();
     if (path === '/info') return this.onInfo();
+    if (path === '/wipe' && request.method === 'POST') return this.onWipe();
     return new Response('not found', { status: 404 });
   }
 
@@ -721,6 +722,23 @@ export class SpaceRoom extends DurableObject<Env> {
       online: !!p?.online,
       locked: (await this.read<boolean>('locked')) ?? false,
     });
+  }
+
+  /** 계정 삭제(§27.9): 있던 사람을 내보내고 이 막사의 저장 내용을 전부 지운다. 광장의 문도 내린다. */
+  private async onWipe(): Promise<Response> {
+    const meta = await this.roomMeta();
+    for (const ws of this.ctx.getWebSockets()) {
+      ws.serializeAttachment(null);
+      try {
+        ws.send(JSON.stringify({ t: 'error', code: 'closed' } satisfies Outgoing));
+        ws.close(CLOSE_CODE.closed, 'closed');
+      } catch {}
+    }
+    await this.ctx.storage.delete('beats');
+    if (meta) await this.reportToPlaza(meta);
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    return Response.json({ ok: true });
   }
 
   // ── 막사 목록 (광장 DO) ──

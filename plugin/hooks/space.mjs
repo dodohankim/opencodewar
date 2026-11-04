@@ -4,13 +4,15 @@
 // 문 앞에서 e 를 누르면 그 막사로 들어간다. 막사 왼쪽 끝 문에서 e 를 누르면 광장으로 나온다.
 // 같은 방에 있는 사람들(터미널·웹)이 실시간으로 보이고, 채팅은 그 방 사람들끼리.
 //
+// 플러그인 통합(§27.11): plugin/hooks/hooks.json 의 modules. Claude Code 2.1.287 미만은 이 파일을 무시하고 기존 훅만 돈다.
+//
 // 통신 (§27.5): 서버 WebSocket 은 사이드카(link/link.mjs)가 잡는다.
 //   수신 = 사이드카 stdout 한 줄에 JSON 하나 → 이 모듈
 //   송신 = 이 모듈 → 127.0.0.1 사이드카 HTTP → WebSocket
 // 주인 작업 상태 (§27.7): 이 세션의 턴 시작·끝(3초 디바운스) + 2분 하트비트를 /space/status 로 보낸다.
 //   보내는 건 working/idle 값뿐 — 프롬프트·도구 내용은 보지 않는다. /space presence off 로 끈다.
 
-const PANE = 'ocw-space'
+const PANE = 'ocw-space' // 패널 id
 const SW = 8 // 병정 폭(px)
 const SH = 10 // 병정 높이(px) → 5줄
 const TICK_MS = 150
@@ -486,7 +488,7 @@ async function loadConfig($) {
     const env = await $.env.get('OCW_API_URL')
     if (!c || typeof c.userId !== 'string') return null
     const endpoint = String(env || c.endpoint || DEFAULT_ENDPOINT).replace(/\/+$/, '')
-    return { userId: c.userId, nickname: typeof c.nickname === 'string' ? c.nickname : null, endpoint }
+    return { userId: c.userId, nickname: typeof c.nickname === 'string' ? c.nickname : null, endpoint, enabled: c.enabled !== false }
   } catch {
     return null
   }
@@ -657,7 +659,8 @@ export function register(on) {
     sid = crypto.randomUUID().replace(/-/g, '')
     cfg = await loadConfig($)
     interactive = e.isInteractive !== false // claude -p 같은 비대화 실행은 "접속 중"이 아니다
-    presenceOff = (await $.store.get('presence')) === 'off'
+    // /ocw disable(수집 끔) 상태면 작업 상태도 보내지 않는다. /space 를 직접 여는 건 별개다.
+    presenceOff = (await $.store.get('presence')) === 'off' || cfg?.enabled === false
     me.x = 12
     $.clock.every(TICK_MS, () => {
       if (!isOpen) return
@@ -702,7 +705,7 @@ export function register(on) {
     cfg = cfg ?? (await loadConfig($))
     if (parsed.kind === 'usage') return { text: SPACE_USAGE }
     if (parsed.kind === 'presence') {
-      presenceOff = !parsed.on
+      presenceOff = !parsed.on || cfg?.enabled === false
       await $.store.set('presence', parsed.on ? 'on' : 'off')
       await reportStatus($, parsed.on ? (isWorking ? 'working' : 'idle') : 'offline')
       return { text: parsed.on ? '작업 상태를 다시 알립니다. 내 막사 문에 불이 켜져요.' : '작업 상태를 알리지 않습니다. 내 막사는 외출 중으로 보여요.' }

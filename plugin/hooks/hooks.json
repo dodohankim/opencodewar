@@ -1,4 +1,7 @@
 {
+  "modules": [
+    "./space.mjs"
+  ],
   "hooks": {
     "SessionStart": [
       {
