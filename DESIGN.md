@@ -1808,11 +1808,11 @@ SpaceRoom (DO, SQLite)
 
 **공유 미리보기 (§27.10)**: `handleSpacePage` 가 `/s/<pid>` 의 메타를 HTMLRewriter 로 바꾼다(`handleBattlePage` 패턴) — `dohan의 막사 · 지금 3명 · 작업 중`, 이미지는 그 유저의 `/og/<pid>.png`. 잠긴 막사는 `· 잠김` 만, 안의 사정을 말하지 않는다. D1 은 `users` 1행 읽기 + DO `/info` 1회. 없는(삭제된) 막사는 `/plaza` 로 302 — 안 그러면 웹이 없는 방에 WS 재접속을 반복한다. `/plaza` 는 `space.html` 의 정적 메타 그대로(`og.png?v=` 복제 위치가 2곳 늘었다).
 
-**문서 (§27.9)**: README 양쪽 "무엇을 수집하나"에 채팅·방명록·방문 기록·작업 상태와 보존 기간을 명시. `web/privacy.html`(개인정보처리방침) 과 `agents.ts` 의 마크다운 요약은 아직 안 고쳤다 — 수집 항목이 늘어나므로 **운영 배포 전에** 시행일과 함께 갱신해야 한다.
+**문서 (§27.9)**: README 양쪽 "무엇을 수집하나"에 채팅·방명록·방문 기록·작업 상태와 보존 기간을 명시. `web/privacy.html`(개인정보처리방침) 과 `agents.ts` 의 마크다운 요약은 §27.18 에서 갱신했다.
 
 **배포 전 체크**: `wrangler secret put SPACE_SECRET` → 마이그레이션 `v1-space` 포함 배포 → 운영 `/plaza` 접속 → 푸시 후 실제 설치본에서 `claude plugin update` + 재시작 + `/space`(§27.11 롤아웃 플래그 확인).
 
-**남은 일**: 개인정보처리방침 갱신, 웹 주인 명령 UI, `/visit <닉>`, 좁은 터미널·VS Code 폴백(§27.3), 채팅 닉네임 필터(§27.6).
+**남은 일**: 웹 주인 명령 UI, `/visit <닉>`, 좁은 터미널·VS Code 폴백(§27.3), 채팅 닉네임 필터(§27.6).
 
 ### 27.18 방침 변경과 공개 순서 (2026-11-04)
 
@@ -1828,3 +1828,4 @@ SpaceRoom (DO, SQLite)
 
 **`public_id` 없는 유저**: `/register` 는 `public_id` 없이 행을 만들고 `/track` 은 기존 행의 값을 채우지 않는다. 그래서 이런 유저는 `/space/ticket` 이 404 였다(운영 16명 중 2명, 11-04 기준). 티켓 발급 때 채운다.
 
+**운영 배포 결과 (11-04)**: `SPACE_SECRET` 등록, `v1-space` 포함 Worker 배포(버전 `00447776`, 직전 `c03465fe`). `OCW_API_URL` 없이 `claude --plugin-dir ./plugin` → `/space` 로 운영 광장 입장, Esc 뒤 사이드카 소멸을 확인했다. 관전자 WebSocket 응답에 비밀 `userId` 가 없음도 확인했다. 플러그인 공개와 실제 설치본 확인은 11-11 이후 `main` 머지 때 한다.
