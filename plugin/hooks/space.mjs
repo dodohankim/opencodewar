@@ -26,6 +26,100 @@ const DOOR_REACH = 6 // 문 앞 판정 거리(px)
 const EXIT_X = 2 // 막사 안 나가는 문 위치
 const DEFAULT_ENDPOINT = 'https://opencodewar.dev'
 
+// ── 언어 ──
+// 터미널에는 ?lang= 이 없으므로 순서는: /space lang 으로 고른 값 → 로케일 환경변수 → 시간대 → 영어.
+// macOS 기본값이 LANG=en_US 라 로케일만 보면 한국 개발자도 영어가 된다. Asia/Seoul 을 함께 봐서
+// 웹의 "접속 국가 KR → 한국어" 와 같은 결과를 서버 없이 얻는다. 채팅·방명록·닉네임은 원문 그대로다.
+const STR = {
+  ko: {
+    plaza: '광장', barracks: (n) => `${n}의 막사`, pane_title: 'OCW 광장', not_connected: '연결 안 됨',
+    entered: (where, watching) => `${where}에 들어왔습니다` + (watching ? ' (관전)' : ''), joined: (n) => `${n} 님이 들어왔습니다`, left: (n) => `${n} 님이 나갔습니다`,
+    locked_on: '막사가 잠겼어요 (새로 들어올 수 없음)', locked_off: '막사가 열렸어요', away: '외출 중',
+    end_full: '방이 꽉 찼어요 (최대 인원)', end_replaced: '다른 곳(웹·다른 터미널)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요',
+    end_kicked: '주인이 내보냈어요. 잠시 뒤에 다시 들어올 수 있어요', end_banned: '이 막사에는 들어갈 수 없어요', end_closed: '이 막사는 잠겨 있어요',
+    slow_down: '조금 천천히 말해 주세요', guest_limit: '이 막사 방명록은 하루 3번까지 쓸 수 있어요', guest_owner_here: '주인이 와 있어요. 방명록 대신 채팅으로 말해 보세요',
+    no_config: 'Open Code War 플러그인 설정(~/.open-code-war/config.json)이 없어요. 먼저 플러그인을 설치하고 프롬프트를 한 번 보내 주세요.',
+    usage: [
+      '/space — 광장 열기',
+      '/space home — 내 막사로 바로',
+      '/space kick <닉> — 내 막사에서 내보내기 (10분간 못 들어옴)',
+      '/space ban <닉> · unban <닉> · bans — 차단 · 해제 · 목록',
+      '/space open · close — 막사 열기 · 잠그기',
+      '/space guestbook clear — 방명록 비우기',
+      '/space presence on · off — 작업 상태 알리기 켜기 · 끄기',
+      '/space lang ko · en — 막사 표시 언어 바꾸기',
+    ].join('\n'),
+    admin_not_found: (x) => `'${x}' 님을 찾지 못했어요. 지금 막사에 있거나 최근 다녀간 사람만 지정할 수 있어요.`, admin_ambiguous: (x) => `'${x}' 닉네임이 여러 명이에요.`, admin_not_self: '자기 자신은 내보낼 수 없어요.',
+    admin_failed: (why) => '처리하지 못했어요: ' + (why ?? '알 수 없는 오류'),
+    admin_kick: (x) => `${x} 님을 내보냈어요. 10분 동안 다시 들어올 수 없어요.`, admin_ban: (x) => `${x} 님을 차단했어요.`, admin_unban: (x) => `${x} 님의 차단을 풀었어요.`,
+    admin_bans: (list) => '차단 목록: ' + list, admin_no_bans: '차단한 사람이 없어요.', admin_open: '막사를 열었어요.', admin_close: '막사를 잠갔어요. 나 말고는 새로 들어올 수 없어요.',
+    admin_guest_clear: '방명록을 비웠어요.', admin_done: '처리했어요.',
+    going_plaza: '광장으로 가는 중…', going_barracks: '막사로 가는 중…', server_retry: (why) => `서버에 연결할 수 없어요 (${why}) — 잠시 뒤 다시 시도합니다`,
+    node_old: (v) => `Node 22 이상이 필요해요 (지금 ${v})`, conn_failed: (why) => '연결 실패: ' + why, reconnecting: '연결이 끊겼어요 — 다시 연결하는 중…',
+    cmd_desc: '광장 열기 — 막사 문으로 걸어가 e 로 들어가기 (home · kick · ban · unban · open · close · guestbook clear · presence · lang)',
+    cmd_hint: '[home | kick <닉> | ban <닉> | unban <닉> | open | close | guestbook clear | presence on|off | lang ko|en]', cmd_failed: (why) => '명령 등록 실패: ' + why,
+    presence_on: '작업 상태를 다시 알립니다. 내 막사 문에 불이 켜져요.', presence_off: '작업 상태를 알리지 않습니다. 내 막사는 외출 중으로 보여요.',
+    lang_set: '막사 표시 언어를 한국어로 바꿨어요.', server_down: (why) => '서버에 연결할 수 없어요: ' + why, pane_wait: (why) => '패널 대기 중: ' + (why ?? '터미널이 좁아요'),
+    count: (c, cap) => `${c}/${cap}`, owner_working: '주인 작업 중 ⌨', owner_online: '주인 접속 중', owner_away: '주인 외출 중', locked_tag: '잠김🔒',
+    hint_enter: (n, locked) => `e: ${n}의 막사로 들어가기` + (locked ? ' (잠김🔒)' : ''), hint_exit: 'e: 광장으로 나가기',
+    hint_plaza: 'a/d 로 문 앞까지 걸어가서 e', hint_no_doors: '아직 켜진 막사가 없어요 · /space home 으로 내 막사', hint_chat_close: ' · t 채팅 · Esc 닫기',
+    hint_barracks: 'a/d 이동 · 왼쪽 문에서 e 로 광장 · t 채팅', hint_guest: ' · g 방명록', hint_close: ' · Esc 닫기',
+    scene_alt: (where, c) => `${where} 장면: ${c}명`, btn_enter: '들어가기', chat: '채팅', chat_t: '채팅(t)', guestbook: '방명록', send: '보내기',
+    ph_spectator: '관전 중에는 말할 수 없어요', ph_guest: '주인에게 남길 한 줄 (100자) 입력 후 Enter', ph_chat: '입력 후 Enter · 빈 Enter/Tab = 이동 모드', ph_idle: 't 를 누르면 여기로',
+  },
+  en: {
+    plaza: 'Plaza', barracks: (n) => `${n}'s Barracks`, pane_title: 'OCW Plaza', not_connected: 'Not connected',
+    entered: (where, watching) => `Entered ${where}` + (watching ? ' (watching)' : ''), joined: (n) => `${n} joined`, left: (n) => `${n} left`,
+    locked_on: 'The barracks is locked (no new visitors)', locked_off: 'The barracks is open', away: 'Away',
+    end_full: 'This room is full', end_replaced: 'This account joined from somewhere else (web or another terminal), so this connection was closed',
+    end_kicked: 'The owner removed you. You can come back in a little while', end_banned: "You can't enter this barracks", end_closed: 'This barracks is locked',
+    slow_down: 'Please slow down', guest_limit: 'You can sign this guestbook up to 3 times a day', guest_owner_here: 'The owner is here. Try chat instead of the guestbook',
+    no_config: 'Open Code War plugin settings (~/.open-code-war/config.json) are missing. Install the plugin and send one prompt first.',
+    usage: [
+      '/space — open the plaza',
+      '/space home — go straight to your barracks',
+      '/space kick <nick> — remove someone from your barracks (blocked for 10 minutes)',
+      '/space ban <nick> · unban <nick> · bans — ban · lift · list',
+      '/space open · close — unlock · lock your barracks',
+      '/space guestbook clear — clear your guestbook',
+      '/space presence on · off — resume · stop sending your work status',
+      '/space lang ko · en — change the barracks display language',
+    ].join('\n'),
+    admin_not_found: (x) => `Couldn't find '${x}'. You can only name someone who is in your barracks or visited recently.`, admin_ambiguous: (x) => `More than one person is named '${x}'.`, admin_not_self: "You can't remove yourself.",
+    admin_failed: (why) => "Couldn't do that: " + (why ?? 'unknown error'),
+    admin_kick: (x) => `Removed ${x}. They can't come back for 10 minutes.`, admin_ban: (x) => `Banned ${x}.`, admin_unban: (x) => `Unbanned ${x}.`,
+    admin_bans: (list) => 'Banned: ' + list, admin_no_bans: "You haven't banned anyone.", admin_open: 'Your barracks is open.', admin_close: 'Your barracks is locked. No one else can enter.',
+    admin_guest_clear: 'Your guestbook is cleared.', admin_done: 'Done.',
+    going_plaza: 'Heading to the plaza…', going_barracks: 'Heading to the barracks…', server_retry: (why) => `Can't reach the server (${why}). Trying again shortly`,
+    node_old: (v) => `Node 22 or later is required (you have ${v})`, conn_failed: (why) => 'Connection failed: ' + why, reconnecting: 'Disconnected. Reconnecting…',
+    cmd_desc: 'Open the plaza — walk to a barracks door and press e (home · kick · ban · unban · open · close · guestbook clear · presence · lang)',
+    cmd_hint: '[home | kick <nick> | ban <nick> | unban <nick> | open | close | guestbook clear | presence on|off | lang ko|en]', cmd_failed: (why) => "Couldn't register the command: " + why,
+    presence_on: 'Sending your work status again. Your barracks door will light up.', presence_off: 'No longer sending your work status. Your barracks will show as away.',
+    lang_set: 'Barracks display language set to English.', server_down: (why) => "Can't reach the server: " + why, pane_wait: (why) => 'Waiting for the panel: ' + (why ?? 'the terminal is too narrow'),
+    count: (c, cap) => `${c}/${cap}`, owner_working: 'Owner working ⌨', owner_online: 'Owner online', owner_away: 'Owner away', locked_tag: 'Locked🔒',
+    hint_enter: (n, locked) => `e: enter ${n}'s barracks` + (locked ? ' (locked🔒)' : ''), hint_exit: 'e: back to the plaza',
+    hint_plaza: 'a/d walk to a door, then e', hint_no_doors: 'No barracks are open yet · /space home for yours', hint_chat_close: ' · t chat · Esc close',
+    hint_barracks: 'a/d move · e at the left door for the plaza · t chat', hint_guest: ' · g guestbook', hint_close: ' · Esc close',
+    scene_alt: (where, c) => `${where} scene: ${c} ${c === 1 ? 'person' : 'people'}`, btn_enter: 'Go in', chat: 'Chat', chat_t: 'Chat(t)', guestbook: 'Guestbook', send: 'Send',
+    ph_spectator: "You can't talk while watching", ph_guest: 'One line for the owner (100 chars), then Enter', ph_chat: 'Type, then Enter · empty Enter/Tab = walk', ph_idle: 'Press t to type here',
+  },
+}
+let LANG = 'en'
+export const setLang = (l) => {
+  LANG = l === 'ko' ? 'ko' : 'en'
+}
+const t = (k, ...a) => {
+  const v = STR[LANG][k]
+  return typeof v === 'function' ? v(...a) : v
+}
+
+/** 표시 언어 판정. locale 은 LC_ALL → LC_MESSAGES → LANG 중 처음으로 값이 있는 것. */
+export function detectLang({ saved, locale, timeZone }) {
+  if (saved === 'ko' || saved === 'en') return saved
+  if (/^ko([_.@-]|$)/i.test(String(locale ?? ''))) return 'ko'
+  return timeZone === 'Asia/Seoul' ? 'ko' : 'en'
+}
+
 // ── 스프라이트: 8×10 미니 병정 (web/index.html SPRITES 의 16×16 병정을 축소해 다시 찍음) ──
 // H·U = 군복, S = 피부, E = 눈, R·B·M·K = 장비(검정 잉크), F = 깃발, W·I·O·L = 문(나무·안쪽·손잡이·등)
 const SPRITES = {
@@ -61,10 +155,14 @@ const ARMY = { 'claude-code': INK, codex: 0x3e6fb8, opencode: 0xb8742e, pi: 0x7c
 const armyOf = (agent) => ARMY[agent] ?? INK
 
 // 계급 이름(§16.1). 임계값은 서버에만 있고 여기는 이름만 갖는다 — 인덱스로 매칭.
-const RANK_NAMES = ['이병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '대위', '소령', '대령', '장군']
+// 영어는 이름표 폭에 맞춘 군 약어다(web/space.html 과 같은 값).
+const RANK_NAMES = {
+  ko: ['이병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '대위', '소령', '대령', '장군'],
+  en: ['Pvt', 'PFC', 'Cpl', 'Sgt', 'SSgt', 'SFC', 'MSgt', '2Lt', 'Capt', 'Maj', 'Col', 'Gen'],
+}
 /** 이름표: `닉네임·계급` (§27.4). 계급을 모르면 닉네임만. */
 export function nameTag(m) {
-  const r = RANK_NAMES[m.rank]
+  const r = RANK_NAMES[LANG][m.rank]
   return clip(m.nick, 8) + (r ? '·' + r : '')
 }
 
@@ -236,13 +334,7 @@ let sentStatus = null
 let statusTimer = null
 
 /** 서버가 연결을 끝내는 이유. replaced 를 뺀 나머지는 막사에서 받으면 광장으로 돌아간다. */
-const END_TEXT = {
-  full: '방이 꽉 찼어요 (최대 인원)',
-  replaced: '다른 곳(웹·다른 터미널)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요',
-  kicked: '주인이 내보냈어요. 잠시 뒤에 다시 들어올 수 있어요',
-  banned: '이 막사에는 들어갈 수 없어요',
-  closed: '이 막사는 잠겨 있어요',
-}
+const END_CODES = new Set(['full', 'replaced', 'kicked', 'banned', 'closed'])
 
 function pushLog(entry) {
   view.log.push(entry)
@@ -262,8 +354,8 @@ export function applyServer(v, msg, now) {
       v.log = []
       for (const l of msg.guest ?? []) v.log.push({ at: l.at, nick: l.nick, text: l.text, kind: 'guest' })
       for (const l of msg.chat ?? []) v.log.push({ at: l.at, nick: l.nick, text: l.text, kind: 'chat' })
-      const where = msg.room.kind === 'plaza' ? '광장' : (msg.room.owner?.nick ?? '?') + '의 막사'
-      v.log.push({ at: now, nick: '', text: where + '에 들어왔습니다' + (msg.you.role === 'spectator' ? ' (관전)' : ''), kind: 'notice' })
+      const where = msg.room.kind === 'plaza' ? t('plaza') : t('barracks', msg.room.owner?.nick ?? '?')
+      v.log.push({ at: now, nick: '', text: t('entered', where, msg.you.role === 'spectator'), kind: 'notice' })
       if (msg.room.kind === 'barracks') me.x = EXIT_X + 10
       else if (pendingDoorReturn) {
         const d = (msg.room.doors ?? []).find((x) => x.pid === pendingDoorReturn)
@@ -277,13 +369,13 @@ export function applyServer(v, msg, now) {
     }
     case 'join':
       v.members.set(msg.m.id, { ...msg.m, walkUntil: 0 })
-      v.log.push({ at: now, nick: '', text: msg.m.nick + ' 님이 들어왔습니다', kind: 'notice' })
+      v.log.push({ at: now, nick: '', text: t('joined', msg.m.nick), kind: 'notice' })
       return
     case 'leave': {
       const m = v.members.get(msg.id)
       v.members.delete(msg.id)
       delete v.bubbles[msg.id]
-      if (m) v.log.push({ at: now, nick: '', text: m.nick + ' 님이 나갔습니다', kind: 'notice' })
+      if (m) v.log.push({ at: now, nick: '', text: t('left', m.nick), kind: 'notice' })
       return
     }
     case 'move': {
@@ -313,7 +405,7 @@ export function applyServer(v, msg, now) {
       return
     case 'locked':
       if (v.room) v.room.locked = msg.locked
-      v.log.push({ at: now, nick: '', text: msg.locked ? '막사가 잠겼어요 (새로 들어올 수 없음)' : '막사가 열렸어요', kind: 'notice' })
+      v.log.push({ at: now, nick: '', text: t(msg.locked ? 'locked_on' : 'locked_off'), kind: 'notice' })
       return
     case 'owner':
       if (v.room) v.room.owner = msg.owner
@@ -325,13 +417,10 @@ export function applyServer(v, msg, now) {
       }
       return
     case 'error': {
-      const text = END_TEXT[msg.code] ?? {
-        slow_down: '조금 천천히 말해 주세요',
-        guest_limit: '이 막사 방명록은 하루 3번까지 쓸 수 있어요',
-        guest_owner_here: '주인이 와 있어요. 방명록 대신 채팅으로 말해 보세요',
-      }[msg.code]
+      const ends = END_CODES.has(msg.code)
+      const text = ends ? t('end_' + msg.code) : ['slow_down', 'guest_limit', 'guest_owner_here'].includes(msg.code) ? t(msg.code) : null
       if (text) v.log.push({ at: now, nick: '', text, kind: 'notice' })
-      if (END_TEXT[msg.code]) {
+      if (ends) {
         v.status = 'error'
         v.note = text
       }
@@ -382,7 +471,7 @@ export function compose(v, viewCols, now, meWorking) {
     }
   } else if (v.room?.kind === 'barracks') {
     stamp(buf, SPRITES.door, EXIT_X - cam, 0, { lit: true })
-    signs.push({ x: EXIT_X - cam + SW / 2, text: '광장' })
+    signs.push({ x: EXIT_X - cam + SW / 2, text: t('plaza') })
     // 주인이 이 방에 없지만 Claude Code 를 켜 두었으면 책상에 앉아 있다. 꺼져 있으면 "외출 중".
     const ownerHere = owner && (v.you?.pid === owner.pid || [...v.members.values()].some((m) => m.pid === owner.pid))
     const deskX = width - SW - 6
@@ -391,7 +480,7 @@ export function compose(v, viewCols, now, meWorking) {
         stamp(buf, SPRITES[owner.working ? (tick % 4 < 2 ? 'type1' : 'type2') : 'stand'], deskX - cam, 0, { army: armyOf(owner.agent) })
         names.push({ x: deskX - cam + SW / 2, text: '★' + nameTag(owner) + (owner.working ? '⌨' : '') })
       } else {
-        signs.push({ x: deskX - cam + SW / 2, text: '외출 중' })
+        signs.push({ x: deskX - cam + SW / 2, text: t('away') })
       }
     }
   }
@@ -437,18 +526,6 @@ function svgOf(sc) {
 
 // ── 설정 · 네트워크 ──
 
-const NO_CONFIG = 'Open Code War 플러그인 설정(~/.open-code-war/config.json)이 없어요. 먼저 플러그인을 설치하고 프롬프트를 한 번 보내 주세요.'
-
-const SPACE_USAGE = [
-  '/space — 광장 열기',
-  '/space home — 내 막사로 바로',
-  '/space kick <닉> — 내 막사에서 내보내기 (10분간 못 들어옴)',
-  '/space ban <닉> · unban <닉> · bans — 차단 · 해제 · 목록',
-  '/space open · close — 막사 열기 · 잠그기',
-  '/space guestbook clear — 방명록 비우기',
-  '/space presence on · off — 작업 상태 알리기 켜기 · 끄기',
-].join('\n')
-
 /** /space 뒤의 인자 해석 */
 export function parseSpaceArgs(raw) {
   const [sub = '', ...rest] = String(raw ?? '').trim().split(/\s+/)
@@ -459,24 +536,27 @@ export function parseSpaceArgs(raw) {
   if (sub === 'bans' || sub === 'open' || sub === 'close') return { kind: 'admin', action: sub, target: '' }
   if (sub === 'guestbook' && arg === 'clear') return { kind: 'admin', action: 'guest_clear', target: '' }
   if (sub === 'presence' && (arg === 'on' || arg === 'off')) return { kind: 'presence', on: arg === 'on' }
+  if (sub === 'lang' && (arg === 'ko' || arg === 'en')) return { kind: 'lang', lang: arg }
   return { kind: 'usage' }
 }
 
 /** 서버 응답 → 사람이 읽을 한 줄 */
 export function adminReply(action, target, data) {
   if (!data?.ok) {
-    const why = { not_found: `'${target}' 님을 찾지 못했어요. 지금 막사에 있거나 최근 다녀간 사람만 지정할 수 있어요.`, ambiguous: `'${target}' 닉네임이 여러 명이에요.`, not_self: '자기 자신은 내보낼 수 없어요.' }[data?.error]
-    return why ?? '처리하지 못했어요: ' + (data?.error ?? '알 수 없는 오류')
+    if (data?.error === 'not_found') return t('admin_not_found', target)
+    if (data?.error === 'ambiguous') return t('admin_ambiguous', target)
+    if (data?.error === 'not_self') return t('admin_not_self')
+    return t('admin_failed', data?.error)
   }
   switch (action) {
-    case 'kick': return `${data.target} 님을 내보냈어요. 10분 동안 다시 들어올 수 없어요.`
-    case 'ban': return `${data.target} 님을 차단했어요.`
-    case 'unban': return `${data.target} 님의 차단을 풀었어요.`
-    case 'bans': return data.bans?.length ? '차단 목록: ' + data.bans.join(', ') : '차단한 사람이 없어요.'
-    case 'open': return '막사를 열었어요.'
-    case 'close': return '막사를 잠갔어요. 나 말고는 새로 들어올 수 없어요.'
-    case 'guest_clear': return '방명록을 비웠어요.'
-    default: return '처리했어요.'
+    case 'kick': return t('admin_kick', data.target)
+    case 'ban': return t('admin_ban', data.target)
+    case 'unban': return t('admin_unban', data.target)
+    case 'bans': return data.bans?.length ? t('admin_bans', data.bans.join(', ')) : t('admin_no_bans')
+    case 'open': return t('admin_open')
+    case 'close': return t('admin_close')
+    case 'guest_clear': return t('admin_guest_clear')
+    default: return t('admin_done')
   }
 }
 
@@ -492,6 +572,15 @@ async function loadConfig($) {
   } catch {
     return null
   }
+}
+
+async function resolveLang($) {
+  let timeZone
+  try {
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch {}
+  const [saved, lcAll, lcMessages, lang] = await Promise.all([$.store.get('lang'), $.env.get('LC_ALL'), $.env.get('LC_MESSAGES'), $.env.get('LANG')])
+  return detectLang({ saved, locale: lcAll || lcMessages || lang, timeZone })
 }
 
 async function api($, path, body) {
@@ -563,34 +652,35 @@ async function connect($, room) {
   await closeLink($)
   view = emptyRoom()
   view.status = 'connecting'
-  view.note = room === 'plaza' ? '광장으로 가는 중…' : '막사로 가는 중…'
+  view.note = t(room === 'plaza' ? 'going_plaza' : 'going_barracks')
   redraw($)
 
   cfg = cfg ?? (await loadConfig($))
   if (!cfg) {
     view.status = 'error'
-    view.note = NO_CONFIG
+    view.note = t('no_config')
     redraw($)
     return
   }
-  let t
+  let ticket
   try {
-    t = await api($, '/space/ticket', { userId: cfg.userId })
+    ticket = await api($, '/space/ticket', { userId: cfg.userId })
   } catch (err) {
-    t = { ok: false, status: 0, data: { error: String(err?.message ?? err) } }
+    ticket = { ok: false, status: 0, data: { error: String(err?.message ?? err) } }
   }
   if (my !== gen) return
-  if (!t.ok || !t.data?.ticket) {
+  if (!ticket.ok || !ticket.data?.ticket) {
     view.status = 'closed'
-    view.note = '서버에 연결할 수 없어요 (' + (t.data?.error ?? t.status) + ') — 잠시 뒤 다시 시도합니다'
+    view.note = t('server_retry', ticket.data?.error ?? ticket.status)
     redraw($)
     $.clock.after(5000, () => my === gen && isOpen && connect($, room))
     return
   }
-  const url = cfg.endpoint.replace(/^http/, 'ws') + '/space/ws?room=' + encodeURIComponent(room) + '&t=' + encodeURIComponent(t.data.ticket)
+  const url = cfg.endpoint.replace(/^http/, 'ws') + '/space/ws?room=' + encodeURIComponent(room) + '&t=' + encodeURIComponent(ticket.data.ticket)
 
   let buffer = ''
   let reason = null
+  let nodeTooOld = false
   try {
     const it = $.process.spawn({ argv: ['node', $.plugin.root + '/link/link.mjs'], input: JSON.stringify({ url }) })
     while (true) {
@@ -621,17 +711,18 @@ async function connect($, room) {
           continue
         }
         if (msg.t === '_error') {
-          reason = msg.code === 'node_too_old' ? `Node 22 이상이 필요해요 (지금 ${msg.node})` : msg.code
+          if (msg.code === 'node_too_old') nodeTooOld = true
+          reason = nodeTooOld ? t('node_old', msg.node) : msg.code
           continue
         }
         if (msg.t === '_closed') continue
         applyServer(view, msg, await $.clock.now())
         if (msg.t === 'hello' && link?.gen === my) for (const m of syncMessages(me.x, me.dir, isWorking)) send($, m)
-        if (msg.t === 'error' && END_TEXT[msg.code]) {
+        if (msg.t === 'error' && END_CODES.has(msg.code)) {
           // 서버가 먼저 닫아도 close 가 안 올 수 있으니 직접 닫는다. 막사에서 쫓겨나거나 거부되면 광장으로.
           closeLink($)
           if (msg.code !== 'replaced' && room !== 'plaza') {
-            carryNote = END_TEXT[msg.code]
+            carryNote = t('end_' + msg.code)
             pendingDoorReturn = room
             $.clock.after(0, () => connect($, 'plaza'))
           }
@@ -649,15 +740,16 @@ async function connect($, room) {
     return
   }
   view.status = 'closed'
-  view.note = reason ? '연결 실패: ' + reason : '연결이 끊겼어요 — 다시 연결하는 중…'
+  view.note = reason ? t('conn_failed', reason) : t('reconnecting')
   redraw($)
-  if (!reason || !reason.startsWith('Node')) $.clock.after(3000, () => my === gen && isOpen && connect($, wantRoom))
+  if (!nodeTooOld) $.clock.after(3000, () => my === gen && isOpen && connect($, wantRoom))
 }
 
 export function register(on) {
   on('session.start', async ($, e, next) => {
     sid = crypto.randomUUID().replace(/-/g, '')
     cfg = await loadConfig($)
+    setLang(await resolveLang($))
     interactive = e.isInteractive !== false // claude -p 같은 비대화 실행은 "접속 중"이 아니다
     // /ocw disable(수집 끔) 상태면 작업 상태도 보내지 않는다. /space 를 직접 여는 건 별개다.
     presenceOff = (await $.store.get('presence')) === 'off' || cfg?.enabled === false
@@ -672,9 +764,9 @@ export function register(on) {
     $.clock.after(0, () => reportStatus($, 'idle', { full: true }))
     $.clock.every(STATUS_BEAT_MS, () => reportStatus($, isWorking ? 'working' : 'idle'))
     try {
-      await $.command.register({ name: 'space', description: '광장 열기 — 막사 문으로 걸어가 e 로 들어가기 (home · kick · ban · unban · open · close · guestbook clear · presence)', argumentHint: '[home | kick <닉> | ban <닉> | unban <닉> | open | close | guestbook clear | presence on|off]', immediate: true })
+      await $.command.register({ name: 'space', description: t('cmd_desc'), argumentHint: t('cmd_hint'), immediate: true })
     } catch (err) {
-      $.ui.log('명령 등록 실패: ' + String(err?.message ?? err))
+      $.ui.log(t('cmd_failed', String(err?.message ?? err)))
     }
     return next(e)
   })
@@ -703,34 +795,40 @@ export function register(on) {
   on('command.run', { command: 'space' }, async ($, e) => {
     const parsed = parseSpaceArgs(e.args)
     cfg = cfg ?? (await loadConfig($))
-    if (parsed.kind === 'usage') return { text: SPACE_USAGE }
+    if (parsed.kind === 'usage') return { text: t('usage') }
+    if (parsed.kind === 'lang') {
+      await $.store.set('lang', parsed.lang)
+      setLang(parsed.lang)
+      redraw($)
+      return { text: t('lang_set') }
+    }
     if (parsed.kind === 'presence') {
       presenceOff = !parsed.on || cfg?.enabled === false
       await $.store.set('presence', parsed.on ? 'on' : 'off')
       await reportStatus($, parsed.on ? (isWorking ? 'working' : 'idle') : 'offline')
-      return { text: parsed.on ? '작업 상태를 다시 알립니다. 내 막사 문에 불이 켜져요.' : '작업 상태를 알리지 않습니다. 내 막사는 외출 중으로 보여요.' }
+      return { text: t(parsed.on ? 'presence_on' : 'presence_off') }
     }
     if (parsed.kind === 'admin') {
-      if (!cfg) return { text: NO_CONFIG }
+      if (!cfg) return { text: t('no_config') }
       let r
       try {
         r = await api($, '/space/admin', { userId: cfg.userId, action: parsed.action, target: parsed.target })
       } catch (err) {
-        return { text: '서버에 연결할 수 없어요: ' + String(err?.message ?? err) }
+        return { text: t('server_down', String(err?.message ?? err)) }
       }
       return { text: adminReply(parsed.action, parsed.target, r.data) }
     }
     isOpen = true
     inputMode = null
     openedAt = await $.clock.now()
-    const r = await $.ui.open({ id: PANE, title: 'OCW 광장', focus: true, closeOnEscape: true, rows: 22 })
-    if (r && r.isPlaced === false) $.ui.toast('패널 대기 중: ' + (r.reason ?? '터미널이 좁아요'))
+    const r = await $.ui.open({ id: PANE, title: t('pane_title'), focus: true, closeOnEscape: true, rows: 22 })
+    if (r && r.isPlaced === false) $.ui.toast(t('pane_wait', r.reason))
     let room = parsed.kind === 'home' ? null : 'plaza'
     if (room === null) {
       // 내 막사 = 내 public_id. 티켓을 한 번 받아 알아낸다.
       try {
-        const t = cfg ? await api($, '/space/ticket', { userId: cfg.userId }) : null
-        room = t?.data?.pid ?? 'plaza'
+        const ticket = cfg ? await api($, '/space/ticket', { userId: cfg.userId }) : null
+        room = ticket?.data?.pid ?? 'plaza'
       } catch {
         room = 'plaza'
       }
@@ -799,11 +897,11 @@ export function register(on) {
     }
 
     // 머리줄
-    let title = '연결 안 됨'
-    if (room?.kind === 'plaza') title = `광장 · ${count}/${room.cap}`
+    let title = t('not_connected')
+    if (room?.kind === 'plaza') title = `${t('plaza')} · ${t('count', count, room.cap)}`
     else if (room?.kind === 'barracks') {
       const o = room.owner
-      title = `${o?.nick ?? '?'}의 막사 · ${count}/${room.cap}` + (o ? (o.working ? ' · 주인 작업 중 ⌨' : o.online ? ' · 주인 접속 중' : ' · 주인 외출 중') : '') + (room.locked ? ' · 잠김🔒' : '')
+      title = `${t('barracks', o?.nick ?? '?')} · ${t('count', count, room.cap)}` + (o ? ' · ' + t(o.working ? 'owner_working' : o.online ? 'owner_online' : 'owner_away') : '') + (room.locked ? ' · ' + t('locked_tag') : '')
     }
     const header = Text({ bold: true, wrap: 'truncate-end', children: [clip(title, bodyCols - 2)] })
     const hint = Text({
@@ -815,11 +913,11 @@ export function register(on) {
             ? view.note
             : near
               ? near.kind === 'enter'
-                ? `e: ${near.door.nick}의 막사로 들어가기` + (near.door.locked ? ' (잠김🔒)' : '')
-                : 'e: 광장으로 나가기'
+                ? t('hint_enter', near.door.nick, near.door.locked)
+                : t('hint_exit')
               : room?.kind === 'plaza'
-                ? (room.doors?.length ? 'a/d 로 문 앞까지 걸어가서 e' : '아직 켜진 막사가 없어요 · /space home 으로 내 막사') + ' · t 채팅 · Esc 닫기'
-                : 'a/d 이동 · 왼쪽 문에서 e 로 광장 · t 채팅' + (guestOk ? ' · g 방명록' : '') + ' · Esc 닫기',
+                ? t(room.doors?.length ? 'hint_plaza' : 'hint_no_doors') + t('hint_chat_close')
+                : t('hint_barracks') + (guestOk ? t('hint_guest') : '') + t('hint_close'),
           bodyCols,
         ),
       ],
@@ -828,7 +926,7 @@ export function register(on) {
     const scene =
       e.surface === 'terminal'
         ? Raster({ key: 'scene', columns: sc.cols, rows: sc.buf.length / 2, cells: packCells(toCells(sc.buf)) })
-        : Svg({ source: svgOf(sc), alt: (room?.kind === 'plaza' ? '광장' : '막사') + ' 장면: ' + count + '명' })
+        : Svg({ source: svgOf(sc), alt: t('scene_alt', room?.kind === 'plaza' ? t('plaza') : t('barracks', room?.owner?.nick ?? '?'), count) })
 
     const buttons = Box({
       flexDirection: 'row',
@@ -836,10 +934,10 @@ export function register(on) {
       children: [
         Button({ key: 'left', label: '←', hotkey: 'a', plain: true, onPress: () => move(-STEP) }),
         Button({ key: 'right', label: '→', hotkey: 'd', plain: true, onPress: () => move(STEP) }),
-        Button({ key: 'enter', label: '들어가기', hotkey: 'e', plain: true, dimColor: !near, onPress: enter }),
+        Button({ key: 'enter', label: t('btn_enter'), hotkey: 'e', plain: true, dimColor: !near, onPress: enter }),
         Button({
           key: 'talk',
-          label: '채팅',
+          label: t('chat'),
           hotkey: 't',
           plain: true,
           dimColor: !isMember,
@@ -853,7 +951,7 @@ export function register(on) {
         }),
         Button({
           key: 'guest',
-          label: '방명록',
+          label: t('guestbook'),
           hotkey: 'g',
           plain: true,
           dimColor: !guestOk,
@@ -869,10 +967,10 @@ export function register(on) {
 
     const chatInput = Input({
       key: 'chat',
-      label: inputMode === 'guest' ? '방명록' : inputMode === 'chat' ? '채팅' : '채팅(t)',
-      placeholder: !isMember ? '관전 중에는 말할 수 없어요' : inputMode === 'guest' ? '주인에게 남길 한 줄 (100자) 입력 후 Enter' : inputMode === 'chat' ? '입력 후 Enter · 빈 Enter/Tab = 이동 모드' : 't 를 누르면 여기로',
+      label: t(inputMode === 'guest' ? 'guestbook' : inputMode === 'chat' ? 'chat' : 'chat_t'),
+      placeholder: t(!isMember ? 'ph_spectator' : inputMode === 'guest' ? 'ph_guest' : inputMode === 'chat' ? 'ph_chat' : 'ph_idle'),
       value: '',
-      submitLabel: '보내기',
+      submitLabel: t('send'),
       onSubmit: async (value) => {
         const text = String(value ?? '').trim().slice(0, 200)
         if (!text || !isMember || inputMode === 'guest') {

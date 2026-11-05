@@ -197,6 +197,7 @@ claude --plugin-dir ./plugin
 /space close | open      # 내 막사 잠그기 · 열기
 /space guestbook clear   # 내 막사 방명록 비우기
 /space presence off | on # 작업 상태 알리기 끄기 · 켜기
+/space lang ko | en      # 막사 표시 언어 바꾸기
 ```
 
 세션을 시작하면 터미널에 **한 줄 브리핑**이 뜹니다 — 지금 알릴 만한 것 하나만(스트릭이 끊길 참이거나,

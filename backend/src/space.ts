@@ -18,7 +18,7 @@ import { isValidUserId } from './validate';
 import { displayNickname } from './nickname';
 import { newPublicId } from './publicid';
 import { rankIndexOf } from './briefing';
-import { ogImageUrl, visitorCountry, withVisitorCountry } from './og';
+import { ogImageUrl, visitorCountry } from './og';
 import {
   BARRACKS_CAP,
   BARRACKS_WIDTH,
@@ -66,7 +66,10 @@ import {
   recordVisit,
   roomKindOf,
   signTicket,
+  plazaOgTitle,
+  spaceOgDescription,
   spaceOgTitle,
+  spacePageLang,
   takeGuestQuota,
   verifyTicket,
   visitSummary,
@@ -235,32 +238,41 @@ export function spacePageRoom(pathname: string): string | null {
  */
 export async function handleSpacePage(request: Request, url: URL, env: Env): Promise<Response> {
   const res = await env.ASSETS.fetch(new Request(new URL('/space.html', url).toString(), { headers: request.headers }));
+  if (res.status !== 200) return res;
   const room = spacePageRoom(url.pathname);
-  const country = visitorCountry(request); // 웹의 기본 언어 판정에 쓰인다(국가별로 HTML 이 달라져 private)
-  if (!room || room === PLAZA_ID || res.status !== 200) {
-    const page = withVisitorCountry(res, country);
-    const out = new Response(page.body, page);
-    out.headers.set('Cache-Control', 'private, no-cache');
-    return out;
-  }
-  const row = await env.DB.prepare('SELECT user_id, nickname FROM users WHERE public_id = ?')
-    .bind(room)
-    .first<{ user_id: string; nickname: string | null }>();
-  if (!row) return Response.redirect(new URL('/plaza', url).toString(), 302);
+  const country = visitorCountry(request); // 웹의 기본 언어 판정·미리보기 언어에 쓰인다(국가별로 HTML 이 달라져 private)
+  const lang = spacePageLang(url.searchParams.get('lang'), country);
 
-  const info = (await roomStub(env, room)
-    .fetch('https://space/info')
-    .then((r) => r.json())
-    .catch(() => null)) as SpaceInfo | null;
-  const title = spaceOgTitle(displayNickname(row.nickname, row.user_id), info);
-  const desc = '코딩 에이전트를 돌리는 사람의 막사. 들어가서 구경하고 이야기해 보세요. Claude Code 에서는 /space';
-  const pageUrl = `${SITE_ORIGIN}/s/${room}`;
+  let title = plazaOgTitle(lang);
+  let desc = spaceOgDescription('plaza', lang);
+  let pageUrl = `${SITE_ORIGIN}/plaza`;
+  let image: string | null = null; // 광장은 space.html 의 공통 이미지 그대로
+  if (room && room !== PLAZA_ID) {
+    const row = await env.DB.prepare('SELECT user_id, nickname FROM users WHERE public_id = ?')
+      .bind(room)
+      .first<{ user_id: string; nickname: string | null }>();
+    if (!row) return Response.redirect(new URL('/plaza', url).toString(), 302);
+
+    const info = (await roomStub(env, room)
+      .fetch('https://space/info')
+      .then((r) => r.json())
+      .catch(() => null)) as SpaceInfo | null;
+    title = spaceOgTitle(displayNickname(row.nickname, row.user_id), info, lang);
+    desc = spaceOgDescription('barracks', lang);
+    pageUrl = `${SITE_ORIGIN}/s/${room}`;
+    image = ogImageUrl(room);
+  }
   const setContent = (value: string) => ({
     element(el: Element) {
       el.setAttribute('content', value);
     },
   });
-  const rewritten = new HTMLRewriter()
+  let rewriter = new HTMLRewriter()
+    .on('html', {
+      element(el) {
+        el.setAttribute('lang', lang);
+      },
+    })
     .on('meta[name="ocw-country"]', setContent(country ?? ''))
     .on('title', {
       element(el) {
@@ -271,11 +283,12 @@ export async function handleSpacePage(request: Request, url: URL, env: Env): Pro
     .on('meta[property="og:title"]', setContent(title))
     .on('meta[property="og:description"]', setContent(desc))
     .on('meta[property="og:url"]', setContent(pageUrl))
-    .on('meta[property="og:image"]', setContent(ogImageUrl(room)))
     .on('meta[name="twitter:title"]', setContent(title))
-    .on('meta[name="twitter:description"]', setContent(desc))
-    .on('meta[name="twitter:image"]', setContent(ogImageUrl(room)))
-    .transform(res);
+    .on('meta[name="twitter:description"]', setContent(desc));
+  if (image) {
+    rewriter = rewriter.on('meta[property="og:image"]', setContent(image)).on('meta[name="twitter:image"]', setContent(image));
+  }
+  const rewritten = rewriter.transform(res);
   const out = new Response(rewritten.body, rewritten);
   out.headers.set('Cache-Control', 'private, no-cache');
   return out;

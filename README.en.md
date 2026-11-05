@@ -186,6 +186,7 @@ Barracks:
 /space close | open      # lock · unlock your barracks
 /space guestbook clear   # clear your guestbook
 /space presence off | on # stop · resume sending your work status
+/space lang ko | en      # change the barracks display language
 ```
 
 The plaza is also on the web at [`/plaza`](https://opencodewar.dev/plaza): sign in to walk and talk, or watch without signing in. In-game text is Korean for now. The terminal client needs Claude Code 2.1.287+ and Node 22+.

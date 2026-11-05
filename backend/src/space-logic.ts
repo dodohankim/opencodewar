@@ -302,12 +302,43 @@ export interface SpaceInfo {
   locked: boolean;
 }
 
+export type PageLang = 'ko' | 'en';
+
+/**
+ * 공유 미리보기 언어. 크롤러에는 웹의 localStorage·브라우저 언어가 없으므로 ?lang= → 접속 국가(KR → 한국어) → 영어.
+ * 사람이 보는 화면의 언어는 이 값과 별개로 web/space.html 이 다시 판정한다.
+ */
+export function spacePageLang(param: string | null, country: string | null): PageLang {
+  const v = (param ?? '').trim().toLowerCase();
+  if (v === 'ko' || v === 'kr' || v.startsWith('ko-')) return 'ko';
+  if (v === 'en' || v.startsWith('en-')) return 'en';
+  return country === 'KR' ? 'ko' : 'en';
+}
+
 /** "dohan의 막사 · 지금 3명 · 작업 중". 상태를 못 읽었으면 이름만, 잠긴 막사는 안의 사정을 말하지 않는다. */
-export function spaceOgTitle(nick: string, info: SpaceInfo | null): string {
-  const name = `${nick}의 막사`;
+export function spaceOgTitle(nick: string, info: SpaceInfo | null, lang: PageLang): string {
+  const ko = lang === 'ko';
+  const name = ko ? `${nick}의 막사` : `${nick}'s Barracks`;
   if (!info) return name;
-  if (info.locked) return `${name} · 잠김`;
-  return `${name} · 지금 ${info.count}명 · ${info.working ? '작업 중' : info.online ? '접속 중' : '외출 중'}`;
+  if (info.locked) return `${name} · ${ko ? '잠김' : 'Locked'}`;
+  const count = ko ? `지금 ${info.count}명` : `${info.count} here now`;
+  const status = info.working ? (ko ? '작업 중' : 'Working') : info.online ? (ko ? '접속 중' : 'Online') : ko ? '외출 중' : 'Away';
+  return `${name} · ${count} · ${status}`;
+}
+
+export function plazaOgTitle(lang: PageLang): string {
+  return `${lang === 'ko' ? '광장' : 'Plaza'} · Open Code War`;
+}
+
+export function spaceOgDescription(kind: RoomKind, lang: PageLang): string {
+  if (kind === 'plaza') {
+    return lang === 'ko'
+      ? '코딩 에이전트를 돌리는 사람들의 막사를 구경하고, 들어가서 이야기하기.'
+      : 'Visit the barracks of people running coding agents, step inside, and talk.';
+  }
+  return lang === 'ko'
+    ? '코딩 에이전트를 돌리는 사람의 막사. 들어가서 구경하고 이야기해 보세요. Claude Code 에서는 /space'
+    : 'The barracks of someone running coding agents. Step inside, look around, and talk. In Claude Code: /space';
 }
 
 // ── 티켓: 터미널(mod) 사이드카가 WebSocket 을 열 때 쓰는 60초짜리 서명 토큰 ──

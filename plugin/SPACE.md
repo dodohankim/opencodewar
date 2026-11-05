@@ -25,6 +25,9 @@ OCW_API_URL=http://127.0.0.1:8787 claude --plugin-dir ./plugin
 | `/space close` · `open` | 내 막사 잠그기 · 열기 |
 | `/space guestbook clear` | 내 막사 방명록 비우기 |
 | `/space presence off` · `on` | 작업 상태 알리기 끄기 · 켜기 |
+| `/space lang ko` · `en` | 막사 표시 언어 바꾸기 (이 설정은 mod 저장소에 남습니다) |
+
+표시 언어는 `/space lang` 으로 고른 값 → 로케일 환경변수(`LC_ALL` · `LC_MESSAGES` · `LANG`)가 한국어이면 한국어 → 시간대가 `Asia/Seoul` 이면 한국어 → 그 밖에는 영어 순서로 정합니다. 세션을 시작할 때 판정하며, 채팅 · 방명록 · 닉네임은 원문 그대로 보입니다.
 
 패널 조작 (패널에 키보드 포커스가 있을 때):
 

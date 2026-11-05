@@ -1,5 +1,8 @@
 import { expect, test } from 'claude-code/testing'
-import { adminReply, applyServer, canGuest, compose, doorAt, emptyRoom, me, nameTag, parseSpaceArgs, syncMessages } from './space.mjs'
+import { adminReply, applyServer, canGuest, compose, detectLang, doorAt, emptyRoom, me, nameTag, parseSpaceArgs, setLang, syncMessages } from './space.mjs'
+
+// 기존 테스트는 한국어 문구를 본다. 영어를 보는 테스트는 끝에서 되돌린다.
+setLang('ko')
 
 const PANE = {
   plugin: 'open-code-war',
@@ -9,6 +12,12 @@ const PANE = {
 } as const
 
 const NOW = 1_760_000_000_000
+const BARRACKS_HELLO_EN = {
+  t: 'hello',
+  you: { id: 'c-me', role: 'member', pid: 'u-mememememe', nick: 'me', agent: 'claude-code' },
+  room: { id: 'u-kimkimkimk', kind: 'barracks', width: 140, cap: 10, locked: false, owner: { pid: 'u-kimkimkimk', nick: 'kim', agent: 'codex', online: false, working: false } },
+  members: [],
+}
 const YOU = { id: 'c-me', role: 'member', pid: 'u-mememememe', nick: '나', agent: 'claude-code' }
 const KIM = { id: 'c-kim', pid: 'u-kimkimkimk', nick: 'kim', agent: 'codex', x: 40, dir: -1, state: 'idle' }
 const PLAZA_HELLO = {
@@ -130,13 +139,59 @@ test('/space 인자 해석과 응답 문구', () => {
   expect(parseSpaceArgs('guestbook clear')).toEqual({ kind: 'admin', action: 'guest_clear', target: '' })
   expect(parseSpaceArgs('presence off')).toEqual({ kind: 'presence', on: false })
   expect(parseSpaceArgs('nope')).toEqual({ kind: 'usage' })
+  expect(parseSpaceArgs('lang en')).toEqual({ kind: 'lang', lang: 'en' })
+  expect(parseSpaceArgs('lang fr')).toEqual({ kind: 'usage' })
   expect(adminReply('kick', 'x', { ok: false, error: 'not_found' })).toContain('찾지 못했어요')
   expect(adminReply('ban', 'x', { ok: true, target: 'kim' })).toContain('kim')
   expect(adminReply('bans', '', { ok: true, bans: [] })).toContain('없어요')
 })
 
-function stubEngine(on: any, sent: any[]) {
-  on('command.register', () => ({ value: { command: 'x' } }))
+test('언어 판정: 고른 값 → 로케일 → 시간대 → 영어', () => {
+  expect(detectLang({ saved: 'en', locale: 'ko_KR.UTF-8', timeZone: 'Asia/Seoul' })).toBe('en')
+  expect(detectLang({ saved: 'ko', locale: 'en_US.UTF-8', timeZone: 'America/New_York' })).toBe('ko')
+  expect(detectLang({ locale: 'ko_KR.UTF-8', timeZone: 'America/New_York' })).toBe('ko')
+  expect(detectLang({ locale: 'ko', timeZone: 'Europe/Berlin' })).toBe('ko')
+  expect(detectLang({ locale: 'en_US.UTF-8', timeZone: 'Asia/Seoul' })).toBe('ko') // macOS 기본 LANG 인 한국 사용자
+  expect(detectLang({ locale: 'en_US.UTF-8', timeZone: 'America/New_York' })).toBe('en')
+  expect(detectLang({ locale: 'kok_IN', timeZone: 'Asia/Kolkata' })).toBe('en') // ko 로 시작할 뿐 한국어가 아니다
+  expect(detectLang({})).toBe('en')
+})
+
+test('영어: 시스템 문구와 계급은 영어, 채팅·닉네임은 원문', () => {
+  setLang('en')
+  try {
+    const v = emptyRoom()
+    applyServer(v, PLAZA_HELLO, NOW)
+    expect(v.log.at(-1).text).toBe('Entered Plaza')
+    expect(v.log.some((l: any) => l.text === '어서와요')).toBe(true)
+    applyServer(v, { t: 'join', m: { ...KIM, id: 'c-lee', nick: '이순신' } }, NOW)
+    expect(v.log.at(-1).text).toBe('이순신 joined')
+    applyServer(v, { t: 'error', code: 'slow_down' }, NOW)
+    expect(v.log.at(-1).text).toBe('Please slow down')
+    applyServer(v, { t: 'error', code: 'kicked' }, NOW)
+    expect(v.status).toBe('error')
+    expect(v.note).toBe('The owner removed you. You can come back in a little while')
+    expect(nameTag({ nick: 'kim', rank: 3 })).toBe('kim·Sgt')
+    expect(adminReply('kick', 'x', { ok: false, error: 'not_found' })).toContain("Couldn't find 'x'")
+    expect(adminReply('bans', '', { ok: true, bans: [] })).toBe("You haven't banned anyone.")
+    expect(adminReply('close', '', { ok: false })).toBe("Couldn't do that: unknown error")
+    me.x = 12
+    const room = emptyRoom()
+    applyServer(room, { ...BARRACKS_HELLO_EN }, NOW)
+    const sc = compose(room, 80, NOW, false)
+    expect(sc.signRow).toContain('Plaza')
+    expect(sc.signRow).toContain('Away')
+    expect(sc.signRow).not.toMatch(/[가-힣]/)
+  } finally {
+    setLang('ko')
+  }
+})
+
+function stubEngine(on: any, sent: any[], locale = 'ko_KR.UTF-8', savedLang?: string, registered: any[] = []) {
+  on('command.register', (_: any, e: any) => {
+    registered.push(e)
+    return { value: { command: 'x' } }
+  })
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.start', (_: any, e: any) => ({ cwd: e.cwd }))
   on('clock.now', () => ({ value: NOW }))
@@ -145,8 +200,8 @@ function stubEngine(on: any, sent: any[]) {
   on('ui.log', () => ({ value: undefined }))
   on('ui.toast', () => ({ value: undefined }))
   on('ui.focus', () => ({ value: undefined }))
-  on('store.get', () => ({ value: undefined }))
-  on('env.get', (_: any, e: any) => ({ value: e.name === 'HOME' ? '/home/t' : undefined }))
+  on('store.get', (_: any, e: any) => ({ value: e.key === 'lang' ? savedLang : undefined }))
+  on('env.get', (_: any, e: any) => ({ value: e.name === 'HOME' ? '/home/t' : e.name === 'LANG' ? locale : undefined }))
   on('fs.read', () => ({ value: JSON.stringify({ userId: 'ocw_test0000', endpoint: 'http://127.0.0.1:8787' }) }))
   on('http.fetch', (_: any, e: any) => {
     sent.push({ url: e.url, body: e.init?.body })
@@ -169,4 +224,38 @@ test('세션 시작 시 상태 하트비트를 보내고, 연결 전 패널을 �
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /연결 안 됨/ }))?.text).toBeTruthy()
   await ui.unmount()
+})
+
+test('세션 시작 때 저장된 언어를 읽어 패널과 명령 설명에 쓴다', async ($: any, on: any) => {
+  const sent: any[] = []
+  const registered: any[] = []
+  stubEngine(on, sent, 'ko_KR.UTF-8', 'en', registered)
+  on('clock.after', () => ({ value: {} }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  expect(JSON.stringify(registered)).toContain('Open the plaza')
+  expect(JSON.stringify(registered)).not.toMatch(/[가-힣]/)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /Not connected/ }))?.text).toBeTruthy()
+  await ui.unmount()
+})
+
+test('/space lang: 고른 언어를 저장하고 바로 적용한다', async ($: any, on: any) => {
+  const sent: any[] = []
+  stubEngine(on, sent)
+  const saved: any[] = []
+  on('store.set', (_: any, e: any) => {
+    saved.push([e.key, e.value])
+    return { value: undefined }
+  })
+  on('clock.after', () => ({ value: {} }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const ko = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await ko.find({ type: 'Text', text: /연결 안 됨/ }))?.text).toBeTruthy()
+  await ko.unmount()
+  const r = await $.command.run({ command: 'space', args: 'lang en' })
+  expect(saved).toContainEqual(['lang', 'en'])
+  expect(r.text).toBe('Barracks display language set to English.')
+  const en = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await en.find({ type: 'Text', text: /Not connected/ }))?.text).toBeTruthy()
+  await en.unmount()
 })
