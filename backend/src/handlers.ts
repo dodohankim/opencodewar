@@ -828,7 +828,7 @@ export async function handleUser(url: URL, env: Env, request: Request): Promise<
   return json({
     // 익명 유저는 저장된 닉네임이 없으므로 userId 파생 자동 닉네임으로 표시한다.
     nickname: displayNickname(user.nickname, user.user_id),
-    // 공개 slug — 웹의 '카드 저장'이 유저별 OG 이미지(/og/<public_id>.png)를 가리키는 데 쓴다. user_id(비밀키) 아님.
+    // 공개 slug — 웹 프로필의 '막사 구경' 링크(/s/<public_id>)에 쓴다. user_id(비밀키) 아님.
     publicId: user.public_id ?? null,
     bio: user.bio ?? null,
     role: user.role ?? null,
