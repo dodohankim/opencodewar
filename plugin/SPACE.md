@@ -24,6 +24,7 @@ OCW_API_URL=http://127.0.0.1:8787 claude --plugin-dir ./plugin
 | `/space ban <닉>` · `unban <닉>` · `bans` | 차단 · 해제 · 목록 |
 | `/space close` · `open` | 내 막사 잠그기 · 열기 |
 | `/space guestbook clear` | 내 막사 방명록 비우기 |
+| `/space sign <문구>` · `sign clear` | 내 막사에 현판 걸기 (30자) · 내리기 |
 | `/space presence off` · `on` | 작업 상태 알리기 끄기 · 켜기 |
 | `/space lang ko` · `en` | 막사 표시 언어 바꾸기 (이 설정은 mod 저장소에 남습니다) |
 
@@ -53,7 +54,7 @@ mod 가 로드된 Claude Code 세션은 켜질 때, 턴이 시작·끝날 때(3�
 - 읽기: `~/.open-code-war/config.json` 의 `userId`(서버에서 60초짜리 입장 티켓으로 바꾸는 데만 씀)·`endpoint`.
 - 실행: 방에 들어가 있는 동안 `node link/link.mjs` 사이드카 하나 — 서버 WebSocket 을 잡고,
   127.0.0.1 임의 포트(임의 토큰)로 이 mod 의 송신을 받습니다. Claude Code 가 끝나면 같이 끝납니다.
-- 보내기: 막사 안 이동·채팅·방명록, 그리고 작업 상태값. **프롬프트·도구 내용은 보지도 보내지도 않습니다.**
+- 보내기: 막사 안 이동·채팅·방명록·현판, 그리고 작업 상태값. **프롬프트·도구 내용은 보지도 보내지도 않습니다.**
 
 `claude plugin validate ./plugin` 로 훅·호출 목록을 직접 확인할 수 있습니다.
 

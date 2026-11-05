@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { adminReply, applyServer, canGuest, compose, detectLang, doorAt, emptyRoom, me, nameTag, parseSpaceArgs, setLang, syncMessages } from './space.mjs'
+import { adminReply, applyServer, canGuest, compose, detectLang, dispWidth, doorAt, emptyRoom, me, nameTag, parseSpaceArgs, setLang, syncMessages } from './space.mjs'
 
 // 기존 테스트는 한국어 문구를 본다. 영어를 보는 테스트는 끝에서 되돌린다.
 setLang('ko')
@@ -258,4 +258,35 @@ test('/space lang: 고른 언어를 저장하고 바로 적용한다', async ($:
   const en = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect((await en.find({ type: 'Text', text: /Not connected/ }))?.text).toBeTruthy()
   await en.unmount()
+})
+
+test('현판: 입장 때 보이고 바뀌면 알린다, 광장에는 없다', () => {
+  setLang('ko')
+  const v = emptyRoom()
+  applyServer(v, { ...BARRACKS_HELLO, room: { ...BARRACKS_HELLO.room, sign: '오늘도 야근' } }, NOW)
+  const row = compose(v, 96, NOW, false).plaqueRow
+  expect(row).toContain('╡ 오늘도 야근 ╞')
+  expect(dispWidth(row)).toBe(96)
+  applyServer(v, { t: 'sign', sign: '퇴근합니다' }, NOW)
+  expect(compose(v, 96, NOW, false).plaqueRow).toContain('╡ 퇴근합니다 ╞')
+  expect(v.log.at(-1).text).toBe('현판이 바뀌었어요: 퇴근합니다')
+  applyServer(v, { t: 'sign', sign: null }, NOW)
+  expect(compose(v, 96, NOW, false).plaqueRow).toBeNull()
+  expect(v.log.at(-1).text).toBe('현판을 내렸어요')
+  const narrow = emptyRoom()
+  applyServer(narrow, { ...BARRACKS_HELLO, room: { ...BARRACKS_HELLO.room, sign: '가'.repeat(30) } }, NOW)
+  expect(dispWidth(compose(narrow, 40, NOW, false).plaqueRow)).toBe(40)
+  const plaza = emptyRoom()
+  applyServer(plaza, PLAZA_HELLO, NOW)
+  expect(compose(plaza, 96, NOW, false).plaqueRow).toBeNull()
+})
+
+test('/space sign: 인자 해석과 응답 문구', () => {
+  setLang('ko')
+  expect(parseSpaceArgs('sign 오늘도  야근')).toEqual({ kind: 'admin', action: 'sign', target: '오늘도 야근' })
+  expect(parseSpaceArgs('sign clear')).toEqual({ kind: 'admin', action: 'sign_clear', target: '' })
+  expect(parseSpaceArgs('sign')).toEqual({ kind: 'usage' })
+  expect(adminReply('sign', '오늘도 야근', { ok: true, sign: '오늘도 야근' })).toBe('현판을 걸었어요: 오늘도 야근')
+  expect(adminReply('sign_clear', '', { ok: true, sign: null })).toBe('현판을 내렸어요.')
+  expect(adminReply('sign', '', { ok: false, error: 'empty_sign' })).toBe('현판에 쓸 문구를 입력해 주세요.')
 })

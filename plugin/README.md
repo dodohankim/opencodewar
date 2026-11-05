@@ -25,7 +25,7 @@
 | 프롬프트 제출 **횟수** | ❌ 코드/파일/경로 |
 | 프롬프트 **글자 수**(숫자) | ❌ 이메일·실명 등 개인정보 |
 | (서버측) 접속 국가 `cf.country` | |
-| 막사 채팅·방명록 (직접 쓴 글), 작업 상태 `working`/`idle` — [SPACE.md](./SPACE.md) | |
+| 막사 채팅·방명록·현판 (직접 쓴 글), 작업 상태 `working`/`idle` — [SPACE.md](./SPACE.md) | |
 
 - 설정 파일: `~/.open-code-war/config.json` (userId·닉네임·on/off)
 - `userId`는 **신원이자 비밀키**다. 공유하지 말 것.

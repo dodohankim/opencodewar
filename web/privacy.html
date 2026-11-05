@@ -174,6 +174,7 @@
           <li><b>Google account (optional)</b> — if you link one with <code>/ocw signup</code> or sign in on the web, we store your Google account ID and email address for account recovery and merging usage across devices. Your email is <strong>private by default</strong> — it appears on your public profile only if you opt in with <code>/ocw email public</code>. We receive only your account ID and email (OpenID <code>openid email</code> scopes) — nothing else, and we never see your password.</li>
           <li><b>Battles (optional)</b> — which battle rooms you create or join, and when.</li>
           <li><b>Barracks messages</b> — chat and guestbook messages you send in the Plaza or a Barracks (up to 200 and 100 characters), stored with your nickname, public ID, and the time. Anyone in that room, including visitors who are not signed in, can read them.</li>
+          <li><b>Barracks sign</b> — a line of up to 30 characters that an owner hangs in their own Barracks. Anyone who enters that Barracks, including visitors who are not signed in, can read it.</li>
           <li><b>Barracks session status</b> — while the Claude Code plugin runs, whether your session is <code>working</code> or <code>idle</code>, a random session ID, and the time of the last report. Your nickname, public ID, agent, and rank are stored with it to show your Barracks door in the Plaza. It is <strong>on by default and public</strong>; turn it off with <code>/space presence off</code>. <code>/ocw disable</code> also stops it. Only that state is sent: never prompts, tool calls, or file names.</li>
           <li><b>Barracks visit records</b> — when you enter someone else's Barracks while signed in or from the terminal, your public ID, nickname, and the time. The owner sees a visitor count and can act on nicknames with <code>/space kick</code> or <code>/space ban</code>. Spectators who are not signed in are not recorded.</li>
           <li><b>Barracks moderation records</b> — the public ID and nickname of anyone an owner has kicked (10 minutes) or banned, and whether a Barracks is locked.</li>
@@ -200,6 +201,7 @@
           <li>Raw per-prompt events (count, character count, timestamp) — kept until account deletion; they are needed to re-draw your profile graphs.</li>
           <li>Barracks and Plaza chat — <b>24 hours</b> (the last 50 lines at most).</li>
           <li>Barracks guestbook — the latest <b>100 entries</b> per Barracks, until pushed out, cleared by the owner, or the owner's account is deleted.</li>
+          <li>Barracks sign — until the owner takes it down or the owner's account is deleted.</li>
           <li>Barracks visit records — <b>7 days</b> (the latest 200 visitors per Barracks).</li>
           <li>Barracks session status — shown as offline about <b>5 minutes</b> after the last report. The last report stays stored until the next one replaces it or you delete your account.</li>
           <li>Barracks moderation records — kept until the owner lifts the ban or the owner's account is deleted.</li>
@@ -210,7 +212,7 @@
         <ul>
           <li><b>Erase everything</b> — <code>/ocw delete all confirm</code> — immediately deletes your events, statistics, profile, and Google link from the database, and removes you from the leaderboard.</li>
           <li><b>Clear profile only</b> — <code>/ocw delete</code> — removes bio, role, company, links, and projects; nickname and usage stay.</li>
-          <li><b>Your Barracks</b> — full deletion also erases your Barracks: its chat, guestbook, visit records, moderation records, and your door in the Plaza.</li>
+          <li><b>Your Barracks</b> — full deletion also erases your Barracks: its chat, guestbook, sign, visit records, moderation records, and your door in the Plaza.</li>
           <li><b>Clear your guestbook</b> — <code>/space guestbook clear</code> erases the guestbook of your own Barracks.</li>
           <li>After full deletion, the residuals are your web session record (auto-expires within 30 days; treated as logged-out immediately), the share-card cache (within ~30 minutes), and <b>what you left in other people's Barracks and the Plaza</b>: chat (within 24 hours), visit records (within 7 days), guestbook entries, which stay until pushed out or cleared by that owner, and any kick or ban record that owner holds. We keep no index of rooms you visited, so full deletion cannot reach them. To have guestbook entries removed sooner, email <a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> with the Barracks address.</li>
           <li>Infrastructure backups (Cloudflare D1 Time Travel) may hold a restore copy for up to <b>7 days</b>, after which it expires automatically.</li>
@@ -306,6 +308,7 @@
           <li><b>Google 계정 (선택)</b> — <code>/ocw signup</code> 또는 웹 로그인으로 연동하면 계정 복구와 여러 기기 사용량 합산을 위해 Google 계정 ID와 이메일 주소를 저장합니다. 이메일은 <strong>기본 비공개</strong>이며, <code>/ocw email public</code> 으로 직접 켠 경우에만 공개 프로필에 표시됩니다. 계정 ID와 이메일(OpenID <code>openid email</code> 범위)만 받으며, 비밀번호는 절대 볼 수 없습니다.</li>
           <li><b>교전 참가 기록 (선택)</b> — 어떤 교전 방을 만들고 참가했는지, 참가 시각.</li>
           <li><b>막사 메시지</b> — 광장이나 막사에서 보낸 채팅과 방명록(각각 최대 200자, 100자). 닉네임·공개 ID·시각과 함께 저장되며, 로그인하지 않은 방문자를 포함해 그 방에 들어온 누구나 읽을 수 있습니다.</li>
+          <li><b>막사 현판</b> — 주인이 자기 막사에 걸어 두는 최대 30자 문구. 로그인하지 않은 방문자를 포함해 그 막사에 들어온 누구나 읽을 수 있습니다.</li>
           <li><b>막사 세션 상태</b> — Claude Code 플러그인이 실행되는 동안 세션이 <code>working</code>(작업 중)인지 <code>idle</code>(대기 중)인지, 무작위 세션 ID, 마지막 보고 시각. 광장에 막사 문을 표시하기 위해 닉네임·공개 ID·에이전트·계급을 함께 저장합니다. <strong>기본으로 켜져 있고 공개</strong>되며, <code>/space presence off</code> 로 끌 수 있습니다. <code>/ocw disable</code> 을 실행해도 중단됩니다. 전송하는 값은 이 상태뿐이며, 프롬프트·도구 호출·파일 이름은 보내지 않습니다.</li>
           <li><b>막사 방문 기록</b> — 로그인했거나 터미널에서 다른 사람의 막사에 들어가면 공개 ID·닉네임·시각을 저장합니다. 막사 주인은 방문자 수를 볼 수 있고, 닉네임으로 <code>/space kick</code>·<code>/space ban</code> 을 실행할 수 있습니다. 로그인하지 않은 관전자는 기록하지 않습니다.</li>
           <li><b>막사 관리 기록</b> — 주인이 강퇴(10분)하거나 차단한 사람의 공개 ID·닉네임, 막사 잠금 여부.</li>
@@ -332,6 +335,7 @@
           <li>원시 이벤트 기록(건별 개수·글자 수·시각) — 프로필 그래프 재집계에 필요해 계정 삭제 전까지 보관합니다.</li>
           <li>막사·광장 채팅 — <b>24시간</b>(최대 최근 50줄).</li>
           <li>막사 방명록 — 막사마다 최근 <b>100건</b>. 새 글에 밀려나거나, 주인이 비우거나, 주인 계정이 삭제될 때까지 보관합니다.</li>
+          <li>막사 현판 — 주인이 내리거나 주인 계정이 삭제될 때까지 보관합니다.</li>
           <li>막사 방문 기록 — <b>7일</b>(막사마다 최근 200명).</li>
           <li>막사 세션 상태 — 마지막 보고 후 약 <b>5분</b>이 지나면 오프라인으로 표시합니다. 마지막 보고 기록은 다음 보고로 덮어쓰거나 계정을 삭제할 때까지 저장됩니다.</li>
           <li>막사 관리 기록 — 주인이 차단을 해제하거나 주인 계정이 삭제될 때까지 보관합니다.</li>
@@ -342,7 +346,7 @@
         <ul>
           <li><b>완전 삭제</b> — <code>/ocw delete all confirm</code> — 이벤트·통계·프로필·Google 연동을 데이터베이스에서 즉시 삭제하고 리더보드에서도 제거합니다.</li>
           <li><b>프로필만 비우기</b> — <code>/ocw delete</code> — 자기소개·직함·회사·링크·프로젝트를 지웁니다. 닉네임과 사용량은 유지됩니다.</li>
-          <li><b>내 막사</b> — 완전 삭제하면 내 막사의 채팅·방명록·방문 기록·관리 기록과 광장의 문도 함께 삭제합니다.</li>
+          <li><b>내 막사</b> — 완전 삭제하면 내 막사의 채팅·방명록·현판·방문 기록·관리 기록과 광장의 문도 함께 삭제합니다.</li>
           <li><b>방명록 비우기</b> — <code>/space guestbook clear</code> 로 내 막사의 방명록을 지웁니다.</li>
           <li>완전 삭제 후에도 남는 것은 웹 세션 기록(30일 내 자동 만료, 즉시 로그아웃 처리), 공유 이미지 캐시(약 30분 내 만료), 그리고 <b>다른 사람의 막사와 광장에 남긴 기록</b>입니다. 채팅은 24시간 안에, 방문 기록은 7일 안에 사라지고, 방명록은 새 글에 밀려나거나 그 막사 주인이 비울 때까지 남습니다. 그 주인이 가진 강퇴·차단 기록도 남습니다. 서비스는 방문한 방의 목록을 따로 보관하지 않기 때문에 완전 삭제로 이 기록까지 지울 수는 없습니다. 방명록을 더 빨리 지우려면 해당 막사 주소를 적어 <a class="link" href="mailto:privacy@opencodewar.dev">privacy@opencodewar.dev</a> 로 요청하세요.</li>
           <li>인프라 자동 백업(Cloudflare D1 Time Travel)에 최대 <b>7일간</b> 복원용 사본이 남을 수 있으며 기간 경과 시 자동 소멸합니다.</li>

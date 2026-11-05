@@ -104,8 +104,11 @@
   form.chat input:focus { outline:none; border-color:var(--fg); }
   form.chat button { font:inherit; padding:9px 14px; border:1px solid var(--fg); border-radius:6px; background:var(--fg); color:var(--bg); cursor:pointer; }
   form.chat button:disabled, form.chat input:disabled { opacity:0.45; cursor:not-allowed; }
-  form.chat button.alt { background:transparent; color:var(--fg); border-color:var(--line); }
-  form.chat button.alt.on { border-color:var(--amber); color:var(--amber); }
+  .tabs { display:flex; gap:16px; margin-top:8px; border-bottom:1px solid var(--line); }
+  .tabs button { font:inherit; font-size:13px; padding:4px 2px; margin-bottom:-1px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--dim); cursor:pointer; }
+  .tabs button:hover { color:var(--fg); }
+  .tabs button[aria-pressed="true"] { color:var(--fg); font-weight:600; border-bottom-color:var(--fg); }
+  .tabs #tabGuest[aria-pressed="true"] { color:var(--amber); border-bottom-color:var(--amber); }
   .notice { margin-top:10px; padding:10px 12px; border:1px dashed var(--line); border-radius:6px; color:var(--dim); font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .notice code { color:var(--fg); }
 </style>
@@ -136,9 +139,12 @@
         <a class="btn" id="loginBtn" href="/auth/login" data-i18n="login_btn">Google 로 로그인</a>
       </div>
       <div class="log" id="log" aria-live="polite"><div class="spacer"></div></div>
+      <div class="tabs" id="inputTabs" hidden>
+        <button type="button" id="tabChat" aria-pressed="true" data-i18n="chat_aria">채팅</button>
+        <button type="button" id="tabGuest" aria-pressed="false" data-i18n="guestbook">방명록</button>
+      </div>
       <form class="chat" id="chatForm" autocomplete="off">
         <input id="chatInput" maxlength="200" placeholder="Enter 로 채팅 · Esc 로 다시 걷기" data-i18n-aria="chat_aria" aria-label="채팅" />
-        <button type="button" class="alt" id="guestBtn" hidden data-i18n="guestbook">방명록</button>
         <button type="submit" data-i18n="send">보내기</button>
       </form>
       <div class="notice">
@@ -165,6 +171,7 @@
       hint_barracks: '<b>a/d</b>·<b>←/→</b> 이동 · 왼쪽 문에서 <b>e</b> 로 광장 · <b>Enter</b> 채팅', hint_guest: ' · <b>g</b> 방명록',
       entered: (name, watching) => `${name}에 들어왔어요` + (watching ? ' (구경 중)' : ''), joined: (n) => `${n} 님이 들어왔어요`, left: (n) => `${n} 님이 나갔어요`,
       locked_on: '막사가 잠겼어요 (새로 들어올 수 없음)', locked_off: '막사가 열렸어요', away_label: '외출 중',
+      sign_changed: (x) => `현판이 바뀌었어요: ${x}`, sign_removed: '현판을 내렸어요',
       end_full: '방이 꽉 찼어요 (최대 인원)', end_kicked: '주인이 내보냈어요. 잠시 뒤에 다시 들어올 수 있어요', end_banned: '이 막사에는 들어갈 수 없어요', end_closed: '이 막사는 잠겨 있어요',
       status_full: '꽉 참', replaced: '다른 곳(터미널·다른 탭)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요', status_replaced: '다른 곳에서 접속 중',
       slow_down: '조금 천천히 말해 주세요', guest_limit: '이 막사 방명록은 하루 3번까지 쓸 수 있어요', guest_owner_here: '주인이 와 있어요. 방명록 대신 채팅으로 말해 보세요',
@@ -182,6 +189,7 @@
       hint_barracks: '<b>a/d</b>·<b>←/→</b> move · <b>e</b> at the left door for the plaza · <b>Enter</b> chat', hint_guest: ' · <b>g</b> guestbook',
       entered: (name, watching) => `Entered ${name}` + (watching ? ' (watching)' : ''), joined: (n) => `${n} joined`, left: (n) => `${n} left`,
       locked_on: 'The barracks is locked (no new visitors)', locked_off: 'The barracks is open', away_label: 'Away',
+      sign_changed: (x) => `The sign now reads: ${x}`, sign_removed: 'The sign was taken down',
       end_full: 'This room is full', end_kicked: 'The owner removed you. You can come back in a little while', end_banned: 'You can\'t enter this barracks', end_closed: 'This barracks is locked',
       status_full: 'Full', replaced: 'This account joined from somewhere else (terminal or another tab), so this connection was closed', status_replaced: 'Connected elsewhere',
       slow_down: 'Please slow down', guest_limit: 'You can sign this guestbook up to 3 times a day', guest_owner_here: 'The owner is here. Try chat instead of the guestbook',
@@ -204,7 +212,7 @@
   }[LANG];
   const SW = 8, SH = 10, EXIT_X = 2, REACH = 6, SPEED = 40; // px/s
   const PX = 5; // 화면 배율
-  const TOP = 11; // 위 여백(px): 말풍선 + 문 이름표
+  const TOP = 13; // 위 여백(px): 현판 + 말풍선 + 문 이름표
   const H = TOP + SH + 2 + 6; // 장면 높이(px): 말풍선 + 병정 + 바닥 + 이름표
 
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -258,8 +266,11 @@
   }
   function setGuestMode(on) {
     guestMode = on && canGuest();
-    $('guestBtn').classList.toggle('on', guestMode);
+    $('tabChat').setAttribute('aria-pressed', String(!guestMode));
+    $('tabGuest').setAttribute('aria-pressed', String(guestMode));
     input.maxLength = guestMode ? 100 : 200;
+    if (input.value.length > input.maxLength) input.value = input.value.slice(0, input.maxLength); // 채팅에 쓰던 글을 방명록으로 옮길 때
+    input.setAttribute('aria-label', t(guestMode ? 'guestbook' : 'chat_aria'));
     if (isMember()) input.placeholder = guestMode ? t('chat_ph_guest') : t('chat_ph');
   }
   const nameTag = (m) => short(m.nick, 8) + (RANK_NAMES[m.rank] ? '·' + RANK_NAMES[m.rank] : '');
@@ -277,6 +288,7 @@
     $('status').textContent = s;
     $('tbName').textContent = 'ocw — ' + name;
     document.title = name + ' · Open Code War';
+    stage.setAttribute('aria-label', t('stage_aria') + (room?.sign ? ' · ' + room.sign : ''));
   }
 
   function doorAt(x) {
@@ -367,6 +379,7 @@
       case 'guest': addLine(m.line.nick, m.line.text, m.line.at, true); break;
       case 'guest_clear': for (const el of logEl.querySelectorAll('.guestline')) el.remove(); break;
       case 'locked': if (room) room.locked = m.locked; sys(m.locked ? t('locked_on') : t('locked_off')); break;
+      case 'sign': if (room) room.sign = m.sign; sys(m.sign ? t('sign_changed', m.sign) : t('sign_removed')); break;
       case 'owner': if (room) room.owner = m.owner; break;
       case 'doors': if (room?.kind === 'plaza') { room.doors = m.doors; room.width = m.width; } break;
       case 'error':
@@ -388,7 +401,7 @@
         break;
     }
     setTitle(); updateHint();
-    $('guestBtn').hidden = !canGuest();
+    $('inputTabs').hidden = !canGuest();
     if (guestMode && !canGuest()) setGuestMode(false);
   }
 
@@ -408,6 +421,7 @@
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.closest?.('button, a')) return; // 키보드로 고른 탭·링크는 눌리게 둔다
     const k = e.key.toLowerCase();
     if (k === 'a' || e.key === 'ArrowLeft') { keys.left = true; e.preventDefault(); }
     else if (k === 'd' || e.key === 'ArrowRight') { keys.right = true; e.preventDefault(); }
@@ -444,7 +458,8 @@
     }
     send({ t: 'say', text }); // 포커스는 그대로 — 계속 칠 수 있다
   });
-  $('guestBtn').addEventListener('click', () => { setGuestMode(!guestMode); if (guestMode) input.focus(); });
+  $('tabChat').addEventListener('click', () => { setGuestMode(false); input.focus(); });
+  $('tabGuest').addEventListener('click', () => { setGuestMode(true); input.focus(); });
   addEventListener('popstate', () => connect(pageRoom()));
 
   // ── 그리기 ──
@@ -461,6 +476,23 @@
     ctx.fillText(text, cx * PX, py * PX);
   }
   const short = (s, n) => (Array.from(s).length > n ? Array.from(s).slice(0, n - 1).join('') + '…' : s);
+
+  /** 현판: 카메라와 상관없이 화면 위쪽에 걸려 있고, 좁은 화면에서는 글자를 줄여 전부 보여 준다. */
+  function drawPlaque(text, cx, maxW) {
+    ctx.save();
+    const avail = maxW - PX * 4;
+    const size = Math.round(PX * 2.4);
+    const w = ctx.measureText(text).width;
+    if (w > avail) ctx.font = `${Math.floor(size * avail / w)}px ${css('--mono')}`;
+    const tw = Math.min(w, avail) + PX * 3;
+    ctx.fillStyle = '#5a4630';
+    for (const sx of [cx - tw / 3, cx + tw / 3]) ctx.fillRect(Math.round(sx), 0, 2, PX);
+    ctx.fillStyle = '#8a5a2b';
+    ctx.fillRect(Math.round(cx - tw / 2), PX, Math.round(tw), PX * 3.4);
+    ctx.fillStyle = '#fff3d6';
+    ctx.fillText(text, cx, PX * 3.6);
+    ctx.restore();
+  }
 
   let last = performance.now(), t0 = last;
   function frame(now) {
@@ -526,6 +558,7 @@
       if (b && b.until > now) label('「' + short(b.text, 14) + '」', cx, TOP - 6);
     }
     ctx.restore();
+    if (room.kind === 'barracks' && room.sign) drawPlaque(room.sign, Math.min(viewW, width) * PX / 2, cv.width);
     requestAnimationFrame(frame);
   }
 

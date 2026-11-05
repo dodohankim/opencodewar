@@ -46,6 +46,7 @@ const STR = {
       '/space ban <닉> · unban <닉> · bans — 차단 · 해제 · 목록',
       '/space open · close — 막사 열기 · 잠그기',
       '/space guestbook clear — 방명록 비우기',
+      '/space sign <문구> · sign clear — 막사에 현판 걸기(30자) · 내리기',
       '/space presence on · off — 작업 상태 알리기 켜기 · 끄기',
       '/space lang ko · en — 막사 표시 언어 바꾸기',
     ].join('\n'),
@@ -53,11 +54,12 @@ const STR = {
     admin_failed: (why) => '처리하지 못했어요: ' + (why ?? '알 수 없는 오류'),
     admin_kick: (x) => `${x} 님을 내보냈어요. 10분 동안 다시 들어올 수 없어요.`, admin_ban: (x) => `${x} 님을 차단했어요.`, admin_unban: (x) => `${x} 님의 차단을 풀었어요.`,
     admin_bans: (list) => '차단 목록: ' + list, admin_no_bans: '차단한 사람이 없어요.', admin_open: '막사를 열었어요.', admin_close: '막사를 잠갔어요. 나 말고는 새로 들어올 수 없어요.',
-    admin_guest_clear: '방명록을 비웠어요.', admin_done: '처리했어요.',
+    admin_guest_clear: '방명록을 비웠어요.', admin_done: '처리했어요.', admin_sign: (x) => `현판을 걸었어요: ${x}`, admin_sign_clear: '현판을 내렸어요.', admin_empty_sign: '현판에 쓸 문구를 입력해 주세요.',
+    sign_changed: (x) => `현판이 바뀌었어요: ${x}`, sign_removed: '현판을 내렸어요',
     going_plaza: '광장으로 가는 중…', going_barracks: '막사로 가는 중…', server_retry: (why) => `서버에 연결할 수 없어요 (${why}) — 잠시 뒤 다시 시도합니다`,
     node_old: (v) => `Node 22 이상이 필요해요 (지금 ${v})`, conn_failed: (why) => '연결 실패: ' + why, reconnecting: '연결이 끊겼어요 — 다시 연결하는 중…',
-    cmd_desc: '광장 열기 — 막사 문으로 걸어가 e 로 들어가기 (home · kick · ban · unban · open · close · guestbook clear · presence · lang)',
-    cmd_hint: '[home | kick <닉> | ban <닉> | unban <닉> | open | close | guestbook clear | presence on|off | lang ko|en]', cmd_failed: (why) => '명령 등록 실패: ' + why,
+    cmd_desc: '광장 열기 — 막사 문으로 걸어가 e 로 들어가기 (home · kick · ban · unban · open · close · guestbook clear · sign · presence · lang)',
+    cmd_hint: '[home | kick <닉> | ban <닉> | unban <닉> | open | close | guestbook clear | sign <문구>|clear | presence on|off | lang ko|en]', cmd_failed: (why) => '명령 등록 실패: ' + why,
     presence_on: '작업 상태를 다시 알립니다. 내 막사 문에 불이 켜져요.', presence_off: '작업 상태를 알리지 않습니다. 내 막사는 외출 중으로 보여요.',
     lang_set: '막사 표시 언어를 한국어로 바꿨어요.', server_down: (why) => '서버에 연결할 수 없어요: ' + why, pane_wait: (why) => '패널 대기 중: ' + (why ?? '터미널이 좁아요'),
     count: (c, cap) => `${c}/${cap}`, owner_working: '주인 작업 중 ⌨', owner_online: '주인 접속 중', owner_away: '주인 외출 중', locked_tag: '잠김🔒',
@@ -82,6 +84,7 @@ const STR = {
       '/space ban <nick> · unban <nick> · bans — ban · lift · list',
       '/space open · close — unlock · lock your barracks',
       '/space guestbook clear — clear your guestbook',
+      '/space sign <text> · sign clear — hang a sign in your barracks (30 chars) · take it down',
       '/space presence on · off — resume · stop sending your work status',
       '/space lang ko · en — change the barracks display language',
     ].join('\n'),
@@ -89,11 +92,12 @@ const STR = {
     admin_failed: (why) => "Couldn't do that: " + (why ?? 'unknown error'),
     admin_kick: (x) => `Removed ${x}. They can't come back for 10 minutes.`, admin_ban: (x) => `Banned ${x}.`, admin_unban: (x) => `Unbanned ${x}.`,
     admin_bans: (list) => 'Banned: ' + list, admin_no_bans: "You haven't banned anyone.", admin_open: 'Your barracks is open.', admin_close: 'Your barracks is locked. No one else can enter.',
-    admin_guest_clear: 'Your guestbook is cleared.', admin_done: 'Done.',
+    admin_guest_clear: 'Your guestbook is cleared.', admin_done: 'Done.', admin_sign: (x) => `Your sign is up: ${x}`, admin_sign_clear: 'Your sign is down.', admin_empty_sign: 'Type some text for the sign.',
+    sign_changed: (x) => `The sign now reads: ${x}`, sign_removed: 'The sign was taken down',
     going_plaza: 'Heading to the plaza…', going_barracks: 'Heading to the barracks…', server_retry: (why) => `Can't reach the server (${why}). Trying again shortly`,
     node_old: (v) => `Node 22 or later is required (you have ${v})`, conn_failed: (why) => 'Connection failed: ' + why, reconnecting: 'Disconnected. Reconnecting…',
-    cmd_desc: 'Open the plaza — walk to a barracks door and press e (home · kick · ban · unban · open · close · guestbook clear · presence · lang)',
-    cmd_hint: '[home | kick <nick> | ban <nick> | unban <nick> | open | close | guestbook clear | presence on|off | lang ko|en]', cmd_failed: (why) => "Couldn't register the command: " + why,
+    cmd_desc: 'Open the plaza — walk to a barracks door and press e (home · kick · ban · unban · open · close · guestbook clear · sign · presence · lang)',
+    cmd_hint: '[home | kick <nick> | ban <nick> | unban <nick> | open | close | guestbook clear | sign <text>|clear | presence on|off | lang ko|en]', cmd_failed: (why) => "Couldn't register the command: " + why,
     presence_on: 'Sending your work status again. Your barracks door will light up.', presence_off: 'No longer sending your work status. Your barracks will show as away.',
     lang_set: 'Barracks display language set to English.', server_down: (why) => "Can't reach the server: " + why, pane_wait: (why) => 'Waiting for the panel: ' + (why ?? 'the terminal is too narrow'),
     count: (c, cap) => `${c}/${cap}`, owner_working: 'Owner working ⌨', owner_online: 'Owner online', owner_away: 'Owner away', locked_tag: 'Locked🔒',
@@ -407,6 +411,10 @@ export function applyServer(v, msg, now) {
       if (v.room) v.room.locked = msg.locked
       v.log.push({ at: now, nick: '', text: t(msg.locked ? 'locked_on' : 'locked_off'), kind: 'notice' })
       return
+    case 'sign':
+      if (v.room) v.room.sign = msg.sign
+      v.log.push({ at: now, nick: '', text: msg.sign ? t('sign_changed', msg.sign) : t('sign_removed'), kind: 'notice' })
+      return
     case 'owner':
       if (v.room) v.room.owner = msg.owner
       return
@@ -502,6 +510,7 @@ export function compose(v, viewCols, now, meWorking) {
     cols,
     cam,
     buf,
+    plaqueRow: v.room?.kind === 'barracks' && v.room.sign ? placeLabels(cols, [{ x: cols / 2, text: '╡ ' + clip(v.room.sign, cols - 4) + ' ╞' }]) : null,
     bubbleRow: placeLabels(cols, bubbles),
     nameRow: placeLabels(cols, names),
     signRow: placeLabels(cols, signs),
@@ -535,6 +544,8 @@ export function parseSpaceArgs(raw) {
   if ((sub === 'kick' || sub === 'ban' || sub === 'unban') && arg) return { kind: 'admin', action: sub, target: arg }
   if (sub === 'bans' || sub === 'open' || sub === 'close') return { kind: 'admin', action: sub, target: '' }
   if (sub === 'guestbook' && arg === 'clear') return { kind: 'admin', action: 'guest_clear', target: '' }
+  if (sub === 'sign' && arg === 'clear') return { kind: 'admin', action: 'sign_clear', target: '' }
+  if (sub === 'sign' && arg) return { kind: 'admin', action: 'sign', target: arg }
   if (sub === 'presence' && (arg === 'on' || arg === 'off')) return { kind: 'presence', on: arg === 'on' }
   if (sub === 'lang' && (arg === 'ko' || arg === 'en')) return { kind: 'lang', lang: arg }
   return { kind: 'usage' }
@@ -546,6 +557,7 @@ export function adminReply(action, target, data) {
     if (data?.error === 'not_found') return t('admin_not_found', target)
     if (data?.error === 'ambiguous') return t('admin_ambiguous', target)
     if (data?.error === 'not_self') return t('admin_not_self')
+    if (data?.error === 'empty_sign') return t('admin_empty_sign')
     return t('admin_failed', data?.error)
   }
   switch (action) {
@@ -556,6 +568,8 @@ export function adminReply(action, target, data) {
     case 'open': return t('admin_open')
     case 'close': return t('admin_close')
     case 'guest_clear': return t('admin_guest_clear')
+    case 'sign': return t('admin_sign', data.sign)
+    case 'sign_clear': return t('admin_sign_clear')
     default: return t('admin_done')
   }
 }
@@ -989,9 +1003,9 @@ export function register(on) {
     })
 
     // 채팅 로그는 입력창 바로 위에 아래부터 쌓인다
-    // 고정 줄: 머리 2 + 말풍선 1 + 장면 6 + 이름 1 + 문 이름 1 + 버튼 1 + 입력 1
+    // 고정 줄: 머리 2 + 말풍선 1 + 장면 6 + 이름 1 + 문 이름 1 + 버튼 1 + 입력 1, 현판이 있으면 1줄 더
     const bodyRows = e.props?.scroll?.bodyRows ?? 22
-    const logRows = Math.max(3, bodyRows - 13)
+    const logRows = Math.max(3, bodyRows - 13 - (sc.plaqueRow ? 1 : 0))
     const recent = view.log.slice(-logRows)
     const logLines = [
       ...Array.from({ length: logRows - recent.length }, () => Text({ children: [' '] })),
@@ -1009,6 +1023,7 @@ export function register(on) {
       children: [
         header,
         hint,
+        ...(sc.plaqueRow ? [Text({ bold: true, wrap: 'truncate-end', children: [sc.plaqueRow] })] : []),
         Text({ wrap: 'truncate-end', children: [sc.bubbleRow] }),
         scene,
         Text({ wrap: 'truncate-end', children: [sc.nameRow] }),

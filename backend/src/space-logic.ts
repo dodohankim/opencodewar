@@ -30,6 +30,7 @@ export const MOVE_MIN_INTERVAL_MS = 60;
 export const GUEST_MAX_LEN = 100;
 export const GUEST_DAILY_LIMIT = 3; // 방문자당 막사별 하루(UTC)
 export const GUEST_KEEP = 100; // 막사당 보관 줄 수
+export const SIGN_MAX_LEN = 30; // 주인이 막사에 거는 현판(§27.20)
 /** 브리핑 "다녀감" 집계 창. 주인이 막사에 안 들어와도 이보다 오래된 방문은 뉴스가 아니다. */
 export const VISIT_WINDOW_MS = 7 * 24 * 60 * 60_000;
 export const VISIT_KEEP = 200;

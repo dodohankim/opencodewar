@@ -17,6 +17,7 @@ import {
   WORKING_FRESH_MS,
   activeBan,
   clampX,
+  SIGN_MAX_LEN,
   cleanChat,
   findTarget,
   hasRoomFor,
@@ -147,6 +148,10 @@ describe('방명록 한도', () => {
   });
   it('방명록은 100자로 자른다', () => {
     expect(Array.from(cleanChat('가'.repeat(300), 100)!).length).toBe(100);
+  });
+  it('현판은 30자로 자르고 빈 문구는 받지 않는다', () => {
+    expect(Array.from(cleanChat('가'.repeat(64), SIGN_MAX_LEN)!).length).toBe(30);
+    expect(cleanChat(' \u202e ', SIGN_MAX_LEN)).toBeNull();
   });
 });
 

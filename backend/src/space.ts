@@ -2,7 +2,7 @@
 //
 //   POST /space/ticket   { userId }                       → 60초 티켓 (터미널 mod 사이드카가 WS 열 때)
 //   POST /space/status   { userId, sid, state, full? }    → 주인 작업 상태 하트비트 (세션마다)
-//   POST /space/admin    { userId, action, target? }      → 주인 권한: 강퇴·차단·잠금·방명록 비우기
+//   POST /space/admin    { userId, action, target? }      → 주인 권한: 강퇴·차단·잠금·방명록 비우기·현판
 //   GET  /space/ws?room=plaza|<public_id>[&t=]            → WebSocket. 신원: 티켓 > 웹 세션 쿠키 > 관전자
 //   GET  /plaza, /s/<public_id>                           → 웹 화면(web/space.html, OG 재작성)
 //
@@ -33,6 +33,7 @@ import {
   PLAZA_ID,
   REPORT_REFRESH_MS,
   SAY_MIN_INTERVAL_MS,
+  SIGN_MAX_LEN,
   VISIT_WINDOW_MS,
   SPECTATOR_CAP,
   type BanEntry,
@@ -177,7 +178,7 @@ export async function handleSpaceStatus(request: Request, env: Env): Promise<Res
   return json(await res.json());
 }
 
-const ADMIN_ACTIONS = new Set(['kick', 'ban', 'unban', 'bans', 'open', 'close', 'guest_clear']);
+const ADMIN_ACTIONS = new Set(['kick', 'ban', 'unban', 'bans', 'open', 'close', 'guest_clear', 'sign', 'sign_clear']);
 
 /** POST /space/admin { userId, action, target? } — 자기 막사에만 듣는다(userId 로 방이 정해진다). 터미널 mod 전용. */
 export async function handleSpaceAdmin(request: Request, env: Env): Promise<Response> {
@@ -333,6 +334,7 @@ type Outgoing =
   | { t: 'guest'; line: ChatLine }
   | { t: 'guest_clear' }
   | { t: 'locked'; locked: boolean }
+  | { t: 'sign'; sign: string | null }
   | { t: 'owner'; owner: OwnerPresence }
   | { t: 'doors'; doors: Door[]; width: number }
   | { t: 'error'; code: string };
@@ -344,6 +346,7 @@ interface RoomInfo {
   cap: number;
   owner: OwnerPresence | null;
   locked: boolean;
+  sign?: string | null;
   doors?: Door[];
 }
 
@@ -463,6 +466,7 @@ export class SpaceRoom extends DurableObject<Env> {
       cap: BARRACKS_CAP,
       owner: meta.owner ? await this.presence(meta.owner) : null,
       locked: (await this.read<boolean>('locked')) ?? false,
+      sign: (await this.read<string>('sign')) ?? null,
     };
   }
 
@@ -750,6 +754,14 @@ export class SpaceRoom extends DurableObject<Env> {
       await this.ctx.storage.delete('guest');
       this.broadcast({ t: 'guest_clear' });
       return Response.json({ ok: true });
+    }
+    if (body.action === 'sign' || body.action === 'sign_clear') {
+      const sign = body.action === 'sign' ? cleanChat(body.target, SIGN_MAX_LEN) : null;
+      if (body.action === 'sign' && !sign) return fail('empty_sign');
+      if (sign) await this.ctx.storage.put('sign', sign);
+      else await this.ctx.storage.delete('sign');
+      this.broadcast({ t: 'sign', sign });
+      return Response.json({ ok: true, sign });
     }
     if (body.action === 'unban') {
       const hit = findTarget(body.target, Object.entries(bans).map(([pid, b]) => ({ pid, nick: b.nick })));
