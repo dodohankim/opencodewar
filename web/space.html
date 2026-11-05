@@ -6,6 +6,40 @@
 <title>광장 · Open Code War</title>
 <meta name="description" content="Open Code War 광장 — 코딩 에이전트를 돌리는 사람들의 막사를 구경하고, 들어가서 이야기하기." />
 <meta name="robots" content="noindex" />
+<!-- 방문자 국가. Worker(handleSpacePage)가 채운다. 언어 판정 규칙은 web/index.html 과 같다. -->
+<meta name="ocw-country" content="" />
+<script>
+  // 우선순위: ?lang= → 직접 고른 값 → 접속 국가(KR 이면 한국어) → 브라우저 언어
+  window.OCW_LANG = (function () {
+    var norm = function (v) {
+      v = String(v || '').trim().toLowerCase();
+      if (v === 'ko' || v === 'kr' || v.indexOf('ko-') === 0) return 'ko';
+      if (v === 'en' || v.indexOf('en-') === 0) return 'en';
+      return null;
+    };
+    try {
+      var q = norm(new URLSearchParams(location.search).get('lang'));
+      if (q) {
+        localStorage.setItem('ocw_lang', q);
+        localStorage.setItem('ocw_lang_manual', '1');
+        return q;
+      }
+      if (localStorage.getItem('ocw_lang_manual') === '1') {
+        var saved = norm(localStorage.getItem('ocw_lang'));
+        if (saved) return saved;
+      }
+      var meta = document.querySelector('meta[name="ocw-country"]');
+      var cc = ((meta && meta.content) || '').toUpperCase();
+      if (cc) return cc === 'KR' ? 'ko' : 'en';
+      var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+      for (var i = 0; i < langs.length; i++) if (norm(langs[i]) === 'ko') return 'ko';
+      return 'en';
+    } catch (e) {
+      return 'en';
+    }
+  })();
+  document.documentElement.lang = window.OCW_LANG;
+</script>
 <!-- /s/<public_id> 는 Worker(handleSpacePage)가 아래 값을 그 막사의 지금 상태로 바꾼다. og.png 교체 시 ?v= 함께 올릴 것 -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Open Code War" />
@@ -81,40 +115,80 @@
     <div class="titlebar">
       <span class="lights"><i></i><i></i><i></i></span>
       <span class="name" id="tbName">ocw — 광장</span>
-      <a href="/">보드로 ↗</a>
+      <a href="/" data-i18n="board">보드로 ↗</a>
     </div>
     <div class="screen">
       <div class="head">
         <h1 id="title">광장</h1>
-        <span class="status" id="status">연결 중…</span>
+        <span class="status" id="status" data-i18n="connecting">연결 중…</span>
       </div>
       <div class="hint" id="hint"></div>
-      <div class="stage" id="stage" tabindex="0" aria-label="광장 화면. a/d 또는 ←/→ 로 걷기, e 또는 ↑ 로 문 들어가기">
+      <div class="stage" id="stage" tabindex="0" data-i18n-aria="stage_aria" aria-label="광장 화면. a/d 또는 ←/→ 로 걷기, e 또는 ↑ 로 문 들어가기">
         <canvas id="cv" height="120"></canvas>
       </div>
       <div class="pad" aria-hidden="true">
         <button type="button" data-k="left">←</button>
         <button type="button" data-k="right">→</button>
-        <button type="button" data-k="enter">들어가기</button>
+        <button type="button" data-k="enter" data-i18n="pad_enter">들어가기</button>
       </div>
       <div class="notice" id="loginNotice" hidden>
-        <span>지금은 구경만 할 수 있어요. 로그인하면 걷고 이야기할 수 있어요.</span>
-        <a class="btn" id="loginBtn" href="/auth/login">Google 로 로그인</a>
+        <span data-i18n="login_notice">지금은 구경만 할 수 있어요. 로그인하면 걷고 이야기할 수 있어요.</span>
+        <a class="btn" id="loginBtn" href="/auth/login" data-i18n="login_btn">Google 로 로그인</a>
       </div>
       <div class="log" id="log" aria-live="polite"><div class="spacer"></div></div>
       <form class="chat" id="chatForm" autocomplete="off">
-        <input id="chatInput" maxlength="200" placeholder="Enter 로 채팅 · Esc 로 다시 걷기" aria-label="채팅" />
-        <button type="button" class="alt" id="guestBtn" hidden>방명록</button>
-        <button type="submit">보내기</button>
+        <input id="chatInput" maxlength="200" placeholder="Enter 로 채팅 · Esc 로 다시 걷기" data-i18n-aria="chat_aria" aria-label="채팅" />
+        <button type="button" class="alt" id="guestBtn" hidden data-i18n="guestbook">방명록</button>
+        <button type="submit" data-i18n="send">보내기</button>
       </form>
       <div class="notice">
-        <span>터미널에서도 같은 광장에 들어올 수 있어요: Claude Code 에서 <code>/space</code></span>
+        <span data-i18n-html="terminal_note">터미널에서도 같은 광장에 들어올 수 있어요: Claude Code 에서 <code>/space</code></span>
       </div>
     </div>
   </div>
 
 <script>
 (() => {
+  // ── 언어: 주인·방문자가 쓴 채팅, 방명록, 닉네임만 원문 그대로 두고 나머지 문구는 전부 여기서 고른다 ──
+  const LANG = window.OCW_LANG === 'ko' ? 'ko' : 'en';
+  const STR = {
+    ko: {
+      plaza: '광장', barracks: (n) => `${n}의 막사`, board: '보드로 ↗', connecting: '연결 중…', reconnecting: '연결이 끊겼어요 — 다시 연결 중…',
+      stage_aria: '광장 화면. a/d 또는 ←/→ 로 걷기, e 또는 ↑ 로 문 들어가기', pad_enter: '들어가기',
+      login_notice: '지금은 구경만 할 수 있어요. 로그인하면 걷고 이야기할 수 있어요.', login_btn: 'Google 로 로그인',
+      chat_aria: '채팅', chat_ph: 'Enter 로 채팅 · Esc 로 다시 걷기', chat_ph_guest: '주인에게 남길 한 줄 (100자) · 하루 3번', chat_ph_login: '로그인하면 이야기할 수 있어요',
+      guestbook: '방명록', guest_tag: '✎ 방명록', send: '보내기', terminal_note: '터미널에서도 같은 광장에 들어올 수 있어요: Claude Code 에서 <code>/space</code>',
+      count: (c, cap) => `${c}/${cap}명`, owner_working: '주인 작업 중 ⌨', owner_online: '주인 접속 중', owner_away: '주인 외출 중', locked_tag: ' · 잠김🔒',
+      hint_watch_plaza: '켜져 있는 막사들이에요. 로그인하면 걸어가서 들어갈 수 있어요.', hint_watching: '구경 중',
+      hint_enter: (n, locked) => `<b>e</b> 또는 <b>↑</b>: ${n}의 막사로 들어가기` + (locked ? ' (잠김🔒)' : ''), hint_exit: '<b>e</b> 또는 <b>↑</b>: 광장으로 나가기',
+      hint_plaza: '<b>a/d</b>·<b>←/→</b> 로 문 앞까지 걸어가서 <b>e</b> · <b>Enter</b> 채팅', hint_no_doors: '지금 켜진 막사가 없어요. Claude Code 에서 /space 를 켜면 문이 생겨요.',
+      hint_barracks: '<b>a/d</b>·<b>←/→</b> 이동 · 왼쪽 문에서 <b>e</b> 로 광장 · <b>Enter</b> 채팅', hint_guest: ' · <b>g</b> 방명록',
+      entered: (name, watching) => `${name}에 들어왔어요` + (watching ? ' (구경 중)' : ''), joined: (n) => `${n} 님이 들어왔어요`, left: (n) => `${n} 님이 나갔어요`,
+      locked_on: '막사가 잠겼어요 (새로 들어올 수 없음)', locked_off: '막사가 열렸어요', away_label: '외출 중',
+      end_full: '방이 꽉 찼어요 (최대 인원)', end_kicked: '주인이 내보냈어요. 잠시 뒤에 다시 들어올 수 있어요', end_banned: '이 막사에는 들어갈 수 없어요', end_closed: '이 막사는 잠겨 있어요',
+      status_full: '꽉 참', replaced: '다른 곳(터미널·다른 탭)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요', status_replaced: '다른 곳에서 접속 중',
+      slow_down: '조금 천천히 말해 주세요', guest_limit: '이 막사 방명록은 하루 3번까지 쓸 수 있어요', guest_owner_here: '주인이 와 있어요. 방명록 대신 채팅으로 말해 보세요',
+    },
+    en: {
+      plaza: 'Plaza', barracks: (n) => `${n}'s Barracks`, board: 'Board ↗', connecting: 'Connecting…', reconnecting: 'Disconnected. Reconnecting…',
+      stage_aria: 'Plaza view. Walk with a/d or ←/→, go through a door with e or ↑', pad_enter: 'Go in',
+      login_notice: 'You can only watch for now. Sign in to walk around and talk.', login_btn: 'Sign in with Google',
+      chat_aria: 'Chat', chat_ph: 'Enter to chat · Esc to walk again', chat_ph_guest: 'One line for the owner (100 chars) · 3 times a day', chat_ph_login: 'Sign in to talk',
+      guestbook: 'Guestbook', guest_tag: '✎ Guestbook', send: 'Send', terminal_note: 'You can join the same plaza from your terminal: <code>/space</code> in Claude Code',
+      count: (c, cap) => `${c}/${cap} people`, owner_working: 'Owner working ⌨', owner_online: 'Owner online', owner_away: 'Owner away', locked_tag: ' · Locked🔒',
+      hint_watch_plaza: 'These barracks are open right now. Sign in to walk over and go inside.', hint_watching: 'Watching',
+      hint_enter: (n, locked) => `<b>e</b> or <b>↑</b>: enter ${n}'s barracks` + (locked ? ' (locked🔒)' : ''), hint_exit: '<b>e</b> or <b>↑</b>: back to the plaza',
+      hint_plaza: '<b>a/d</b>·<b>←/→</b> walk to a door, then <b>e</b> · <b>Enter</b> chat', hint_no_doors: 'No barracks are open right now. Turn on /space in Claude Code to add a door.',
+      hint_barracks: '<b>a/d</b>·<b>←/→</b> move · <b>e</b> at the left door for the plaza · <b>Enter</b> chat', hint_guest: ' · <b>g</b> guestbook',
+      entered: (name, watching) => `Entered ${name}` + (watching ? ' (watching)' : ''), joined: (n) => `${n} joined`, left: (n) => `${n} left`,
+      locked_on: 'The barracks is locked (no new visitors)', locked_off: 'The barracks is open', away_label: 'Away',
+      end_full: 'This room is full', end_kicked: 'The owner removed you. You can come back in a little while', end_banned: 'You can\'t enter this barracks', end_closed: 'This barracks is locked',
+      status_full: 'Full', replaced: 'This account joined from somewhere else (terminal or another tab), so this connection was closed', status_replaced: 'Connected elsewhere',
+      slow_down: 'Please slow down', guest_limit: 'You can sign this guestbook up to 3 times a day', guest_owner_here: 'The owner is here. Try chat instead of the guestbook',
+    },
+  };
+  const t = (k, ...a) => { const v = STR[LANG][k]; return typeof v === 'function' ? v(...a) : v; };
+
   // ── 스프라이트: mods/space 와 같은 8×10 미니 병정 (단일 원본은 web/index.html SPRITES — §16.1) ──
   const SPRITES = {
     stand: ['..HHH..R', '.HHHHH.R', '..SSE..R', '..SSS..R', '.UUUUUUR', '.U.UUU.R', '...UUU..', '...U.U..', '...U.U..', '..BB.BB.'],
@@ -123,8 +197,11 @@
     type2: ['........', '..HHH...', '.HHHHH..', '..SSE...', '..SSS..M', '.UUUU..M', '.UUUUSSM', '.UUUUKKK', '..UUUU..', '.BBBBBB.'],
     door: ['..LLLL..', 'WWWWWWWW', 'WIIIIIIW', 'WIIIIIIW', 'WIIIIIIW', 'WIIIIOIW', 'WIIIIIIW', 'WIIIIIIW', 'WIIIIIIW', 'WWWWWWWW'],
   };
-  // 계급 이름(§16.1). 서버는 인덱스만 보낸다.
-  const RANK_NAMES = ['이병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '대위', '소령', '대령', '장군'];
+  // 계급 이름(§16.1). 서버는 인덱스만 보낸다. 영어는 캔버스 이름표 폭에 맞춘 군 약어다(보드의 전체 이름과 같은 계급).
+  const RANK_NAMES = {
+    ko: ['이병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '대위', '소령', '대령', '장군'],
+    en: ['Pvt', 'PFC', 'Cpl', 'Sgt', 'SSgt', 'SFC', 'MSgt', '2Lt', 'Capt', 'Maj', 'Col', 'Gen'],
+  }[LANG];
   const SW = 8, SH = 10, EXIT_X = 2, REACH = 6, SPEED = 40; // px/s
   const PX = 5; // 화면 배율
   const TOP = 11; // 위 여백(px): 말풍선 + 문 이름표
@@ -154,12 +231,7 @@
   let returnTo = null;
   let carryNote = null; // 입장이 거부돼 광장으로 돌아왔을 때 보여 줄 이유
   let guestMode = false;
-  const END_TEXT = {
-    full: '방이 꽉 찼어요 (최대 인원)',
-    kicked: '주인이 내보냈어요. 잠시 뒤에 다시 들어올 수 있어요',
-    banned: '이 막사에는 들어갈 수 없어요',
-    closed: '이 막사는 잠겨 있어요',
-  };
+  const END_TEXT = { full: t('end_full'), kicked: t('end_kicked'), banned: t('end_banned'), closed: t('end_closed') };
   const keys = { left: false, right: false };
   let lastSent = 0, lastSentX = -1;
 
@@ -167,7 +239,7 @@
   function addLine(nick, text, at, guest) {
     const d = document.createElement('div');
     d.className = 'l' + (nick ? '' : ' sys') + (guest ? ' guestline' : '');
-    if (guest) { const g = document.createElement('span'); g.className = 'gb'; g.textContent = '✎ 방명록'; d.append(g); }
+    if (guest) { const g = document.createElement('span'); g.className = 'gb'; g.textContent = t('guest_tag'); d.append(g); }
     if (at) { const t = document.createElement('span'); t.className = 't'; t.textContent = new Date(at).toTimeString().slice(0, 5); d.append(t); }
     if (nick) { const n = document.createElement('span'); n.className = 'n'; n.textContent = nick; d.append(n); }
     d.append(document.createTextNode(nick ? text : '· ' + text));
@@ -188,23 +260,23 @@
     guestMode = on && canGuest();
     $('guestBtn').classList.toggle('on', guestMode);
     input.maxLength = guestMode ? 100 : 200;
-    if (isMember()) input.placeholder = guestMode ? '주인에게 남길 한 줄 (100자) · 하루 3번' : 'Enter 로 채팅 · Esc 로 다시 걷기';
+    if (isMember()) input.placeholder = guestMode ? t('chat_ph_guest') : t('chat_ph');
   }
   const nameTag = (m) => short(m.nick, 8) + (RANK_NAMES[m.rank] ? '·' + RANK_NAMES[m.rank] : '');
 
   function setTitle() {
     const count = members.size + (isMember() ? 1 : 0);
-    let t = '광장', s = '';
-    if (room?.kind === 'plaza') { t = '광장'; s = `${count}/${room.cap}명`; }
+    let name = t('plaza'), s = '';
+    if (room?.kind === 'plaza') s = t('count', count, room.cap);
     else if (room?.kind === 'barracks') {
       const o = room.owner;
-      t = `${o?.nick ?? '?'}의 막사`;
-      s = `${count}/${room.cap}명 · ` + (o?.working ? '주인 작업 중 ⌨' : o?.online ? '주인 접속 중' : '주인 외출 중') + (room.locked ? ' · 잠김🔒' : '');
+      name = t('barracks', o?.nick ?? '?');
+      s = t('count', count, room.cap) + ' · ' + (o?.working ? t('owner_working') : o?.online ? t('owner_online') : t('owner_away')) + (room.locked ? t('locked_tag') : '');
     }
-    $('title').textContent = t;
+    $('title').textContent = name;
     $('status').textContent = s;
-    $('tbName').textContent = 'ocw — ' + t;
-    document.title = t + ' · Open Code War';
+    $('tbName').textContent = 'ocw — ' + name;
+    document.title = name + ' · Open Code War';
   }
 
   function doorAt(x) {
@@ -219,11 +291,11 @@
     if (!room) return;
     const d = doorAt(me.x);
     const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-    if (!isMember()) setHint(room.kind === 'plaza' ? '켜져 있는 막사들이에요. 로그인하면 걸어가서 들어갈 수 있어요.' : '구경 중');
-    else if (d?.kind === 'enter') setHint(`<b>e</b> 또는 <b>↑</b>: ${esc(d.door.nick)}의 막사로 들어가기` + (d.door.locked ? ' (잠김🔒)' : ''));
-    else if (d?.kind === 'exit') setHint('<b>e</b> 또는 <b>↑</b>: 광장으로 나가기');
-    else if (room.kind === 'plaza') setHint(room.doors?.length ? '<b>a/d</b>·<b>←/→</b> 로 문 앞까지 걸어가서 <b>e</b> · <b>Enter</b> 채팅' : '지금 켜진 막사가 없어요. Claude Code 에서 /space 를 켜면 문이 생겨요.');
-    else setHint('<b>a/d</b>·<b>←/→</b> 이동 · 왼쪽 문에서 <b>e</b> 로 광장 · <b>Enter</b> 채팅' + (canGuest() ? ' · <b>g</b> 방명록' : ''));
+    if (!isMember()) setHint(room.kind === 'plaza' ? t('hint_watch_plaza') : t('hint_watching'));
+    else if (d?.kind === 'enter') setHint(t('hint_enter', esc(d.door.nick), d.door.locked));
+    else if (d?.kind === 'exit') setHint(t('hint_exit'));
+    else if (room.kind === 'plaza') setHint(room.doors?.length ? t('hint_plaza') : t('hint_no_doors'));
+    else setHint(t('hint_barracks') + (canGuest() ? t('hint_guest') : ''));
   }
 
   // ── 연결 ──
@@ -232,7 +304,7 @@
     curRoom = target;
     try { ws?.close(1000); } catch {}
     members = new Map(); bubbles = {}; you = null; room = null;
-    $('status').textContent = '연결 중…';
+    $('status').textContent = t('connecting');
     const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/space/ws?room=' + encodeURIComponent(target);
     const sock = new WebSocket(url);
     ws = sock;
@@ -247,7 +319,7 @@
       clearInterval(keep);
       if (my !== gen) return;
       if (e.code >= 4000 && e.code <= 4004) return; // 대체·정원·강퇴·차단·잠금 — 다시 붙지 않는다
-      $('status').textContent = '연결이 끊겼어요 — 다시 연결 중…';
+      $('status').textContent = t('reconnecting');
       setTimeout(() => my === gen && connect(target), 3000);
     };
   }
@@ -263,7 +335,7 @@
         clearLog();
         for (const l of m.guest ?? []) addLine(l.nick, l.text, l.at, true);
         for (const l of m.chat) addLine(l.nick, l.text, l.at);
-        sys((room.kind === 'plaza' ? '광장' : (room.owner?.nick ?? '?') + '의 막사') + '에 들어왔어요' + (isMember() ? '' : ' (구경 중)'));
+        sys(t('entered', room.kind === 'plaza' ? t('plaza') : t('barracks', room.owner?.nick ?? '?'), !isMember()));
         if (room.kind === 'barracks') me.x = EXIT_X + 10;
         else if (returnTo) { const d = room.doors?.find((d) => d.pid === returnTo); if (d) me.x = d.x; }
         else me.x = 12;
@@ -273,7 +345,7 @@
         carryNote = null;
         $('loginNotice').hidden = isMember();
         input.disabled = !isMember();
-        input.placeholder = isMember() ? 'Enter 로 채팅 · Esc 로 다시 걷기' : '로그인하면 이야기할 수 있어요';
+        input.placeholder = isMember() ? t('chat_ph') : t('chat_ph_login');
         setGuestMode(false);
         const path = room.kind === 'plaza' ? '/plaza' : '/s/' + room.id;
         if (location.pathname !== path) history.pushState(null, '', path);
@@ -281,8 +353,8 @@
         send({ t: 'move', x: me.x, dir: me.dir });
         break;
       }
-      case 'join': members.set(m.m.id, { ...m.m, dx: m.m.x, walkUntil: 0 }); sys(m.m.nick + ' 님이 들어왔어요'); break;
-      case 'leave': { const x = members.get(m.id); members.delete(m.id); delete bubbles[m.id]; if (x) sys(x.nick + ' 님이 나갔어요'); break; }
+      case 'join': members.set(m.m.id, { ...m.m, dx: m.m.x, walkUntil: 0 }); sys(t('joined', m.m.nick)); break;
+      case 'leave': { const x = members.get(m.id); members.delete(m.id); delete bubbles[m.id]; if (x) sys(t('left', x.nick)); break; }
       case 'move': { const x = members.get(m.id); if (x) Object.assign(x, { x: m.x, dir: m.dir, walkUntil: now + 400 }); break; }
       case 'state': { const x = members.get(m.id); if (x) x.state = m.state; break; }
       case 'said': {
@@ -294,7 +366,7 @@
       }
       case 'guest': addLine(m.line.nick, m.line.text, m.line.at, true); break;
       case 'guest_clear': for (const el of logEl.querySelectorAll('.guestline')) el.remove(); break;
-      case 'locked': if (room) room.locked = m.locked; sys(m.locked ? '막사가 잠겼어요 (새로 들어올 수 없음)' : '막사가 열렸어요'); break;
+      case 'locked': if (room) room.locked = m.locked; sys(m.locked ? t('locked_on') : t('locked_off')); break;
       case 'owner': if (room) room.owner = m.owner; break;
       case 'doors': if (room?.kind === 'plaza') { room.doors = m.doors; room.width = m.width; } break;
       case 'error':
@@ -308,11 +380,11 @@
             return;
           }
           sys(END_TEXT[m.code]);
-          $('status').textContent = '꽉 참';
-        } else if (m.code === 'replaced') { sys('다른 곳(터미널·다른 탭)에서 같은 계정으로 들어와서 여기 연결은 닫혔어요'); $('status').textContent = '다른 곳에서 접속 중'; }
-        else if (m.code === 'slow_down') sys('조금 천천히 말해 주세요');
-        else if (m.code === 'guest_limit') sys('이 막사 방명록은 하루 3번까지 쓸 수 있어요');
-        else if (m.code === 'guest_owner_here') sys('주인이 와 있어요. 방명록 대신 채팅으로 말해 보세요');
+          $('status').textContent = t('status_full');
+        } else if (m.code === 'replaced') { sys(t('replaced')); $('status').textContent = t('status_replaced'); }
+        else if (m.code === 'slow_down') sys(t('slow_down'));
+        else if (m.code === 'guest_limit') sys(t('guest_limit'));
+        else if (m.code === 'guest_owner_here') sys(t('guest_owner_here'));
         break;
     }
     setTitle(); updateHint();
@@ -430,14 +502,14 @@
       }
     } else {
       drawSprite(SPRITES.door, EXIT_X, TOP, null, false, true);
-      label('광장', EXIT_X + SW / 2, TOP - 1, true);
+      label(t('plaza'), EXIT_X + SW / 2, TOP - 1, true);
       const here = owner && ((you && you.pid === owner.pid) || [...members.values()].some((m) => m.pid === owner.pid));
       const deskX = width - SW - 6;
       if (owner && !here) {
         if (owner.online) {
           drawSprite(SPRITES[owner.working ? (tick % 2 ? 'type1' : 'type2') : 'stand'], deskX, TOP, (ARMY[owner.agent] ?? ARMY['claude-code'])(), false);
           label('★' + nameTag(owner) + (owner.working ? '⌨' : ''), deskX + SW / 2, H - 1);
-        } else label('외출 중', deskX + SW / 2, TOP + SH / 2, true);
+        } else label(t('away_label'), deskX + SW / 2, TOP + SH / 2, true);
       }
     }
 
@@ -458,6 +530,11 @@
   }
 
   // ── 시작 ──
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-html]')) el.innerHTML = t(el.dataset.i18nHtml);
+  for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  input.placeholder = t('chat_ph');
+  setTitle();
   fetch('/api/session', { credentials: 'same-origin' }).catch(() => null).finally(() => {
     connect(pageRoom());
     stage.focus();

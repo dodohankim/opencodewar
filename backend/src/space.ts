@@ -18,7 +18,7 @@ import { isValidUserId } from './validate';
 import { displayNickname } from './nickname';
 import { newPublicId } from './publicid';
 import { rankIndexOf } from './briefing';
-import { ogImageUrl } from './og';
+import { ogImageUrl, visitorCountry, withVisitorCountry } from './og';
 import {
   BARRACKS_CAP,
   BARRACKS_WIDTH,
@@ -236,9 +236,11 @@ export function spacePageRoom(pathname: string): string | null {
 export async function handleSpacePage(request: Request, url: URL, env: Env): Promise<Response> {
   const res = await env.ASSETS.fetch(new Request(new URL('/space.html', url).toString(), { headers: request.headers }));
   const room = spacePageRoom(url.pathname);
+  const country = visitorCountry(request); // 웹의 기본 언어 판정에 쓰인다(국가별로 HTML 이 달라져 private)
   if (!room || room === PLAZA_ID || res.status !== 200) {
-    const out = new Response(res.body, res);
-    out.headers.set('Cache-Control', 'no-cache');
+    const page = withVisitorCountry(res, country);
+    const out = new Response(page.body, page);
+    out.headers.set('Cache-Control', 'private, no-cache');
     return out;
   }
   const row = await env.DB.prepare('SELECT user_id, nickname FROM users WHERE public_id = ?')
@@ -259,6 +261,7 @@ export async function handleSpacePage(request: Request, url: URL, env: Env): Pro
     },
   });
   const rewritten = new HTMLRewriter()
+    .on('meta[name="ocw-country"]', setContent(country ?? ''))
     .on('title', {
       element(el) {
         el.setInnerContent(title);
@@ -274,7 +277,7 @@ export async function handleSpacePage(request: Request, url: URL, env: Env): Pro
     .on('meta[name="twitter:image"]', setContent(ogImageUrl(room)))
     .transform(res);
   const out = new Response(rewritten.body, rewritten);
-  out.headers.set('Cache-Control', 'no-cache');
+  out.headers.set('Cache-Control', 'private, no-cache');
   return out;
 }
 
