@@ -290,7 +290,7 @@ Nobody sees your effort anymore. Open Code War puts it on a board — how many t
 /** /privacy 의 마크다운 판 — 핵심 요약 + 전문 링크(전문은 HTML 이 단일 원본). */
 export const PRIVACY_MD = `# Open Code War Privacy Policy (summary)
 
-Full text (English and Korean, effective 2026-11-04): ${SITE_ORIGIN}/privacy — this summary is for agents and is not a substitute for the full policy.
+Full text (English and Korean, effective 2026-11-05): ${SITE_ORIGIN}/privacy — this summary is for agents and is not a substitute for the full policy.
 
 ## What is collected
 - Anonymous device id generated at install (random; not linked to a person unless Google is linked).
