@@ -9,9 +9,10 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
-  // 매일 23:50 UTC = KST 08:50. 무료 한도가 00:00 UTC 리셋이라 리셋 직전 = "오늘(UTC) 하루 총 사용량" 리포트.
+  // 하루 2번(무료 플랜은 계정당 크론 5개라 표현식 하나로 합침): 11:50 UTC = KST 20:50(중간 집계, UTC 하루의 절반 시점) / 23:50 UTC = KST 08:50(최종).
+  // 무료 한도가 00:00 UTC 리셋이라 23:50 발송분이 "오늘(UTC) 하루 총 사용량" 리포트.
   "triggers": {
-    "crons": ["50 23 * * *"]
+    "crons": ["50 11,23 * * *"]
   },
   // secrets(wrangler secret put): CF_ANALYTICS_TOKEN(Analytics·KV·D1 Read), DISCORD_WEBHOOK_URL
   "vars": {

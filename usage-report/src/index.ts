@@ -1,5 +1,5 @@
 // Cloudflare 무료 티어 사용량 일일 리포트 → Discord 웹훅.
-// 매일 23:50 UTC(KST 08:50) 크론으로 실행 — 한도 리셋(00:00 UTC) 직전이라 "오늘 하루 총 사용량"이 된다.
+// 매일 11:50 UTC(KST 20:50, 중간 집계)·23:50 UTC(KST 08:50) 크론으로 실행 — 23:50 발송분은 한도 리셋(00:00 UTC) 직전이라 "오늘 하루 총 사용량"이 된다.
 // 수집 로직은 scripts/cf-usage.mjs 와 동일 소스(GraphQL Analytics + REST). 한도 수치 바뀌면 두 곳 모두 갱신.
 
 interface Env {
@@ -201,7 +201,7 @@ async function buildUserEmbed(env: Env) {
   );
 
   return {
-    title: `OCW 유저 리포트 — ${today} (UTC)`,
+    title: `OCW 유저 리포트 — ${today} (UTC)${partialTag()}`,
     description: [
       `👥 오늘 가입 **${row.signups_today}명** (누적 ${row.total_users}명)`,
       `⚡ 오늘 활성 **${row.active_today}명** · 프롬프트 ${compact(row.prompts_today)}건 · ${compact(row.chars_today)}자`,
@@ -247,7 +247,7 @@ async function buildUsageEmbed(env: Env) {
   const errNote = workersErrors ? `\n🔥 Worker 오류 ${workersErrors}건 발생` : '';
 
   return {
-    title: `Cloudflare 무료 티어 사용량 — ${today} (UTC)`,
+    title: `Cloudflare 무료 티어 사용량 — ${today} (UTC)${partialTag()}`,
     description: `${status}${errNote}\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
     color,
     footer: { text: '일일 한도 리셋 00:00 UTC (KST 09:00)' },
@@ -256,6 +256,9 @@ async function buildUsageEmbed(env: Env) {
 }
 
 type ReportKind = 'all' | 'usage' | 'user';
+
+// 23시(UTC) 이전 발송분은 아직 하루가 덜 끝난 값이라 제목에 표시한다.
+const partialTag = () => (new Date().getUTCHours() < 23 ? ' · 중간 집계' : '');
 
 const errorEmbed = (title: string, err: unknown) => ({
   title,
@@ -285,7 +288,7 @@ async function report(env: Env, kind: ReportKind) {
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     // 로컬 트리거(send-now.sh)는 cron 문자열로 리포트를 선택한다: "usage" | "user" | 그 외 = 전체.
-    // 프로덕션 크론("50 23 * * *")은 항상 전체 발송.
+    // 프로덕션 크론("50 11,23 * * *")은 항상 전체 발송.
     const kind: ReportKind = event.cron === 'usage' ? 'usage' : event.cron === 'user' ? 'user' : 'all';
     ctx.waitUntil(
       report(env, kind).catch(async (err) => {
