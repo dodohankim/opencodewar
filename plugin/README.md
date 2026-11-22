@@ -82,6 +82,16 @@ claude --plugin-dir ./plugin
 
 `OCW_API_URL` 환경변수 > `config.json`의 `endpoint` > 기본값(`plugin.json` 배포 URL)
 
+## 자동화 호출 제외 (`OCW_SKIP`)
+
+헤드리스 `claude -p` 로 도는 자동 작업(요약·번역·분류 배치 등)은 사람이 친 프롬프트가 아니다.
+호출 프로세스가 `OCW_SKIP=1` 을 넘기면 `track.mjs` 가 아무것도 보내지 않는다.
+한도 초과로 429 가 나는 실패한 자동 호출이 리더보드에 "사용량"처럼 쌓이는 것을 막는 용도다.
+
+```bash
+OCW_SKIP=1 claude -p "..."   # 이 호출은 집계되지 않음
+```
+
 ## TODO
 
 - 배포 후 `scripts/lib/config.mjs`의 `DEFAULT_ENDPOINT`를 실제 Worker URL로 교체

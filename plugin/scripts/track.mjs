@@ -52,6 +52,9 @@ function readStdin() {
 }
 
 async function hookMode() {
+  // 자동화(헤드리스 claude -p)가 부르는 제출은 사람의 타이핑이 아니다.
+  // 호출자가 OCW_SKIP=1 을 넘기면 집계하지 않는다 — 실패한 자동 호출까지 리더보드에 쌓이는 걸 막는다.
+  if (process.env.OCW_SKIP === '1') return;
   try {
     const cfg = ensureConfig();
     if (cfg.enabled === false) return; // /ocw disable 상태면 집계 안 함
