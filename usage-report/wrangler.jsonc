@@ -9,10 +9,11 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
-  // 하루 2번: 11:50 UTC = KST 20:50(중간 집계) / 23:50 UTC = KST 08:50(최종).
-  // 리포트 본체는 결제 주기(매달 BILLING_DAY일) 누적 사용량이고, 23:50 발송분의 "오늘(UTC)" 줄이 그날 하루 총 사용량이다.
+  // 6시간마다: 00:10·06:10·12:10·18:10 UTC = KST 09:10·15:10·21:10·03:10.
+  // 리포트 본체는 결제 주기(매달 BILLING_DAY일) 누적 사용량이다. 00:10 UTC(KST 09:10) 발송분의 하루 줄은 막 끝난
+  // 어제(UTC) 하루 총량이고, 나머지 발송분은 오늘(UTC)의 중간 집계다.
   "triggers": {
-    "crons": ["50 11,23 * * *"]
+    "crons": ["10 0,6,12,18 * * *"]
   },
   // secrets(wrangler secret put): CF_ANALYTICS_TOKEN(Analytics·KV·D1 Read), DISCORD_WEBHOOK_URL
   "vars": {

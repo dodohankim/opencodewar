@@ -8,7 +8,7 @@ set -e
 cd "$(dirname "$0")"
 KIND="${1:-all}"
 case "$KIND" in
-  all) CRON='50+23+*+*+*' ;;
+  all) CRON='10+0+*+*+*' ;;
   usage | user) CRON="$KIND" ;;
   *) echo "usage: send-now.sh [all|usage|user]" >&2; exit 1 ;;
 esac

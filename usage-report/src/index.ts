@@ -1,8 +1,9 @@
 // Cloudflare Workers Paid 플랜 사용량 리포트 → Discord 웹훅.
-// 매일 11:50 UTC(KST 20:50)·23:50 UTC(KST 08:50) 크론으로 실행한다.
+// 6시간마다 00:10·06:10·12:10·18:10 UTC(KST 09:10·15:10·21:10·03:10) 크론으로 실행한다.
 // 유료 플랜의 포함량은 일 단위가 아니라 월 단위이고, 구독 갱신일(BILLING_DAY, 매달 18일)에 리셋된다.
 // 그래서 이번 결제 주기 첫날부터 지금까지 누적한 값을 포함량과 비교하고, 월말 예상치와 예상 초과 요금을 낸다.
-// 오늘(UTC) 사용량은 하루 단위 변화를 보려고 따로 싣는다.
+// 하루(UTC) 사용량은 하루 단위 변화를 보려고 따로 싣는다. 00시(UTC) 발송분은 막 끝난 어제 하루의 총량을,
+// 나머지 발송분은 아직 진행 중인 오늘의 중간 집계를 싣는다(reportDay).
 // 수집 로직은 scripts/cf-usage.mjs 와 동일 소스(GraphQL Analytics + REST). 포함량·단가가 바뀌면 두 곳 모두 갱신.
 
 interface Env {
@@ -127,9 +128,20 @@ function metric(
   };
 }
 
+// 하루 줄에 실을 UTC 날짜. 00시(UTC) 발송분은 오늘이 막 시작돼 거의 비어 있으므로 어제 하루 총량을 싣는다.
+function reportDay(now = new Date()) {
+  const final = now.getUTCHours() === 0;
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - (final ? 864e5 : 0));
+  const end = new Date(start.getTime() + 864e5);
+  const day = start.toISOString().slice(0, 10);
+  const prev = new Date(start.getTime() - 864e5).toISOString().slice(0, 10);
+  return { day, prev, start, end, final, label: final ? '어제' : '오늘' };
+}
+
 async function buildReport(env: Env) {
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const rd = reportDay(now);
+  const today = rd.day;
   const yesterday = new Date(now.getTime() - 864e5).toISOString().slice(0, 10);
   const period = billingPeriod(now, Number(env.BILLING_DAY) || 18);
   const periodStart = period.start.toISOString().slice(0, 10);
@@ -144,7 +156,7 @@ async function buildReport(env: Env) {
           sum { requests errors cpuTimeUs }
           dimensions { scriptName }
         }
-        workersToday: workersInvocationsAdaptive(filter: { datetime_geq: "${today}T00:00:00Z" }, limit: 1000) {
+        workersToday: workersInvocationsAdaptive(filter: { datetime_geq: "${rd.start.toISOString()}", datetime_lt: "${rd.end.toISOString()}" }, limit: 1000) {
           sum { requests errors cpuTimeUs }
           dimensions { scriptName }
         }
@@ -240,7 +252,7 @@ async function buildReport(env: Env) {
     ],
   ];
 
-  return { today, period, sections, byScript, workersErrors };
+  return { rd, period, sections, byScript, workersErrors };
 }
 
 // ocw-db 를 REST 로 읽기 쿼리(바인딩 대신 REST — 로컬 --test-scheduled 에서도 실DB 그대로 조회됨)
@@ -260,31 +272,32 @@ async function d1Query(env: Env, sql: string, params: unknown[] = []): Promise<a
 
 // OCW 유저 리포트 embed — 오늘(UTC) 가입·활성 유저. daily_stats.day 는 UTC 일자.
 async function buildUserEmbed(env: Env) {
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const yesterday = new Date(now.getTime() - 864e5).toISOString().slice(0, 10);
-  const todayStartMs = Date.parse(`${today}T00:00:00Z`);
-  const yesterdayStartMs = Date.parse(`${yesterday}T00:00:00Z`);
+  const rd = reportDay();
+  const today = rd.day;
+  const yesterday = rd.prev;
+  const todayStartMs = rd.start.getTime();
+  const todayEndMs = rd.end.getTime();
+  const yesterdayStartMs = todayStartMs - 864e5;
 
   const [row] = await d1Query(
     env,
     `SELECT
-      (SELECT COUNT(*) FROM users WHERE created_at >= ?1) AS signups_today,
+      (SELECT COUNT(*) FROM users WHERE created_at >= ?1 AND created_at < ?5) AS signups_today,
       (SELECT COUNT(*) FROM users WHERE created_at >= ?2 AND created_at < ?1) AS signups_yesterday,
       (SELECT COUNT(*) FROM users) AS total_users,
       (SELECT COUNT(DISTINCT user_id) FROM daily_stats WHERE day = ?3) AS active_today,
       (SELECT COUNT(DISTINCT user_id) FROM daily_stats WHERE day = ?4) AS active_yesterday,
       (SELECT COALESCE(SUM(prompts), 0) FROM daily_stats WHERE day = ?3) AS prompts_today,
       (SELECT COALESCE(SUM(chars), 0) FROM daily_stats WHERE day = ?3) AS chars_today`,
-    [todayStartMs, yesterdayStartMs, today, yesterday],
+    [todayStartMs, yesterdayStartMs, today, yesterday, todayEndMs],
   );
 
   return {
-    title: `OCW 유저 리포트 — ${today} (UTC)${partialTag()}`,
+    title: `OCW 유저 리포트 — ${today} (UTC)${dayTag(rd)}`,
     description: [
-      `👥 오늘 가입 **${row.signups_today}명** (누적 ${row.total_users}명)`,
-      `⚡ 오늘 활성 **${row.active_today}명** · 프롬프트 ${compact(row.prompts_today)}건 · ${compact(row.chars_today)}자`,
-      `어제: 가입 ${row.signups_yesterday}명 · 활성 ${row.active_yesterday}명`,
+      `👥 ${rd.label} 가입 **${row.signups_today}명** (누적 ${row.total_users}명)`,
+      `⚡ ${rd.label} 활성 **${row.active_today}명** · 프롬프트 ${compact(row.prompts_today)}건 · ${compact(row.chars_today)}자`,
+      `${rd.final ? '그제' : '어제'}: 가입 ${row.signups_yesterday}명 · 활성 ${row.active_yesterday}명`,
     ].join('\n'),
     color: 0x5865f2,
   };
@@ -304,7 +317,7 @@ const md = (d: Date) => `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
 async function buildUsageEmbed(env: Env) {
-  const { today, period, sections, byScript, workersErrors } = await buildReport(env);
+  const { rd, period, sections, byScript, workersErrors } = await buildReport(env);
 
   const all = sections.flatMap(([name, ms]) => ms.map((m) => ({ ...m, section: name })));
   const top = [...all].sort((a, b) => b.projectedPct - a.projectedPct)[0];
@@ -322,13 +335,13 @@ async function buildUsageEmbed(env: Env) {
     }
   }
   lines.push('');
-  lines.push('오늘(UTC)');
+  lines.push(`${rd.label}(UTC ${rd.day})`);
   for (const [name, ms] of sections) {
     const parts = ms.filter((m) => m.today !== null).map((m) => `${m.label} ${m.fmt(m.today!)}`);
     lines.push(` ${name.padEnd(8)}${parts.join(' · ')}`);
   }
   lines.push('');
-  lines.push(`${'Workers by script'.padEnd(23)} ${'주기'.padStart(5)} ${'오늘'.padStart(5)}`);
+  lines.push(`${'Workers by script'.padEnd(23)} ${'주기'.padStart(5)} ${rd.label.padStart(5)}`);
   for (const s of byScript) {
     lines.push(` ${s.name.padEnd(22)} ${compact(s.requests).padStart(7)} ${compact(s.today).padStart(7)}`);
   }
@@ -345,12 +358,12 @@ async function buildUsageEmbed(env: Env) {
     `💵 이번 주기 예상 청구 ${usd(PLAN.base + overageUsd)}` +
       (overageUsd > 0 ? ` (기본료 ${usd(PLAN.base)} + 초과 ${usd(overageUsd)})` : ' (기본료만)'),
   ];
-  const errNote = workersErrors ? `\n🔥 오늘 Worker 오류 ${workersErrors}건 발생` : '';
+  const errNote = workersErrors ? `\n🔥 ${rd.label} Worker 오류 ${workersErrors}건 발생` : '';
   const day = Math.min(Math.floor(period.elapsedDays) + 1, period.totalDays);
   const lastDay = new Date(period.end.getTime() - 864e5);
 
   return {
-    title: `Cloudflare Workers Paid 사용량 — ${today} (UTC)${partialTag()}`,
+    title: `Cloudflare Workers Paid 사용량 — ${rd.day} (UTC)${dayTag(rd)}`,
     description: `${statusLines.join('\n')}${errNote}\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
     color,
     footer: {
@@ -362,8 +375,8 @@ async function buildUsageEmbed(env: Env) {
 
 type ReportKind = 'all' | 'usage' | 'user';
 
-// 23시(UTC) 이전 발송분은 오늘(UTC) 값이 아직 덜 끝난 하루라 제목에 표시한다.
-const partialTag = () => (new Date().getUTCHours() < 23 ? ' · 중간 집계' : '');
+// 00시(UTC) 발송분은 끝난 하루의 총량, 나머지는 아직 덜 끝난 하루라 제목에 표시한다.
+const dayTag = (rd: ReturnType<typeof reportDay>) => (rd.final ? ' · 하루 총량' : ' · 중간 집계');
 
 const errorEmbed = (title: string, err: unknown) => ({
   title,
@@ -393,7 +406,7 @@ async function report(env: Env, kind: ReportKind) {
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     // 로컬 트리거(send-now.sh)는 cron 문자열로 리포트를 선택한다: "usage" | "user" | 그 외 = 전체.
-    // 프로덕션 크론("50 11,23 * * *")은 항상 전체 발송.
+    // 프로덕션 크론("10 0,6,12,18 * * *")은 항상 전체 발송.
     const kind: ReportKind = event.cron === 'usage' ? 'usage' : event.cron === 'user' ? 'user' : 'all';
     ctx.waitUntil(
       report(env, kind).catch(async (err) => {
